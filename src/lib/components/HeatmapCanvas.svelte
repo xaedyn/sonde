@@ -27,6 +27,7 @@
   // ── State ───────────────────────────────────────────────────────────────────
   let cells: HeatmapCell[] = [];
   let endpointLabels: string[] = [];
+  let hoveredCell: HeatmapCell | null = null;
 
   // ── Build cells from stores ─────────────────────────────────────────────────
 
@@ -65,6 +66,22 @@
     cells = newCells;
     endpointLabels = labels;
     renderer?.draw(cells, endpointLabels);
+    drawHoverHighlight();
+  }
+
+  // ── Hover highlight ─────────────────────────────────────────────────────────
+
+  function drawHoverHighlight(): void {
+    if (!hoveredCell) return;
+    const ctx = canvas?.getContext('2d');
+    if (!ctx) return;
+    const cx = colToX(hoveredCell.col);
+    const cy = rowToY(hoveredCell.row);
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(cx + 0.5, cy + 0.5, CELL_SIZE - 1, CELL_SIZE - 1);
+    ctx.restore();
   }
 
   // ── Canvas resize ───────────────────────────────────────────────────────────
@@ -121,6 +138,7 @@
     const { x, y } = canvasPos(e);
     const cell = findCell(x, y);
     if (cell) {
+      hoveredCell = cell;
       uiStore.setHover({
         endpointId: cell.endpointId,
         roundId: cell.round,
@@ -130,12 +148,23 @@
         status: cell.status,
         timestamp: 0,
       });
+      // Redraw with hover highlight
+      renderer?.draw(cells, endpointLabels);
+      drawHoverHighlight();
     } else {
+      if (hoveredCell !== null) {
+        hoveredCell = null;
+        renderer?.draw(cells, endpointLabels);
+      }
       uiStore.setHover(null);
     }
   }
 
   function handlePointerLeave(): void {
+    if (hoveredCell !== null) {
+      hoveredCell = null;
+      renderer?.draw(cells, endpointLabels);
+    }
     uiStore.setHover(null);
   }
 

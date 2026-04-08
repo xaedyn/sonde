@@ -6,6 +6,7 @@
   import { tokens } from '$lib/tokens';
   import TimelineCanvas from './TimelineCanvas.svelte';
   import HeatmapCanvas from './HeatmapCanvas.svelte';
+  import Legend from './Legend.svelte';
   import type { ActiveView } from '$lib/types';
 
   // On mobile, when in 'split' mode, toggle which panel is visible
@@ -64,6 +65,9 @@
       Split
     </button>
   </div>
+
+  <!-- Legend -->
+  <Legend />
 
   <!-- Canvas panels -->
   <div class="panels-container" class:split={$uiStore.activeView === 'split'}>

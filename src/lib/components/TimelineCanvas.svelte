@@ -107,6 +107,55 @@
     scheduler?.markDirty();
   }
 
+  // ── Zoom / Pan state ────────────────────────────────────────────────────────
+  let zoomLevel = 1;
+  let panOffsetX = 0;
+  let panOffsetY = 0;
+
+  // Drag tracking
+  let isDragging = false;
+  let dragStartX = 0;
+  let dragStartY = 0;
+  let dragStartPanX = 0;
+  let dragStartPanY = 0;
+
+  // Touch tracking
+  let lastPinchDist = 0;
+
+  function clampZoom(z: number): number {
+    return Math.max(0.1, Math.min(10, z));
+  }
+
+  function resetZoomPan(): void {
+    zoomLevel = 1;
+    panOffsetX = 0;
+    panOffsetY = 0;
+    scheduler?.markDirty();
+  }
+
+  function handleWheel(e: WheelEvent): void {
+    e.preventDefault();
+    const delta = -e.deltaY * 0.001;
+    const factor = Math.exp(delta * 2);
+
+    if (e.shiftKey) {
+      // Shift+wheel: Y-axis only
+      panOffsetY += e.deltaY * 0.5;
+    } else if (e.ctrlKey || e.metaKey) {
+      // Ctrl/Cmd+wheel: X-axis only
+      panOffsetX -= e.deltaX * 0.5;
+      const newZoom = clampZoom(zoomLevel * factor);
+      const scaleChange = newZoom / zoomLevel;
+      panOffsetX = panOffsetX * scaleChange;
+      zoomLevel = newZoom;
+    } else {
+      // Default: zoom both axes
+      const newZoom = clampZoom(zoomLevel * factor);
+      zoomLevel = newZoom;
+    }
+    scheduler?.markDirty();
+  }
+
   // ── Pointer event helpers ───────────────────────────────────────────────────
 
   function canvasToLogical(canvas: HTMLCanvasElement, e: PointerEvent): { x: number; y: number } {
@@ -132,7 +181,24 @@
     return nearest;
   }
 
+  function handlePointerDown(e: PointerEvent): void {
+    if (e.button !== 0) return;
+    isDragging = true;
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+    dragStartPanX = panOffsetX;
+    dragStartPanY = panOffsetY;
+    interactionCanvas.setPointerCapture(e.pointerId);
+  }
+
   function handlePointerMove(e: PointerEvent): void {
+    if (isDragging) {
+      panOffsetX = dragStartPanX + (e.clientX - dragStartX);
+      panOffsetY = dragStartPanY + (e.clientY - dragStartY);
+      scheduler?.markDirty();
+      return;
+    }
+
     const { x, y } = canvasToLogical(interactionCanvas, e);
     const pt = findNearest(x, y);
 
@@ -157,12 +223,26 @@
     }
   }
 
+  function handlePointerUp(e: PointerEvent): void {
+    if (isDragging) {
+      isDragging = false;
+      interactionCanvas.releasePointerCapture(e.pointerId);
+    }
+  }
+
   function handlePointerLeave(): void {
-    uiStore.setHover(null);
-    interactionRenderer?.clear();
+    if (!isDragging) {
+      uiStore.setHover(null);
+      interactionRenderer?.clear();
+    }
   }
 
   function handleClick(e: PointerEvent): void {
+    // Suppress click if we were dragging
+    const movedX = Math.abs(e.clientX - dragStartX);
+    const movedY = Math.abs(e.clientY - dragStartY);
+    if (movedX > 4 || movedY > 4) return;
+
     const { x, y } = canvasToLogical(interactionCanvas, e);
     const pt = findNearest(x, y);
 
@@ -177,9 +257,38 @@
   }
 
   function handleDblClick(): void {
+    resetZoomPan();
     uiStore.setSelected(null);
     uiStore.setHover(null);
     interactionRenderer?.clear();
+  }
+
+  // ── Touch handling ──────────────────────────────────────────────────────────
+
+  function getTouchDist(t: TouchList): number {
+    if (t.length < 2) return 0;
+    const dx = (t[0]?.clientX ?? 0) - (t[1]?.clientX ?? 0);
+    const dy = (t[0]?.clientY ?? 0) - (t[1]?.clientY ?? 0);
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  function handleTouchStart(e: TouchEvent): void {
+    if (e.touches.length === 2) {
+      lastPinchDist = getTouchDist(e.touches);
+    }
+  }
+
+  function handleTouchMove(e: TouchEvent): void {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      const dist = getTouchDist(e.touches);
+      if (lastPinchDist > 0) {
+        const factor = dist / lastPinchDist;
+        zoomLevel = clampZoom(zoomLevel * factor);
+        scheduler?.markDirty();
+      }
+      lastPinchDist = dist;
+    }
   }
 
   // ── Lifecycle ───────────────────────────────────────────────────────────────
@@ -221,10 +330,15 @@
     });
 
     // Pointer events on the top (interaction) canvas
+    interactionCanvas.addEventListener('pointerdown', handlePointerDown);
     interactionCanvas.addEventListener('pointermove', handlePointerMove);
+    interactionCanvas.addEventListener('pointerup', handlePointerUp);
     interactionCanvas.addEventListener('pointerleave', handlePointerLeave);
     interactionCanvas.addEventListener('click', handleClick as EventListener);
     interactionCanvas.addEventListener('dblclick', handleDblClick);
+    interactionCanvas.addEventListener('wheel', handleWheel, { passive: false });
+    interactionCanvas.addEventListener('touchstart', handleTouchStart, { passive: true });
+    interactionCanvas.addEventListener('touchmove', handleTouchMove, { passive: false });
 
     scheduler.start();
   });
@@ -233,10 +347,15 @@
     scheduler?.stop();
     resizeObserver?.disconnect();
     unsubscribeMeasurement?.();
+    interactionCanvas?.removeEventListener('pointerdown', handlePointerDown);
     interactionCanvas?.removeEventListener('pointermove', handlePointerMove);
+    interactionCanvas?.removeEventListener('pointerup', handlePointerUp);
     interactionCanvas?.removeEventListener('pointerleave', handlePointerLeave);
     interactionCanvas?.removeEventListener('click', handleClick as EventListener);
     interactionCanvas?.removeEventListener('dblclick', handleDblClick);
+    interactionCanvas?.removeEventListener('wheel', handleWheel);
+    interactionCanvas?.removeEventListener('touchstart', handleTouchStart);
+    interactionCanvas?.removeEventListener('touchmove', handleTouchMove);
   });
 </script>
 
@@ -281,5 +400,6 @@
   .canvas-interaction {
     z-index: 3;
     cursor: crosshair;
+    touch-action: none;
   }
 </style>
