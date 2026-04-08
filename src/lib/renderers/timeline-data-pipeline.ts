@@ -195,12 +195,23 @@ export function computeRibbons(
     const p50Points: [number, number][] = [];
     const p75Points: [number, number][] = [];
 
+    // Inline normalization to avoid function call overhead per point
+    const norm = (ms: number) => {
+      if (isLog) {
+        const logVal = Math.log10(Math.max(ms, 0.1));
+        const v = (logVal - logMin) / logSpan;
+        return v < 0 ? 0 : v > 1 ? 1 : v;
+      }
+      const v = (ms - yMin) / ySpan;
+      return v < 0 ? 0 : v > 1 ? 1 : v;
+    };
+
     for (let i = WINDOW_SIZE - 1; i < samples.length; i++) {
       // Fill buffer with ok latencies from the window, count them
       let okCount = 0;
       for (let j = i - WINDOW_SIZE + 1; j <= i; j++) {
-        const s = samples[j]!;
-        if (s.status === 'ok') {
+        const s = samples[j];
+        if (s && s.status === 'ok') {
           sortBuf[okCount++] = s.latency;
         }
       }
@@ -209,10 +220,10 @@ export function computeRibbons(
 
       // Insertion sort on the small buffer (faster than Array.sort for n <= 20)
       for (let a = 1; a < okCount; a++) {
-        const key = sortBuf[a]!;
+        const key = sortBuf[a] ?? 0;
         let b = a - 1;
-        while (b >= 0 && sortBuf[b]! > key) {
-          sortBuf[b + 1] = sortBuf[b]!;
+        while (b >= 0 && (sortBuf[b] ?? 0) > key) {
+          sortBuf[b + 1] = sortBuf[b] ?? 0;
           b--;
         }
         sortBuf[b + 1] = key;
@@ -223,22 +234,13 @@ export function computeRibbons(
       const i50 = Math.max(0, Math.ceil((50 / 100) * okCount) - 1);
       const i75 = Math.max(0, Math.ceil((75 / 100) * okCount) - 1);
 
-      const x = samples[i]!.round;
+      const sample = samples[i];
+      if (!sample) continue;
+      const x = sample.round;
 
-      // Inline normalization to avoid function call overhead per point
-      const norm = (ms: number) => {
-        if (isLog) {
-          const logVal = Math.log10(Math.max(ms, 0.1));
-          const n = (logVal - logMin) / logSpan;
-          return n < 0 ? 0 : n > 1 ? 1 : n;
-        }
-        const n = (ms - yMin) / ySpan;
-        return n < 0 ? 0 : n > 1 ? 1 : n;
-      };
-
-      p25Points.push([x, norm(sortBuf[i25]!)]);
-      p50Points.push([x, norm(sortBuf[i50]!)]);
-      p75Points.push([x, norm(sortBuf[i75]!)]);
+      p25Points.push([x, norm(sortBuf[i25] ?? 0)]);
+      p50Points.push([x, norm(sortBuf[i50] ?? 0)]);
+      p75Points.push([x, norm(sortBuf[i75] ?? 0)]);
     }
 
     if (p25Points.length > 0) {
@@ -320,7 +322,8 @@ export function prepareFrame(
     const epId = ep.id;
     const epColor = ep.color;
     for (let i = 0; i < n; i++) {
-      const s = samples[i]!;
+      const s = samples[i];
+      if (!s) continue;
       const round = s.round;
       if (round > maxRound) maxRound = round;
       points[i] = {

@@ -187,7 +187,7 @@ export class TimelineRenderer {
     for (const [endpointId, ribbon] of ribbonsByEndpoint) {
       // Get color from the first point of this endpoint
       const points = pointsByEndpoint.get(endpointId);
-      const color = points?.[0]?.color ?? '#4a90d9';
+      const color = points?.[0]?.color ?? tokens.color.endpoint[0];
 
       // P25-P75 filled band
       if (ribbon.p25Path.length > 0 && ribbon.p75Path.length > 0) {
@@ -198,18 +198,20 @@ export class TimelineRenderer {
 
         // Forward along P75 (top edge)
         for (let i = 0; i < ribbon.p75Path.length; i++) {
-          const [round, normY] = ribbon.p75Path[i]!;
-          const x = paddingLeft + (round / this.maxRound) * plotWidth;
-          const y = paddingTop + (1 - normY) * plotHeight;
+          const pt = ribbon.p75Path[i];
+          if (!pt) continue;
+          const x = paddingLeft + (pt[0] / this.maxRound) * plotWidth;
+          const y = paddingTop + (1 - pt[1]) * plotHeight;
           if (i === 0) ctx.moveTo(x, y);
           else ctx.lineTo(x, y);
         }
 
         // Backward along P25 (bottom edge)
         for (let i = ribbon.p25Path.length - 1; i >= 0; i--) {
-          const [round, normY] = ribbon.p25Path[i]!;
-          const x = paddingLeft + (round / this.maxRound) * plotWidth;
-          const y = paddingTop + (1 - normY) * plotHeight;
+          const pt = ribbon.p25Path[i];
+          if (!pt) continue;
+          const x = paddingLeft + (pt[0] / this.maxRound) * plotWidth;
+          const y = paddingTop + (1 - pt[1]) * plotHeight;
           ctx.lineTo(x, y);
         }
 
@@ -228,9 +230,10 @@ export class TimelineRenderer {
         ctx.beginPath();
 
         for (let i = 0; i < ribbon.p50Path.length; i++) {
-          const [round, normY] = ribbon.p50Path[i]!;
-          const x = paddingLeft + (round / this.maxRound) * plotWidth;
-          const y = paddingTop + (1 - normY) * plotHeight;
+          const pt = ribbon.p50Path[i];
+          if (!pt) continue;
+          const x = paddingLeft + (pt[0] / this.maxRound) * plotWidth;
+          const y = paddingTop + (1 - pt[1]) * plotHeight;
           if (i === 0) ctx.moveTo(x, y);
           else ctx.lineTo(x, y);
         }
