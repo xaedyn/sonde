@@ -7,6 +7,9 @@
   import { uiStore } from '$lib/stores/ui';
   import { tokens } from '$lib/tokens';
 
+  export let onStart: (() => void) | undefined = undefined;
+  export let onStop: (() => void) | undefined = undefined;
+
   // Derive button state from lifecycle
   $: lifecycle = $measurementStore.lifecycle;
 
@@ -34,11 +37,10 @@
 
   function handleStartStop(): void {
     if (lifecycle === 'running') {
-      measurementStore.setLifecycle('stopping');
+      onStop?.();
     } else if (lifecycle === 'idle' || lifecycle === 'stopped' || lifecycle === 'completed') {
-      measurementStore.setLifecycle('starting');
+      onStart?.();
     }
-    // 'starting' and 'stopping' states: button is disabled, no action
   }
 
   function handleSettings(): void {

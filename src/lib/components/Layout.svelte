@@ -13,6 +13,9 @@
   import SummaryCards from './SummaryCards.svelte';
   import Controls from './Controls.svelte';
 
+  export let onStart: (() => void) | undefined = undefined;
+  export let onStop: (() => void) | undefined = undefined;
+
   let announcer: HTMLDivElement;
   let prevLifecycle = get(measurementStore).lifecycle;
   let unsubLifecycle: (() => void) | null = null;
@@ -66,7 +69,7 @@
     <Header />
     <!-- Controls inline on desktop -->
     <div class="header-controls desktop-only">
-      <Controls />
+      <Controls {onStart} {onStop} />
     </div>
   </header>
 
@@ -90,7 +93,7 @@
 
   <!-- Controls fixed at bottom on mobile -->
   <div class="layout-controls mobile-only" role="toolbar" aria-label="Test controls">
-    <Controls />
+    <Controls {onStart} {onStop} />
   </div>
 </div>
 

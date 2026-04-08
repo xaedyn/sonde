@@ -154,27 +154,14 @@
   // We watch those transitions and drive the engine accordingly.
   // Note: engine.start() expects 'idle'|'stopped'; when Controls sets 'starting',
   // we call engine.start() from the previous tick, so we track prior lifecycle.
-  let unsubLifecycle: (() => void) | null = null;
-  let prevLifecycle: string = get(measurementStore).lifecycle;
+  function handleStart(): void {
+    if (!engine) return;
+    engine.start();
+  }
 
-  function setupEngineWiring(): void {
-    unsubLifecycle = measurementStore.subscribe((state) => {
-      if (!engine) return;
-      const cur = state.lifecycle;
-
-      // React to Controls-driven transitions only
-      if (prevLifecycle !== 'starting' && cur === 'starting') {
-        // Controls set 'starting' — engine.start() guards against non-idle/stopped,
-        // but the store is now 'starting'. Reset to 'idle' briefly so engine can proceed.
-        measurementStore.setLifecycle('idle');
-        engine.start();
-      } else if (prevLifecycle !== 'stopping' && cur === 'stopping') {
-        // Controls set 'stopping' — engine.stop() sets lifecycle itself
-        engine.stop();
-      }
-
-      prevLifecycle = cur;
-    });
+  function handleStop(): void {
+    if (!engine) return;
+    engine.stop();
   }
 
   // ── Mount ────────────────────────────────────────────────────────────────────
@@ -199,10 +186,7 @@
     // 4. Create engine
     engine = new MeasurementEngine();
 
-    // 5. Wire engine to lifecycle
-    setupEngineWiring();
-
-    // 6. Setup persistence sync
+    // 5. Setup persistence sync
     setupPersistenceSync();
 
     // 7. Register keyboard shortcuts
@@ -214,7 +198,6 @@
     unsubSettings?.();
     unsubEndpoints?.();
     unsubUi?.();
-    unsubLifecycle?.();
     destroyShortcuts?.();
     if (persistDebounceTimer !== null) clearTimeout(persistDebounceTimer);
   });
@@ -224,7 +207,7 @@
   {#if $uiStore.isSharedView}
     <SharedResultsBanner />
   {/if}
-  <Layout />
+  <Layout onStart={handleStart} onStop={handleStop} />
   {#if $uiStore.showSettings}
     <SettingsDrawer />
   {/if}

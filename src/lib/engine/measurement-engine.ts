@@ -157,7 +157,10 @@ export class MeasurementEngine {
       // Uses the injected factory — allows test environments to substitute mock workers.
       const worker = this.workerFactory.create(new URL('./worker.ts', import.meta.url));
       worker.addEventListener('message', (event: MessageEvent<WorkerToMainMessage>) => {
-        this._handleWorkerMessage(event.data);
+        // Inject the correct endpointId — the worker doesn't know its own ID,
+        // it only sets endpointId to the URL as a placeholder.
+        const msg = { ...event.data, endpointId: ep.id };
+        this._handleWorkerMessage(msg);
       });
       return { worker, endpointId: ep.id };
     });
