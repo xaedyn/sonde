@@ -179,6 +179,14 @@ export function computeRibbons(
   yRange: YRange,
 ): Map<string, RibbonData> {
   const result = new Map<string, RibbonData>();
+  // Pre-allocate a reusable buffer for sorting window latencies (avoids ~9800 allocations)
+  const sortBuf = new Float64Array(WINDOW_SIZE);
+
+  const yMin = yRange.min;
+  const ySpan = yRange.max - yRange.min;
+  const isLog = yRange.isLog;
+  const logMin = isLog ? Math.log10(Math.max(yMin, 0.1)) : 0;
+  const logSpan = isLog ? Math.log10(yRange.max) - logMin : 0;
 
   for (const [endpointId, epState] of Object.entries(measureState.endpoints)) {
     const { samples } = epState;
@@ -189,21 +197,49 @@ export function computeRibbons(
     const p75Points: [number, number][] = [];
 
     for (let i = WINDOW_SIZE - 1; i < samples.length; i++) {
-      const window = samples.slice(i - WINDOW_SIZE + 1, i + 1);
-      const okSamples = window.filter(s => s.status === 'ok');
-      const latencies = okSamples.map(s => s.latency);
+      // Fill buffer with ok latencies from the window, count them
+      let okCount = 0;
+      for (let j = i - WINDOW_SIZE + 1; j <= i; j++) {
+        const s = samples[j]!;
+        if (s.status === 'ok') {
+          sortBuf[okCount++] = s.latency;
+        }
+      }
 
-      if (latencies.length < 3) continue;
+      if (okCount < 3) continue;
 
-      const sortedWindow = [...latencies].sort((a, b) => a - b);
-      const p25 = percentileSorted(sortedWindow, 25);
-      const p50 = percentileSorted(sortedWindow, 50);
-      const p75 = percentileSorted(sortedWindow, 75);
+      // Insertion sort on the small buffer (faster than Array.sort for n <= 20)
+      for (let a = 1; a < okCount; a++) {
+        const key = sortBuf[a]!;
+        let b = a - 1;
+        while (b >= 0 && sortBuf[b]! > key) {
+          sortBuf[b + 1] = sortBuf[b]!;
+          b--;
+        }
+        sortBuf[b + 1] = key;
+      }
+
+      // Nearest-rank percentiles directly from buffer
+      const i25 = Math.max(0, Math.ceil((25 / 100) * okCount) - 1);
+      const i50 = Math.max(0, Math.ceil((50 / 100) * okCount) - 1);
+      const i75 = Math.max(0, Math.ceil((75 / 100) * okCount) - 1);
 
       const x = samples[i]!.round;
-      p25Points.push([x, normalizeLatency(p25, yRange)]);
-      p50Points.push([x, normalizeLatency(p50, yRange)]);
-      p75Points.push([x, normalizeLatency(p75, yRange)]);
+
+      // Inline normalization to avoid function call overhead per point
+      const norm = (ms: number) => {
+        if (isLog) {
+          const logVal = Math.log10(Math.max(ms, 0.1));
+          const n = (logVal - logMin) / logSpan;
+          return n < 0 ? 0 : n > 1 ? 1 : n;
+        }
+        const n = (ms - yMin) / ySpan;
+        return n < 0 ? 0 : n > 1 ? 1 : n;
+      };
+
+      p25Points.push([x, norm(sortBuf[i25]!)]);
+      p50Points.push([x, norm(sortBuf[i50]!)]);
+      p75Points.push([x, norm(sortBuf[i75]!)]);
     }
 
     if (p25Points.length > 0) {
@@ -306,9 +342,7 @@ export function prepareFrame(
 
   maxRound = Math.max(maxRound, 1);
 
-  // Ribbons are computed lazily outside the hot path — callers that need ribbon
-  // overlays should invoke computeRibbons() separately after prepareFrame().
-  const ribbonsByEndpoint = new Map<string, RibbonData>();
+  const ribbonsByEndpoint = computeRibbons(measureState, yRange);
   const xTicks = computeXTicks(maxRound, 800);
 
   return {
