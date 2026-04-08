@@ -2,7 +2,6 @@
 // Pure-function data pipeline: transforms MeasurementState into FrameData for renderers.
 // No class, no mutable state. Entry point: prepareFrame().
 
-import { percentileSorted } from '$lib/utils/statistics';
 import { tokens } from '$lib/tokens';
 import type {
   Endpoint,
@@ -318,8 +317,6 @@ export function prepareFrame(
     const { samples } = epState;
     const n = samples.length;
     const points: ScatterPoint[] = new Array(n);
-    const yMin = yRange.min;
-    const ySpan = yRange.max - yRange.min;
     const epId = ep.id;
     const epColor = ep.color;
     for (let i = 0; i < n; i++) {
@@ -328,7 +325,7 @@ export function prepareFrame(
       if (round > maxRound) maxRound = round;
       points[i] = {
         x: round,
-        y: Math.min(1, Math.max(0, (s.latency - yMin) / ySpan)),
+        y: normalizeLatency(s.latency, yRange),
         latency: s.latency,
         status: s.status,
         endpointId: epId,
