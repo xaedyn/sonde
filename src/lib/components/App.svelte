@@ -11,6 +11,7 @@
   import { uiStore } from '$lib/stores/ui';
   import { MeasurementEngine } from '$lib/engine/measurement-engine';
   import { loadPersistedSettings, saveSettings } from '$lib/utils/persistence';
+  import { initHashRouter } from '$lib/share/hash-router';
   import type { PersistedSettings } from '$lib/types';
   import Layout from './Layout.svelte';
   import SettingsDrawer from './SettingsDrawer.svelte';
@@ -110,11 +111,16 @@
   let unsubEndpoints: (() => void) | null = null;
   let unsubUi: (() => void) | null = null;
 
+  let persistDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
   function setupPersistenceSync(): void {
     function persist(): void {
+      // Skip saves when in shared view — don't overwrite user's settings with shared config
+      const ui = get(uiStore);
+      if (ui.isSharedView) return;
+
       const settings = get(settingsStore);
       const endpoints = get(endpointStore);
-      const ui = get(uiStore);
 
       const payload: PersistedSettings = {
         version: 2,
@@ -128,9 +134,14 @@
       saveSettings(payload);
     }
 
-    unsubSettings = settingsStore.subscribe(persist);
-    unsubEndpoints = endpointStore.subscribe(persist);
-    unsubUi = uiStore.subscribe(persist);
+    function debouncedPersist(): void {
+      if (persistDebounceTimer !== null) clearTimeout(persistDebounceTimer);
+      persistDebounceTimer = setTimeout(persist, 500);
+    }
+
+    unsubSettings = settingsStore.subscribe(debouncedPersist);
+    unsubEndpoints = endpointStore.subscribe(debouncedPersist);
+    unsubUi = uiStore.subscribe(debouncedPersist);
   }
 
   // ── Engine lifecycle wiring ──────────────────────────────────────────────────
@@ -166,15 +177,19 @@
     // 1. Bridge tokens to CSS custom properties
     bridgeTokensToCss();
 
-    // 2. Load persisted settings
-    const persisted = loadPersistedSettings();
+    // 2. Check for share URL — takes priority over persisted settings
+    const handledShareURL = initHashRouter();
 
-    if (persisted) {
-      // 3a. Apply persisted state
-      applyPersistedSettings(persisted);
+    // 3. Load persisted settings (skip if a share URL was processed)
+    if (!handledShareURL) {
+      const persisted = loadPersistedSettings();
+
+      if (persisted) {
+        // 3a. Apply persisted state
+        applyPersistedSettings(persisted);
+      }
     }
-    // 3b. If no persisted settings, default endpoints are already in the store
-    // (endpointStore initializes with DEFAULT_ENDPOINTS)
+    // 3b. If no persisted settings and no share URL, defaults are already in stores
 
     // 4. Create engine
     engine = new MeasurementEngine();
@@ -192,6 +207,7 @@
     unsubEndpoints?.();
     unsubUi?.();
     unsubLifecycle?.();
+    if (persistDebounceTimer !== null) clearTimeout(persistDebounceTimer);
   });
 </script>
 

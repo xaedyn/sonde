@@ -43,6 +43,20 @@ function createUiStore() {
     toggleShare(): void {
       update((s) => ({ ...s, showShare: !s.showShare }));
     },
+    setSharedView(isShared: boolean, timestamp: number | null = null): void {
+      update((s) => ({
+        ...s,
+        isSharedView: isShared,
+        sharedResultsTimestamp: timestamp,
+      }));
+    },
+    clearSharedView(): void {
+      update((s) => ({
+        ...s,
+        isSharedView: false,
+        sharedResultsTimestamp: null,
+      }));
+    },
     reset(): void {
       set(initialState());
     },
