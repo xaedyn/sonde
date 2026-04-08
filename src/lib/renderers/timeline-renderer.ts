@@ -4,7 +4,7 @@
 
 import { tokens } from '$lib/tokens';
 import { STATUS_COLORS } from '$lib/renderers/color-map';
-import type { ScatterPoint, MeasurementSample } from '$lib/types';
+import type { ScatterPoint, MeasurementSample, FreezeEvent } from '$lib/types';
 
 // Gridline latencies to mark on the Y-axis
 const Y_GRID_MS = [1, 5, 10, 50, 100, 500, 1000, 5000, 10000] as const;
@@ -43,13 +43,18 @@ export class TimelineRenderer {
 
   // ── Public API ─────────────────────────────────────────────────────────────
 
-  draw(pointsByEndpoint: Map<string, ScatterPoint[]>): void {
+  draw(pointsByEndpoint: Map<string, ScatterPoint[]>, freezeEvents?: FreezeEvent[]): void {
     const { ctx, canvas } = this;
     if (!ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     this.drawBackground();
     this.drawGridlines();
+
+    // Freeze gap markers (before points so they sit behind)
+    if (freezeEvents && freezeEvents.length > 0) {
+      this.drawFreezeMarkers(freezeEvents);
+    }
 
     // Phase 1: glow halos (additive compositing)
     ctx.save();
@@ -69,6 +74,31 @@ export class TimelineRenderer {
         this.drawPoint(pt);
       }
     }
+  }
+
+  private drawFreezeMarkers(events: FreezeEvent[]): void {
+    const { ctx } = this;
+    if (!ctx) return;
+    const { paddingLeft, paddingTop, plotWidth, plotHeight } = this.layout;
+
+    // Determine total rounds from the latest freeze event round
+    const maxRound = Math.max(...events.map(e => e.round), 1);
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255, 200, 100, 0.6)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+
+    for (const ev of events) {
+      const norm = ev.round / maxRound;
+      const x = paddingLeft + norm * plotWidth;
+      ctx.beginPath();
+      ctx.moveTo(x, paddingTop);
+      ctx.lineTo(x, paddingTop + plotHeight);
+      ctx.stroke();
+    }
+
+    ctx.restore();
   }
 
   resize(): void {

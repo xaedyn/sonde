@@ -7,6 +7,8 @@
   import TimelineCanvas from './TimelineCanvas.svelte';
   import HeatmapCanvas from './HeatmapCanvas.svelte';
   import Legend from './Legend.svelte';
+  import LoadingAnimation from './LoadingAnimation.svelte';
+  import { measurementStore } from '$lib/stores/measurements';
   import type { ActiveView } from '$lib/types';
 
   // On mobile, when in 'split' mode, toggle which panel is visible
@@ -71,6 +73,12 @@
 
   <!-- Canvas panels -->
   <div class="panels-container" class:split={$uiStore.activeView === 'split'}>
+    <!-- Loading animation overlaid on top when idle -->
+    {#if $measurementStore.lifecycle === 'idle'}
+      <div class="loading-overlay">
+        <LoadingAnimation />
+      </div>
+    {/if}
 
     {#if $uiStore.activeView === 'timeline'}
       <div id="panel-timeline" class="panel panel-full" role="tabpanel">
@@ -179,6 +187,13 @@
     flex: 1;
     min-height: 0;
     position: relative;
+  }
+
+  .loading-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    pointer-events: none;
   }
 
   .panel {

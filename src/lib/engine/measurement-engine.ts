@@ -6,6 +6,7 @@ import { get } from 'svelte/store';
 import { measurementStore } from '../stores/measurements';
 import { endpointStore } from '../stores/endpoints';
 import { settingsStore } from '../stores/settings';
+import { FreezeDetector } from '../utils/freeze-detector';
 import type { Endpoint } from '../types';
 import type { MainToWorkerMessage, WorkerToMainMessage } from '../types';
 
@@ -17,6 +18,14 @@ interface ManagedWorker {
 export class MeasurementEngine {
   private workers: ManagedWorker[] = [];
   private roundTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly freezeDetector: FreezeDetector;
+
+  constructor() {
+    this.freezeDetector = new FreezeDetector(() => get(measurementStore).roundCounter);
+    this.freezeDetector.onFreeze((event) => {
+      measurementStore.addFreezeEvent(event);
+    });
+  }
 
   // ── Public API ────────────────────────────────────────────────────────────
 
@@ -42,6 +51,7 @@ export class MeasurementEngine {
     try {
       this._spawnWorkers(endpoints);
       measurementStore.setLifecycle('running');
+      this.freezeDetector.start();
       this._scheduleNextRound();
     } catch {
       // Worker creation failed (e.g., jsdom environment).
@@ -71,6 +81,7 @@ export class MeasurementEngine {
     }
 
     this.workers = [];
+    this.freezeDetector.stop();
     measurementStore.setStoppedAt(Date.now());
     measurementStore.setLifecycle('stopped');
   }

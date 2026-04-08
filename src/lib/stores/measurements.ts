@@ -9,6 +9,7 @@ import type {
   TestLifecycleState,
   SampleStatus,
   TimingPayload,
+  FreezeEvent,
 } from '../types';
 
 const INITIAL_STATE: MeasurementState = {
@@ -18,6 +19,7 @@ const INITIAL_STATE: MeasurementState = {
   endpoints: {},
   startedAt: null,
   stoppedAt: null,
+  freezeEvents: [],
 };
 
 function createMeasurementStore() {
@@ -108,6 +110,10 @@ function createMeasurementStore() {
 
     setStoppedAt(ts: number): void {
       update(s => ({ ...s, stoppedAt: ts }));
+    },
+
+    addFreezeEvent(event: FreezeEvent): void {
+      update(s => ({ ...s, freezeEvents: [...s.freezeEvents, event] }));
     },
 
     loadSnapshot(snapshot: MeasurementState): void {

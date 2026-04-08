@@ -84,6 +84,12 @@ export interface EndpointMeasurementState {
   tierLevel: 1 | 2;
 }
 
+export interface FreezeEvent {
+  readonly round: number;
+  readonly at: number;
+  readonly gapMs: number;
+}
+
 export interface MeasurementState {
   lifecycle: TestLifecycleState;
   epoch: number;
@@ -91,6 +97,7 @@ export interface MeasurementState {
   endpoints: Record<string, EndpointMeasurementState>;
   startedAt: number | null;
   stoppedAt: number | null;
+  freezeEvents: FreezeEvent[];
 }
 
 // ── Statistics store ───────────────────────────────────────────────────────

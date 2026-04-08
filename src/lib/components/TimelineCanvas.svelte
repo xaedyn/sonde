@@ -303,7 +303,8 @@
     scheduler = new RenderScheduler();
 
     scheduler.registerDataRenderer(() => {
-      timelineRenderer.draw(pointsByEndpoint);
+      const freezeEvents = get(measurementStore).freezeEvents;
+      timelineRenderer.draw(pointsByEndpoint, freezeEvents);
     });
 
     scheduler.registerEffectsRenderer(() => {
