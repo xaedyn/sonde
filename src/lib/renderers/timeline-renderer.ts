@@ -38,6 +38,7 @@ export class TimelineRenderer {
     ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
 
     this.maxRound = Math.max(frameData.maxRound, 1);
+    this.layout = this.computeLayout();
 
     this.drawBackground();
     this.drawGridlines(frameData.yRange);
@@ -78,9 +79,8 @@ export class TimelineRenderer {
     this.haloCache.clear();
   }
 
-  /** Convert a ScatterPoint to canvas pixel coordinates. Call after draw() has set maxRound. */
+  /** Convert a ScatterPoint to canvas pixel coordinates. Call after draw() which refreshes layout. */
   toCanvasCoords(pt: ScatterPoint): { cx: number; cy: number } {
-    this.layout = this.computeLayout();
     return this.pointToCanvas(pt);
   }
 
