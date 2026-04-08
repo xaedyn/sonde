@@ -283,3 +283,84 @@ describe('prepareFrame', () => {
     expect(elapsed).toBeLessThan(50);
   });
 });
+
+// ── ribbons (AC3) ──────────────────────────────────────────────────────────
+
+describe('ribbons (AC3)', () => {
+  function makeStateWithSamples(n: number, latency = 50): MeasurementState {
+    const latencies = Array(n).fill(latency);
+    return makeMeasureState({ ep1: latencies });
+  }
+
+  it('no ribbon when endpoint has fewer than 20 samples (AC3)', () => {
+    const state = makeStateWithSamples(19);
+    const endpoints = [{ id: 'ep1', url: 'https://a.com', enabled: true, label: 'A', color: '#4a90d9' }];
+    const result = prepareFrame(endpoints, state);
+    expect(result.ribbonsByEndpoint.has('ep1')).toBe(false);
+  });
+
+  it('ribbon present when endpoint has exactly 20 samples (AC3)', () => {
+    const state = makeStateWithSamples(20);
+    const endpoints = [{ id: 'ep1', url: 'https://a.com', enabled: true, label: 'A', color: '#4a90d9' }];
+    const result = prepareFrame(endpoints, state);
+    expect(result.ribbonsByEndpoint.has('ep1')).toBe(true);
+  });
+
+  it('ribbon present when endpoint has more than 20 samples (AC3)', () => {
+    const state = makeStateWithSamples(50);
+    const endpoints = [{ id: 'ep1', url: 'https://a.com', enabled: true, label: 'A', color: '#4a90d9' }];
+    const result = prepareFrame(endpoints, state);
+    expect(result.ribbonsByEndpoint.has('ep1')).toBe(true);
+  });
+
+  it('RibbonData has p25Path, p50Path, p75Path of equal length', () => {
+    const state = makeStateWithSamples(30);
+    const endpoints = [{ id: 'ep1', url: 'https://a.com', enabled: true, label: 'A', color: '#4a90d9' }];
+    const result = prepareFrame(endpoints, state);
+    const ribbon = result.ribbonsByEndpoint.get('ep1');
+    expect(ribbon).toBeDefined();
+    expect(ribbon!.p25Path.length).toBe(ribbon!.p50Path.length);
+    expect(ribbon!.p50Path.length).toBe(ribbon!.p75Path.length);
+  });
+
+  it('P25 normalized Y <= P50 normalized Y <= P75 normalized Y', () => {
+    const latencies = Array.from({ length: 30 }, (_, i) => 10 + i * 5);
+    const state = makeMeasureState({ ep1: latencies });
+    const endpoints = [{ id: 'ep1', url: 'https://a.com', enabled: true, label: 'A', color: '#4a90d9' }];
+    const result = prepareFrame(endpoints, state);
+    const ribbon = result.ribbonsByEndpoint.get('ep1');
+    expect(ribbon).toBeDefined();
+    for (let i = 0; i < ribbon!.p25Path.length; i++) {
+      const y25 = ribbon!.p25Path[i]![1];
+      const y50 = ribbon!.p50Path[i]![1];
+      const y75 = ribbon!.p75Path[i]![1];
+      expect(y25).toBeLessThanOrEqual(y50 + 0.001);
+      expect(y50).toBeLessThanOrEqual(y75 + 0.001);
+    }
+  });
+
+  it('ribbon collapses to line when all latencies identical (zero variance)', () => {
+    const state = makeStateWithSamples(25, 100);
+    const endpoints = [{ id: 'ep1', url: 'https://a.com', enabled: true, label: 'A', color: '#4a90d9' }];
+    const result = prepareFrame(endpoints, state);
+    const ribbon = result.ribbonsByEndpoint.get('ep1');
+    if (ribbon) {
+      for (let i = 0; i < ribbon.p25Path.length; i++) {
+        expect(ribbon.p25Path[i]![1]).toBeCloseTo(ribbon.p50Path[i]![1], 5);
+        expect(ribbon.p50Path[i]![1]).toBeCloseTo(ribbon.p75Path[i]![1], 5);
+      }
+    }
+  });
+
+  it('ribbon path X values match sample round numbers', () => {
+    const state = makeStateWithSamples(25);
+    const endpoints = [{ id: 'ep1', url: 'https://a.com', enabled: true, label: 'A', color: '#4a90d9' }];
+    const result = prepareFrame(endpoints, state);
+    const ribbon = result.ribbonsByEndpoint.get('ep1');
+    expect(ribbon).toBeDefined();
+    for (const [x] of ribbon!.p50Path) {
+      expect(Number.isInteger(x)).toBe(true);
+      expect(x).toBeGreaterThanOrEqual(20);
+    }
+  });
+});
