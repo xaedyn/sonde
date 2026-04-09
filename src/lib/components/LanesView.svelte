@@ -31,14 +31,15 @@
 
   function handleMouseMove(e: MouseEvent): void {
     const rect = lanesEl.getBoundingClientRect();
+    const panelW = window.matchMedia('(max-width: 767px)').matches ? 0 : PANEL_W;
     const x = e.clientX - rect.left;
-    if (x < PANEL_W) {
+    if (x < panelW) {
       uiStore.clearLaneHover();
       return;
     }
-    const chartW = rect.width - PANEL_W;
+    const chartW = rect.width - panelW;
     if (chartW <= 0) return;
-    const pct = (x - PANEL_W) / chartW;
+    const pct = (x - panelW) / chartW;
     const round = Math.round(pct * (totalRounds - 1)) + 1;
     const clamped = Math.max(1, Math.min($measurementStore.roundCounter, round));
     if (clamped < 1 || clamped > $measurementStore.roundCounter) {

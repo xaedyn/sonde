@@ -37,8 +37,8 @@ const primitive = {
   greenGlow: 'rgba(134,239,172,.5)',
 
   // Glass surfaces
-  glassBg:        'rgba(255,255,255,.025)',
-  glassBorder:    'rgba(255,255,255,.06)',
+  glassBg:        'rgba(255,255,255,.03)',
+  glassBorder:    'rgba(255,255,255,.07)',
   glassHighlight: 'rgba(255,255,255,.12)',
 
   // Lane surface (slightly darker glass)
@@ -119,12 +119,12 @@ export const tokens = {
     },
 
     glass: {
-      bg:          'rgba(255,255,255,.03)',
+      bg:          primitive.glassBg,
       bgStrong:    'rgba(255,255,255,.045)',
       bgHover:     'rgba(255,255,255,.07)',
-      border:      'rgba(255,255,255,.07)',
-      borderHover: 'rgba(255,255,255,.12)',
-      highlight:   'rgba(255,255,255,.12)',
+      border:      primitive.glassBorder,
+      borderHover: primitive.glassHighlight,
+      highlight:   primitive.glassHighlight,
       shadow:      'rgba(0,0,0,.15)',
       shadowStrong: 'rgba(0,0,0,.5)',
     },

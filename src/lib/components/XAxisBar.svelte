@@ -11,7 +11,8 @@
   } = $props();
 
   const ticks: Array<{ label: string; isFuture: boolean }> = $derived.by(() => {
-    const step = Math.ceil(totalRounds / 6);
+    if (totalRounds <= 0) return [];
+    const step = Math.max(1, Math.ceil(totalRounds / 6));
     const result: Array<{ label: string; isFuture: boolean }> = [];
     for (let r = step; r <= totalRounds; r += step) {
       result.push({ label: String(r), isFuture: r > currentRound });

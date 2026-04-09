@@ -35,7 +35,8 @@
   const effectiveMaxRound: number = $derived(Math.max(totalRounds, maxRound, 1));
 
   function toX(round: number): number {
-    return (round / effectiveMaxRound) * VB_W;
+    if (effectiveMaxRound <= 1) return VB_W;
+    return ((round - 1) / (effectiveMaxRound - 1)) * VB_W;
   }
 
   function toY(normalizedY: number): number {

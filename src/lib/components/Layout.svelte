@@ -38,9 +38,9 @@
         const n = get(endpointStore).filter(ep => ep.enabled).length;
         announce(`Test started with ${n} endpoint${n === 1 ? '' : 's'}`);
       } else if (prev === 'running' && cur === 'stopping') {
-        announce(`Test stopped after ${state.roundCounter} rounds`);
+        announce(`Test stopped after ${state.roundCounter} ${state.roundCounter === 1 ? 'round' : 'rounds'}`);
       } else if (prev !== 'completed' && cur === 'completed') {
-        announce(`Test completed after ${state.roundCounter} rounds`);
+        announce(`Test completed after ${state.roundCounter} ${state.roundCounter === 1 ? 'round' : 'rounds'}`);
       }
       prevLifecycle = cur;
     });
@@ -136,7 +136,7 @@
   .sr-only {
     position: absolute; width: 1px; height: 1px;
     padding: 0; margin: -1px; overflow: hidden;
-    clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+    clip-path: inset(50%); white-space: nowrap; border: 0;
   }
 
   @media (prefers-reduced-motion: reduce) {

@@ -25,5 +25,6 @@ describe('uiStore lane hover', () => {
     uiStore.reset();
     const state = get(uiStore);
     expect(state.laneHoverRound).toBeNull();
+    expect(state.laneHoverX).toBeNull();
   });
 });

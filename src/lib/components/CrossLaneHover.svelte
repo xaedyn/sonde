@@ -40,6 +40,7 @@
     const fastest = sorted[0];
     const slowest = sorted[sorted.length - 1];
     if (!fastest || !slowest || fastest.latency === null || slowest.latency === null) return '';
+    if (fastest.latency <= 0) return '';
     const ratio = (slowest.latency / fastest.latency).toFixed(1);
     return `${fastest.label} is ${ratio}× faster`;
   });
