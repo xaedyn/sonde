@@ -1,4 +1,8 @@
 // src/lib/renderers/timeline-renderer.ts
+// NOTE: This renderer is retired from the primary view as of 2026-04-09.
+// The Glass Lanes redesign uses per-lane SVG charts instead.
+// This file is kept for potential future use.
+//
 // Canvas 2D scatter plot with dynamic Y-axis, ribbon bands, and X-axis ticks.
 // Accepts a single FrameData argument from the timeline-data-pipeline.
 
@@ -111,7 +115,7 @@ export class TimelineRenderer {
   private drawBackground(): void {
     const { ctx, canvas } = this;
     if (!ctx) return;
-    ctx.fillStyle = tokens.color.surface.canvas;
+    ctx.fillStyle = tokens.color.surface.mid;
     ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
   }
 
@@ -126,7 +130,7 @@ export class TimelineRenderer {
     ctx.setLineDash(tokens.canvas.gridLineDash as unknown as number[]);
     ctx.lineWidth = 1;
 
-    const labelFont = `${tokens.typography.caption.fontSize}px ${tokens.typography.caption.fontFamily}`;
+    const labelFont = `${tokens.typography.labelSize}px ${tokens.typography.mono.fontFamily}`;
     ctx.font = labelFont;
     ctx.fillStyle = tokens.color.text.muted;
     ctx.textAlign = 'right';
@@ -160,6 +164,7 @@ export class TimelineRenderer {
     const { paddingLeft, paddingTop, plotWidth, plotHeight } = this.layout;
 
     ctx.save();
+    // eslint-disable-next-line local/no-raw-visual-values -- retired renderer, no token equivalent
     ctx.strokeStyle = 'rgba(255, 200, 100, 0.6)';
     ctx.lineWidth = 1;
     ctx.setLineDash([4, 4]);
@@ -264,7 +269,7 @@ export class TimelineRenderer {
     ctx.stroke();
 
     // Tick labels
-    const labelFont = `${tokens.typography.caption.fontSize}px ${tokens.typography.caption.fontFamily}`;
+    const labelFont = `${tokens.typography.labelSize}px ${tokens.typography.mono.fontFamily}`;
     ctx.font = labelFont;
     ctx.fillStyle = tokens.color.text.muted;
     ctx.textAlign = 'center';
@@ -277,7 +282,7 @@ export class TimelineRenderer {
 
     // "Round" axis label centered below (only when plotWidth >= 200)
     if (plotWidth >= 200) {
-      ctx.fillText('Round', paddingLeft + plotWidth / 2, axisY + tokens.canvas.xAxis.labelOffsetY + tokens.typography.caption.fontSize + 2);
+      ctx.fillText('Round', paddingLeft + plotWidth / 2, axisY + tokens.canvas.xAxis.labelOffsetY + tokens.typography.labelSize + 2);
     }
 
     ctx.restore();

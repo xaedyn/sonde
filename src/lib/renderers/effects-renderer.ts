@@ -1,4 +1,8 @@
 // src/lib/renderers/effects-renderer.ts
+// NOTE: This renderer is retired from the primary view as of 2026-04-09.
+// The Glass Lanes redesign uses per-lane SVG charts instead.
+// This file is kept for potential future use.
+//
 // Sonar ping animation on the effects canvas layer.
 // Four tiers with different expansion radii and durations.
 // Uses 'screen' composite for additive glow; no shadowBlur at runtime.
@@ -217,12 +221,12 @@ export class EffectsRenderer {
     ctx.save();
     ctx.globalAlpha = tokens.canvas.emptyState.textOpacity;
     ctx.fillStyle = tokens.color.text.secondary;
-    ctx.font = `${tokens.typography.body.fontSize}px ${tokens.typography.body.fontFamily}`;
+    ctx.font = `${tokens.typography.bodySize}px ${tokens.typography.sans.fontFamily}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('Add endpoints and start a test', centerX, centerY + radius * 0.15);
 
-    ctx.font = `${tokens.typography.caption.fontSize}px ${tokens.typography.caption.fontFamily}`;
+    ctx.font = `${tokens.typography.labelSize}px ${tokens.typography.mono.fontFamily}`;
     ctx.fillStyle = tokens.color.text.muted;
     ctx.fillText('Latency data will appear here', centerX, centerY + radius * 0.15 + 24);
     ctx.restore();

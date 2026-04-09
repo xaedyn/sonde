@@ -20,6 +20,12 @@ describe('LaneSvgChart', () => {
     expect(container.querySelector('svg')).not.toBeNull();
   });
 
+  it('renders "Waiting for data" when no points exist', () => {
+    const { container } = render(LaneSvgChart, { props: baseProps });
+    const text = container.querySelector('.empty-text');
+    expect(text?.textContent).toContain('Waiting for data');
+  });
+
   it('renders future zone rect when rounds < totalRounds', () => {
     const { container } = render(LaneSvgChart, {
       props: {
