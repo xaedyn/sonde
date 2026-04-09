@@ -8,6 +8,7 @@ export default defineConfig({
     alias: {
       '$lib': path.resolve('./src/lib'),
     },
+    conditions: ['browser'],
   },
   test: {
     include: ['tests/unit/**/*.test.ts'],
