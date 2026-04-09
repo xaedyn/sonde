@@ -1,218 +1,328 @@
 // src/lib/tokens.ts
 // Design token system: primitive → semantic → component
-// This is the ONLY file permitted to contain raw hex/px/duration values.
-// ESLint enforces this via no-restricted-syntax.
+// This is the ONLY file permitted to contain raw hex/rgba/px/duration values.
+// ESLint enforces this via no-restricted-syntax (no-raw-visual-values rule).
+// Glass Lanes visual language — locked 2026-04-09.
 
 // ── Primitive tokens ───────────────────────────────────────────────────────
 const primitive = {
-  // Blues (surface hierarchy)
-  ink950: '#080c16',
-  ink900: '#0a0e1a',
-  ink850: '#0d1425',
-  ink800: '#131b33',
-  ink750: '#1a2340',
-  ink700: '#1e2a4a',
-  ink650: '#2d3f6e',
+  // Background
+  bgBase: '#0c0a14',
+  bgMid:  '#100e1e',
+  bgDeep: '#0e0c18',
+
+  // Text opacity layers (rgba white)
+  t1: 'rgba(255,255,255,.94)',
+  t2: 'rgba(255,255,255,.58)',
+  t3: 'rgba(255,255,255,.3)',
+  t4: 'rgba(255,255,255,.14)',
+  t5: 'rgba(255,255,255,.07)',
 
   // Accent
-  blue500: '#4a90d9',
-  blue400: '#5ba0e9',
+  cyan:       '#67e8f9',
+  cyanBright: '#a5f3fc',
+  cyan40:     'rgba(103,232,249,.4)',
+  cyan20:     'rgba(103,232,249,.2)',
+  cyan12:     'rgba(103,232,249,.12)',
+  cyan06:     'rgba(103,232,249,.06)',
 
-  // Latency scale (Viridis-based, CVD-safe)
-  cyan300: '#00b4d8',
-  cyan400: '#0096c7',
-  blue600: '#0077b6',
-  lime400: '#90be6d',
-  yellow300: '#f9c74f',
-  orange400: '#f8961e',
-  orange600: '#f3722c',
-  red500: '#f94144',
+  pink:       '#f9a8d4',
+  pinkBright: '#fbcfe8',
+  pink40:     'rgba(249,168,212,.4)',
+  pink20:     'rgba(249,168,212,.2)',
+  pink12:     'rgba(249,168,212,.12)',
+  pink06:     'rgba(249,168,212,.06)',
 
-  // Status
-  purple500: '#9b5de5',
-  purple400: '#c77dff',
-  purple700: '#7b2cbf',
-  teal400: '#06d6a0',
-  slate600: '#4a5568',
+  green:     '#86efac',
+  greenGlow: 'rgba(134,239,172,.5)',
 
-  // Tier 2 waterfall
-  teal300: '#4ecdc4',
-  sky400: '#45b7d1',
-  green300: '#96ceb4',
-  yellow200: '#ffeaa7',
-  slate200: '#dfe6e9',
+  // Glass surfaces
+  glassBg:        'rgba(255,255,255,.03)',
+  glassBorder:    'rgba(255,255,255,.07)',
+  glassHighlight: 'rgba(255,255,255,.12)',
 
-  // Text
-  slate100: '#e2e8f0',
-  slate300: '#94a3b8',
-  slate400: '#738496',
-  ink800text: '#0a0e1a',
-  white: '#f1f5f9',
+  // Lane surface (slightly darker glass)
+  laneBg:     'rgba(255,255,255,.025)',
+  laneBorder: 'rgba(255,255,255,.06)',
 
-  // Endpoint palette (10 CVD-safe, visually distinct)
-  ep1: '#4a90d9',
-  ep2: '#e06c75',
-  ep3: '#98c379',
-  ep4: '#e5c07b',
-  ep5: '#c678dd',
-  ep6: '#56b6c2',
-  ep7: '#d19a66',
-  ep8: '#61afef',
-  ep9: '#be5046',
-  ep10: '#7ec699',
+  // Topbar
+  topbarBg:     'rgba(255,255,255,.025)',
+  topbarBorder: 'rgba(255,255,255,.07)',
+
+  // Footer
+  footerBg: 'rgba(255,255,255,.02)',
+
+  // Tooltip
+  tooltipBg: 'rgba(20,16,32,.85)',
+
+  // Endpoint color palette (10 slots; cyan/pink are assigned in order then cycle)
+  ep0: '#67e8f9',   // cyan
+  ep1: '#f9a8d4',   // pink
+  ep2: '#86efac',   // green
+  ep3: '#fcd34d',   // amber
+  ep4: '#c4b5fd',   // violet
+  ep5: '#6ee7b7',   // emerald
+  ep6: '#fda4af',   // rose
+  ep7: '#7dd3fc',   // sky
+  ep8: '#d9f99d',   // lime
+  ep9: '#e9d5ff',   // purple
+
+  // Data viz
+  gridLine: 'rgba(255,255,255,.03)',
+  futureZone: 'rgba(255,255,255,.018)',
+  nowDotCyan: '#a5f3fc',
+  nowDotPink: '#fbcfe8',
+  thresholdStroke: '#f9a8d4',
+
+  // Orb layers (for App.svelte CSS)
+  orbCyan:   'rgba(103,232,249,.045)',
+  orbPink:   'rgba(249,168,212,.04)',
+  orbViolet: 'rgba(139,92,246,.03)',
 } as const;
 
 // ── Semantic tokens ────────────────────────────────────────────────────────
 export const tokens = {
   color: {
     surface: {
-      base: primitive.ink950,
-      canvas: primitive.ink900,
-      raised: primitive.ink850,
-      overlay: primitive.ink800,
-      elevated: primitive.ink750,
+      base:    primitive.bgBase,
+      mid:     primitive.bgMid,
+      deep:    primitive.bgDeep,
     },
-    latency: {
-      excellent: primitive.cyan300,
-      fast: primitive.cyan400,
-      good: primitive.blue600,
-      moderate: primitive.lime400,
-      elevated: primitive.yellow300,
-      slow: primitive.orange400,
-      critical: primitive.orange600,
-      failing: primitive.red500,
-    },
-    status: {
-      timeout: primitive.purple500,
-      error: primitive.purple400,
-      offline: primitive.purple700,
-      success: primitive.teal400,
-      idle: primitive.slate600,
-    },
-    chrome: {
-      border: primitive.ink700,
-      borderHover: primitive.ink650,
-      borderFocus: primitive.blue500,
-      accent: primitive.blue500,
-      accentHover: primitive.blue400,
-    },
+
     text: {
-      primary: primitive.slate100,
-      secondary: primitive.slate300,
-      muted: primitive.slate400,
-      inverse: primitive.ink800text,
-      data: primitive.white,
+      t1: primitive.t1,
+      t2: primitive.t2,
+      t3: primitive.t3,
+      t4: primitive.t4,
+      t5: primitive.t5,
+      // Legacy aliases used by non-Glass components (persistence layer, share, engine)
+      primary:   primitive.t1,
+      secondary: primitive.t2,
+      muted:     primitive.t3,
     },
-    tier2: {
-      dns: primitive.teal300,
-      tcp: primitive.sky400,
-      tls: primitive.green300,
-      ttfb: primitive.yellow200,
-      transfer: primitive.slate200,
+
+    accent: {
+      cyan:       primitive.cyan,
+      cyanBright: primitive.cyanBright,
+      cyan40:     primitive.cyan40,
+      cyan20:     primitive.cyan20,
+      cyan12:     primitive.cyan12,
+      cyan06:     primitive.cyan06,
+      pink:       primitive.pink,
+      pinkBright: primitive.pinkBright,
+      pink40:     primitive.pink40,
+      pink20:     primitive.pink20,
+      pink12:     primitive.pink12,
+      pink06:     primitive.pink06,
+      green:      primitive.green,
+      greenGlow:  primitive.greenGlow,
     },
+
+    glass: {
+      bg:          primitive.glassBg,
+      bgStrong:    'rgba(255,255,255,.045)',
+      bgHover:     'rgba(255,255,255,.07)',
+      border:      primitive.glassBorder,
+      borderHover: primitive.glassHighlight,
+      highlight:   primitive.glassHighlight,
+      shadow:      'rgba(0,0,0,.15)',
+      shadowStrong: 'rgba(0,0,0,.5)',
+    },
+
+    lane: {
+      bg:     primitive.laneBg,
+      border: primitive.laneBorder,
+    },
+
+    topbar: {
+      bg:     primitive.topbarBg,
+      border: primitive.topbarBorder,
+    },
+
+    footer: {
+      bg: primitive.footerBg,
+    },
+
+    tooltip: {
+      bg: primitive.tooltipBg,
+    },
+
+    svg: {
+      gridLine:        primitive.gridLine,
+      futureZone:      primitive.futureZone,
+      nowDotCyan:      primitive.nowDotCyan,
+      nowDotPink:      primitive.nowDotPink,
+      thresholdStroke: primitive.thresholdStroke,
+    },
+
+    orb: {
+      cyan:   primitive.orbCyan,
+      pink:   primitive.orbPink,
+      violet: primitive.orbViolet,
+    },
+
     endpoint: [
-      primitive.ep1, primitive.ep2, primitive.ep3, primitive.ep4, primitive.ep5,
-      primitive.ep6, primitive.ep7, primitive.ep8, primitive.ep9, primitive.ep10,
+      primitive.ep0, primitive.ep1, primitive.ep2, primitive.ep3, primitive.ep4,
+      primitive.ep5, primitive.ep6, primitive.ep7, primitive.ep8, primitive.ep9,
     ] as readonly string[],
-    util: {
-      blackOverlay20: 'rgba(0,0,0,0.2)',
-      blackOverlay30: 'rgba(0,0,0,0.3)',
-      blackOverlay40: 'rgba(0,0,0,0.4)',
-      whiteHighlight60: 'rgba(255,255,255,0.6)',
-      whiteHighlight80: 'rgba(255,255,255,0.8)',
+
+    // Legacy chrome group — referenced by Settings/Share drawers which are not redesigned in this phase
+    chrome: {
+      border:      'rgba(255,255,255,.07)',
+      borderHover: 'rgba(255,255,255,.12)',
+      borderFocus: primitive.cyan,
+      accent:      primitive.cyan,
+      accentHover: primitive.cyanBright,
     },
+
+    // Legacy status colors — referenced by measurement engine and worker
+    status: {
+      timeout: '#9b5de5',
+      error:   '#c77dff',
+      offline: '#7b2cbf',
+      success: primitive.green,
+      idle:    '#4a5568',
+    },
+  },
+
+  typography: {
+    sans: {
+      fontFamily: "'Sora', system-ui, sans-serif",
+      weights: { thin: 200, light: 300, regular: 400, medium: 500, semibold: 600, bold: 700 },
+    },
+    mono: {
+      fontFamily: "'Martian Mono', monospace",
+      weights: { thin: 200, light: 300, regular: 400, medium: 500 },
+    },
+    // Scale
+    heroSize:   54,
+    heroWeight: 200,
+    statSize:   14,
+    statWeight: 300,
+    labelSize:  9,
+    labelWeight: 300,
+    urlSize:    11,
+    urlWeight:  300,
+    bodySize:   14,
+    bodyWeight: 400,
   },
 
   spacing: {
     xxs: 2, xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32, xxxl: 48,
   },
 
-  typography: {
-    data: { fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 500, lineHeight: 1.4 },
-    label: { fontFamily: "'Inter', sans-serif", fontSize: 11, fontWeight: 500, lineHeight: 1.3 },
-    body: { fontFamily: "'Inter', sans-serif", fontSize: 14, fontWeight: 400, lineHeight: 1.5 },
-    heading: { fontFamily: "'Inter', sans-serif", fontSize: 18, fontWeight: 600, lineHeight: 1.3 },
-    title: { fontFamily: "'Inter', sans-serif", fontSize: 24, fontWeight: 700, lineHeight: 1.2 },
-    stat: { fontFamily: "'JetBrains Mono', monospace", fontSize: 28, fontWeight: 600, lineHeight: 1.1 },
-    caption: { fontFamily: "'Inter', sans-serif", fontSize: 10, fontWeight: 400, lineHeight: 1.4 },
+  radius: {
+    sm:   8,
+    md:  12,
+    lg:  18,   // lane cards
+    btn: 10,   // buttons
   },
 
   timing: {
-    sonarPingFast: 300, sonarPingMedium: 500, sonarPingSlow: 800, sonarPingTimeout: 1200,
-    fadeIn: 200, progressiveDisclosure: 250, domThrottle: 100,
-    loadingPulse: 2000, loadingRingDuration: 1500,
-    dataPointEntry: 200, heatmapCellEntry: 100, copiedFeedback: 2000,
+    // Glass animations
+    bgShift:       20000,
+    orbFloat:      15000,
+    pulse:          2000,
+    nowRing:        2000,
+    hoverLine:        80,
+    hoverTip:        100,
+    // Generic
+    fadeIn:          200,
+    btnHover:        200,
+    domThrottle:     100,
+    copiedFeedback: 2000,
+    // Legacy — timeline-data-pipeline.ts and statistics store still reference these
+    progressiveDisclosure: 250,
+    sonarPingFast: 300,
+    sonarPingMedium: 500,
+    sonarPingSlow: 800,
+    sonarPingTimeout: 1200,
   },
 
   easing: {
-    decelerate: 'cubic-bezier(0.0, 0.0, 0.2, 1)',
-    decelerateSlow: 'cubic-bezier(0.0, 0.0, 0.4, 1)',
+    decelerate:         'cubic-bezier(0.0, 0.0, 0.2, 1)',
+    decelerateSlow:     'cubic-bezier(0.0, 0.0, 0.4, 1)',
     decelerateVerySlow: 'cubic-bezier(0.0, 0.0, 0.6, 1)',
-    standard: 'cubic-bezier(0.4, 0.0, 0.2, 1)',
-    spring: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+    standard:           'cubic-bezier(0.4, 0.0, 0.2, 1)',
+    spring:             'cubic-bezier(0.34, 1.56, 0.64, 1)',
   },
 
   easingFn: {
     decelerate: (t: number): number => 1 - Math.pow(1 - t, 3),
-    standard: (t: number): number => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2,
+    standard:   (t: number): number => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2,
   },
-
-  radius: { sm: 4, md: 8 },
 
   shadow: {
-    low: '0 2px 8px rgba(0,0,0,0.4)',
-    high: '0 8px 32px rgba(0,0,0,0.6)',
+    low:  '0 2px 8px rgba(0,0,0,.4)',
+    high: '0 8px 32px rgba(0,0,0,.6)',
+    lane: '0 4px 30px rgba(0,0,0,.15)',
   },
 
+  // Lane layout constants
+  lane: {
+    panelWidth:    250,   // px — left panel fixed width
+    gapPx:           8,   // gap between lane cards
+    paddingX:       10,   // horizontal padding of lanes container
+    paddingY:        8,   // top padding of lanes container
+    chartPaddingX:  18,   // left/right padding inside SVG chart area
+    chartPaddingY:  12,   // top/bottom
+    dotRadius:       3,
+    dotRadiusHover:  5.5,
+    nowDotRadius:    4,
+    ringInitialR:    7,
+    ringFinalR:     14,
+    topbarHeight:   54,
+    xAxisHeight:    30,
+    footerHeight:   38,
+  },
+
+  // Kept for timeline-data-pipeline.ts (still used by LaneSvgChart)
   canvas: {
-    pointRadius: 4,
-    pointRadiusHover: 6,
-    pointOutlineWidth: 1.5,
-    gridLineDash: [4, 8] as readonly number[],
-    gridLineOpacity: 0.3,
-    axisLineOpacity: 0.6,
-    sweepLineOpacity: 0.15,
-    sweepLineGlowWidth: 4,
-    heatmapCellSize: 8,
-    haloRadius: 16,
-    haloOpacity: 0.3,
+    yAxis: {
+      rollingWindowSize:   20,
+      percentileClampLow:   2,
+      percentileClampHigh: 98,
+      logScaleThreshold:   50,
+      linearHeadroomPct:  0.2,
+      minHeadroomMs:        5,
+      minVisibleRangeMs:   10,
+      targetGridlineCount:  5,
+    },
+    xAxis: {
+      minLabelSpacing: 60,
+      labelOffsetY:     4,
+      paddingBottom:   32,
+    },
+    ribbon: {
+      fillOpacity:     0.15,
+      medianOpacity:   0.6,
+      medianLineWidth: 1.5,
+      medianLineDash:  [4, 4] as readonly number[],
+    },
+    // Legacy — retained so effects-renderer.ts compiles without errors
     sonarPing: {
       fast:    { initialRadius: 3, finalRadius: 12, maxConcurrent: 5 },
       medium:  { initialRadius: 3, finalRadius: 20, maxConcurrent: 5 },
       slow:    { initialRadius: 3, finalRadius: 32, maxConcurrent: 3 },
       timeout: { initialRadius: 3, finalRadius: 48, maxConcurrent: 1 },
     },
-
-    ribbon: {
-      fillOpacity: 0.15,
-      medianOpacity: 0.6,
-      medianLineWidth: 1.5,
-      medianLineDash: [4, 4] as readonly number[],
-    },
-
+    pointRadius:      4,
+    pointRadiusHover: 6,
+    pointOutlineWidth: 1.5,
+    gridLineDash:     [4, 8] as readonly number[],
+    gridLineOpacity:  0.3,
+    axisLineOpacity:  0.6,
+    sweepLineOpacity: 0.15,
+    sweepLineGlowWidth: 4,
+    heatmapCellSize:  8,
+    haloRadius:      16,
+    haloOpacity:     0.3,
     emptyState: {
-      sweepPeriod: 4000,
+      sweepPeriod:     4000,
       sweepLineOpacity: 0.25,
-      ringOpacity: 0.08,
-      textOpacity: 0.5,
-      trailAngleDeg: 60,
-    },
-
-    xAxis: {
-      minLabelSpacing: 60,
-      labelOffsetY: 4,
-      paddingBottom: 32,
-    },
-
-    yAxis: {
-      rollingWindowSize: 20,
-      percentileClampLow: 2,
-      percentileClampHigh: 98,
-      logScaleThreshold: 50,
-      linearHeadroomPct: 0.2,
-      minHeadroomMs: 5,
-      minVisibleRangeMs: 10,
-      targetGridlineCount: 5,
+      ringOpacity:     0.08,
+      textOpacity:     0.5,
+      trailAngleDeg:   60,
     },
   },
 

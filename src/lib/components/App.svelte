@@ -26,58 +26,68 @@
   function bridgeTokensToCss(): void {
     const root = document.documentElement;
 
-    // Surface colors
-    root.style.setProperty('--surface-base', tokens.color.surface.base);
-    root.style.setProperty('--surface-canvas', tokens.color.surface.canvas);
-    root.style.setProperty('--surface-raised', tokens.color.surface.raised);
-    root.style.setProperty('--surface-overlay', tokens.color.surface.overlay);
-    root.style.setProperty('--surface-elevated', tokens.color.surface.elevated);
+    // Background
+    root.style.setProperty('--bg-base', tokens.color.surface.base);
 
-    // Text colors
-    root.style.setProperty('--text-primary', tokens.color.text.primary);
-    root.style.setProperty('--text-secondary', tokens.color.text.secondary);
-    root.style.setProperty('--text-muted', tokens.color.text.muted);
-    root.style.setProperty('--text-inverse', tokens.color.text.inverse);
-    root.style.setProperty('--text-data', tokens.color.text.data);
+    // Text opacity layers
+    root.style.setProperty('--t1', tokens.color.text.t1);
+    root.style.setProperty('--t2', tokens.color.text.t2);
+    root.style.setProperty('--t3', tokens.color.text.t3);
+    root.style.setProperty('--t4', tokens.color.text.t4);
+    root.style.setProperty('--t5', tokens.color.text.t5);
 
-    // Chrome
-    root.style.setProperty('--border', tokens.color.chrome.border);
-    root.style.setProperty('--border-hover', tokens.color.chrome.borderHover);
-    root.style.setProperty('--border-focus', tokens.color.chrome.borderFocus);
-    root.style.setProperty('--accent', tokens.color.chrome.accent);
-    root.style.setProperty('--accent-hover', tokens.color.chrome.accentHover);
+    // Accent
+    root.style.setProperty('--accent-cyan',   tokens.color.accent.cyan);
+    root.style.setProperty('--accent-pink',   tokens.color.accent.pink);
+    root.style.setProperty('--accent-green',  tokens.color.accent.green);
+    root.style.setProperty('--green-glow',    tokens.color.accent.greenGlow);
 
-    // Status
-    root.style.setProperty('--status-timeout', tokens.color.status.timeout);
-    root.style.setProperty('--status-error', tokens.color.status.error);
-    root.style.setProperty('--status-success', tokens.color.status.success);
-    root.style.setProperty('--status-idle', tokens.color.status.idle);
+    // Glass
+    root.style.setProperty('--glass-bg',        tokens.color.glass.bg);
+    root.style.setProperty('--glass-border',    tokens.color.glass.border);
+    root.style.setProperty('--glass-highlight', tokens.color.glass.highlight);
 
-    // Tier 2
-    root.style.setProperty('--tier2-dns', tokens.color.tier2.dns);
-    root.style.setProperty('--tier2-tcp', tokens.color.tier2.tcp);
-    root.style.setProperty('--tier2-tls', tokens.color.tier2.tls);
-    root.style.setProperty('--tier2-ttfb', tokens.color.tier2.ttfb);
-    root.style.setProperty('--tier2-transfer', tokens.color.tier2.transfer);
+    // Orbs
+    root.style.setProperty('--orb-cyan',   tokens.color.orb.cyan);
+    root.style.setProperty('--orb-pink',   tokens.color.orb.pink);
+    root.style.setProperty('--orb-violet', tokens.color.orb.violet);
+
+    // Fonts
+    root.style.setProperty('--sans', tokens.typography.sans.fontFamily);
+    root.style.setProperty('--mono', tokens.typography.mono.fontFamily);
 
     // Spacing
     root.style.setProperty('--spacing-xxs', `${tokens.spacing.xxs}px`);
-    root.style.setProperty('--spacing-xs', `${tokens.spacing.xs}px`);
-    root.style.setProperty('--spacing-sm', `${tokens.spacing.sm}px`);
-    root.style.setProperty('--spacing-md', `${tokens.spacing.md}px`);
-    root.style.setProperty('--spacing-lg', `${tokens.spacing.lg}px`);
-    root.style.setProperty('--spacing-xl', `${tokens.spacing.xl}px`);
+    root.style.setProperty('--spacing-xs',  `${tokens.spacing.xs}px`);
+    root.style.setProperty('--spacing-sm',  `${tokens.spacing.sm}px`);
+    root.style.setProperty('--spacing-md',  `${tokens.spacing.md}px`);
+    root.style.setProperty('--spacing-lg',  `${tokens.spacing.lg}px`);
+    root.style.setProperty('--spacing-xl',  `${tokens.spacing.xl}px`);
     root.style.setProperty('--spacing-xxl', `${tokens.spacing.xxl}px`);
 
     // Radius
     root.style.setProperty('--radius-sm', `${tokens.radius.sm}px`);
     root.style.setProperty('--radius-md', `${tokens.radius.md}px`);
+    root.style.setProperty('--radius-lg', `${tokens.radius.lg}px`);
+    root.style.setProperty('--radius-btn', `${tokens.radius.btn}px`);
 
     // Timing
-    root.style.setProperty('--timing-fade-in', `${tokens.timing.fadeIn}ms`);
-    root.style.setProperty('--timing-disclosure', `${tokens.timing.progressiveDisclosure}ms`);
-    root.style.setProperty('--easing-standard', tokens.easing.standard);
-    root.style.setProperty('--easing-decelerate', tokens.easing.decelerate);
+    root.style.setProperty('--timing-fade-in',   `${tokens.timing.fadeIn}ms`);
+    root.style.setProperty('--easing-standard',  tokens.easing.standard);
+    root.style.setProperty('--easing-decelerate',tokens.easing.decelerate);
+
+    // Legacy properties (Settings/Share drawers not yet redesigned)
+    root.style.setProperty('--surface-raised',   tokens.color.surface.mid);
+    root.style.setProperty('--surface-elevated', tokens.color.surface.deep);
+    root.style.setProperty('--text-primary',     tokens.color.text.t1);
+    root.style.setProperty('--text-secondary',   tokens.color.text.t2);
+    root.style.setProperty('--text-muted',       tokens.color.text.t3);
+    root.style.setProperty('--border',           tokens.color.chrome.border);
+    root.style.setProperty('--accent',           tokens.color.chrome.accent);
+    root.style.setProperty('--accent-hover',     tokens.color.chrome.accentHover);
+    root.style.setProperty('--status-success',   tokens.color.status.success);
+    root.style.setProperty('--status-error',     tokens.color.status.error);
+    root.style.setProperty('--status-timeout',   tokens.color.status.timeout);
   }
 
   // ── Apply persisted settings to stores ──────────────────────────────────────

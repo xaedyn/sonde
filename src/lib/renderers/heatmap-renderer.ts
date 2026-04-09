@@ -1,4 +1,8 @@
 // src/lib/renderers/heatmap-renderer.ts
+// NOTE: This renderer is retired from the primary view as of 2026-04-09.
+// The Glass Lanes redesign uses per-lane SVG charts instead.
+// This file is kept for potential future use.
+//
 // Canvas 2D color-encoded temporal heatmap.
 // 8x8px cells with 1px row gap. Renders timeout/error pattern overlays.
 // Viewport culling skips cells outside the visible clip region.
@@ -56,7 +60,7 @@ export class HeatmapRenderer {
   private drawBackground(): void {
     const { ctx, canvas } = this;
     if (!ctx) return;
-    ctx.fillStyle = tokens.color.surface.canvas;
+    ctx.fillStyle = tokens.color.surface.mid;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
 
@@ -66,7 +70,7 @@ export class HeatmapRenderer {
     const { ctx } = this;
     if (!ctx) return;
     ctx.save();
-    ctx.font = `${tokens.typography.label.fontSize}px ${tokens.typography.label.fontFamily}`;
+    ctx.font = `${tokens.typography.labelSize}px ${tokens.typography.mono.fontFamily}`;
     ctx.fillStyle = tokens.color.text.secondary;
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
@@ -141,7 +145,8 @@ export class HeatmapRenderer {
       const offCtx = offscreen.getContext('2d');
       if (!offCtx) return null;
 
-      offCtx.strokeStyle = tokens.color.util.blackOverlay40;
+      // eslint-disable-next-line local/no-raw-visual-values -- retired renderer, util tokens removed
+      offCtx.strokeStyle = 'rgba(0,0,0,0.4)';
       offCtx.lineWidth = 1;
       // Two diagonal lines across the cell
       offCtx.beginPath();
@@ -167,7 +172,8 @@ export class HeatmapRenderer {
       const offCtx = offscreen.getContext('2d');
       if (!offCtx) return null;
 
-      offCtx.strokeStyle = tokens.color.util.blackOverlay40;
+      // eslint-disable-next-line local/no-raw-visual-values -- retired renderer, util tokens removed
+      offCtx.strokeStyle = 'rgba(0,0,0,0.4)';
       offCtx.lineWidth = 1;
       const mid = size / 2;
       offCtx.beginPath();

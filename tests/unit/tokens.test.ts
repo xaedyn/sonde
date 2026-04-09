@@ -3,23 +3,9 @@ import { tokens } from '../../src/lib/tokens';
 
 describe('tokens', () => {
   it('exposes all required surface tokens', () => {
-    expect(tokens.color.surface.base).toBe('#080c16');
-    expect(tokens.color.surface.raised).toBe('#0d1425');
-    expect(tokens.color.surface.overlay).toBe('#131b33');
-    expect(tokens.color.surface.elevated).toBe('#1a2340');
-    expect(tokens.color.surface.canvas).toBe('#0a0e1a');
-  });
-
-  it('exposes all latency tokens', () => {
-    const latency = tokens.color.latency;
-    expect(latency.excellent).toBe('#00b4d8');
-    expect(latency.fast).toBe('#0096c7');
-    expect(latency.good).toBe('#0077b6');
-    expect(latency.moderate).toBe('#90be6d');
-    expect(latency.elevated).toBe('#f9c74f');
-    expect(latency.slow).toBe('#f8961e');
-    expect(latency.critical).toBe('#f3722c');
-    expect(latency.failing).toBe('#f94144');
+    expect(tokens.color.surface.base).toBe('#0c0a14');
+    expect(tokens.color.surface.mid).toBe('#100e1e');
+    expect(tokens.color.surface.deep).toBe('#0e0c18');
   });
 
   it('exposes all spacing tokens as numbers (px)', () => {
@@ -48,15 +34,10 @@ describe('tokens', () => {
   });
 
   it('exposes typography tokens', () => {
-    expect(tokens.typography.data.fontFamily).toContain('JetBrains Mono');
-    expect(tokens.typography.data.fontSize).toBe(13);
-    expect(tokens.typography.label.fontSize).toBe(11);
-    expect(tokens.typography.stat.fontSize).toBe(28);
-  });
-
-  it('exposes utility rgba tokens for canvas rendering', () => {
-    expect(tokens.color.util.blackOverlay40).toBe('rgba(0,0,0,0.4)');
-    expect(tokens.color.util.whiteHighlight80).toBe('rgba(255,255,255,0.8)');
+    expect(tokens.typography.mono.fontFamily).toContain('Martian Mono');
+    expect(tokens.typography.sans.fontFamily).toContain('Sora');
+    expect(tokens.typography.statSize).toBe(14);
+    expect(tokens.typography.labelSize).toBe(9);
   });
 
   it('exposes easing function tokens', () => {
@@ -70,6 +51,38 @@ describe('tokens', () => {
     expect(tokens.canvas.heatmapCellSize).toBe(8);
     expect(tokens.canvas.sonarPing.fast.finalRadius).toBe(12);
     expect(tokens.canvas.sonarPing.timeout.finalRadius).toBe(48);
+  });
+});
+
+describe('Glass token additions', () => {
+  it('exports glass color group', () => {
+    expect(tokens.color.glass).toBeDefined();
+    expect(tokens.color.glass.bg).toBe('rgba(255,255,255,.03)');
+    expect(tokens.color.glass.border).toBe('rgba(255,255,255,.07)');
+    expect(tokens.color.glass.highlight).toBe('rgba(255,255,255,.12)');
+  });
+
+  it('exports glass typography fonts', () => {
+    expect(tokens.typography.sans.fontFamily).toContain('Sora');
+    expect(tokens.typography.mono.fontFamily).toContain('Martian Mono');
+  });
+
+  it('exports glass background base color', () => {
+    expect(tokens.color.surface.base).toBe('#0c0a14');
+  });
+
+  it('exports glass accent colors', () => {
+    expect(tokens.color.accent.cyan).toBe('#67e8f9');
+    expect(tokens.color.accent.pink).toBe('#f9a8d4');
+    expect(tokens.color.accent.green).toBe('#86efac');
+  });
+
+  it('exports text opacity tokens (t1–t5)', () => {
+    expect(tokens.color.text.t1).toBe('rgba(255,255,255,.94)');
+    expect(tokens.color.text.t2).toBe('rgba(255,255,255,.58)');
+    expect(tokens.color.text.t3).toBe('rgba(255,255,255,.3)');
+    expect(tokens.color.text.t4).toBe('rgba(255,255,255,.14)');
+    expect(tokens.color.text.t5).toBe('rgba(255,255,255,.07)');
   });
 });
 

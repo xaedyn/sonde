@@ -1,4 +1,8 @@
 // src/lib/renderers/interaction-renderer.ts
+// NOTE: This renderer is retired from the primary view as of 2026-04-09.
+// The Glass Lanes redesign uses per-lane SVG charts instead.
+// This file is kept for potential future use.
+//
 // Hover and selection highlight rendering on the interaction canvas layer.
 // Draws a ring around the hovered/selected point, and optional crosshairs.
 
@@ -39,7 +43,8 @@ export class InteractionRenderer {
 
     // Hover ring
     ctx.save();
-    ctx.strokeStyle = tokens.color.util.whiteHighlight80;
+    // eslint-disable-next-line local/no-raw-visual-values -- retired renderer, util tokens removed
+    ctx.strokeStyle = 'rgba(255,255,255,0.8)';
     ctx.lineWidth = RING_LINE_WIDTH;
     ctx.beginPath();
     ctx.arc(target.x, target.y, HOVER_RING_RADIUS, 0, Math.PI * 2);

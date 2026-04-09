@@ -16,6 +16,9 @@ const initialState = (): UIState => ({
   showKeyboardHelp: false,
   isSharedView: false,
   sharedResultsTimestamp: null,
+  laneHoverRound: null,
+  laneHoverX: null,
+  showEndpoints: false,
 });
 
 function createUiStore() {
@@ -60,6 +63,15 @@ function createUiStore() {
         isSharedView: false,
         sharedResultsTimestamp: null,
       }));
+    },
+    setLaneHover(round: number, x: number): void {
+      update((s) => ({ ...s, laneHoverRound: round, laneHoverX: x }));
+    },
+    clearLaneHover(): void {
+      update((s) => ({ ...s, laneHoverRound: null, laneHoverX: null }));
+    },
+    toggleEndpoints(): void {
+      update((s) => ({ ...s, showEndpoints: !s.showEndpoints }));
     },
     reset(): void {
       set(initialState());

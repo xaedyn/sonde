@@ -27,6 +27,32 @@
   let interactionRenderer: InteractionRenderer;
   let scheduler: RenderScheduler;
 
+  // ── Tooltip state ───────────────────────────────────────────────────────────
+  let tooltipVisible = false;
+  let tooltipX = 0;
+  let tooltipY = 0;
+  let tooltipText = '';
+  let tooltipColor = '';
+
+  function showTooltip(pt: ScatterPoint, cx: number, cy: number): void {
+    const endpoints = get(endpointStore);
+    const ep = endpoints.find(e => e.id === pt.endpointId);
+    const label = ep?.label || ep?.url || pt.endpointId;
+    const latencyStr = pt.status === 'timeout' ? 'Timeout'
+      : pt.status === 'error' ? 'Error'
+      : pt.latency >= 1000 ? `${(pt.latency / 1000).toFixed(2)}s`
+      : `${Math.round(pt.latency)}ms`;
+    tooltipText = `${label} · Round ${pt.round} · ${latencyStr}`;
+    tooltipColor = pt.color;
+    tooltipX = cx;
+    tooltipY = cy;
+    tooltipVisible = true;
+  }
+
+  function hideTooltip(): void {
+    tooltipVisible = false;
+  }
+
   // ── FrameData state ─────────────────────────────────────────────────────────
   let currentFrameData: FrameData = {
     pointsByEndpoint: new Map(),
@@ -240,23 +266,14 @@
 
     if (pt) {
       const { cx, cy } = timelineRenderer.toCanvasCoords(pt);
-      uiStore.setHover({
-        endpointId: pt.endpointId,
-        roundId: pt.round,
-        x: cx,
-        y: cy,
-        latency: pt.latency,
-        status: pt.status,
-        timestamp: 0,
-      });
-      const ui = get(uiStore);
-      interactionRenderer?.drawHover(
-        { endpointId: pt.endpointId, roundId: pt.round, x: cx, y: cy, latency: pt.latency, status: pt.status, timestamp: 0 },
-        ui.showCrosshairs,
-      );
+      const hoverTarget = { endpointId: pt.endpointId, roundId: pt.round, x: cx, y: cy, latency: pt.latency, status: pt.status, timestamp: 0 };
+      uiStore.setHover(hoverTarget);
+      interactionRenderer?.drawHover(hoverTarget, false);
+      showTooltip(pt, cx, cy);
     } else {
       uiStore.setHover(null);
       interactionRenderer?.clear();
+      hideTooltip();
     }
   }
 
@@ -271,6 +288,7 @@
     if (!isDragging) {
       uiStore.setHover(null);
       interactionRenderer?.clear();
+      hideTooltip();
     }
   }
 
@@ -280,18 +298,9 @@
     const movedY = Math.abs(e.clientY - dragStartY);
     if (movedX > 4 || movedY > 4) return;
 
-    const { x, y } = canvasToLogical(interactionCanvas, e);
-    const pt = findNearest(x, y);
-
-    if (pt) {
-      const { cx, cy } = timelineRenderer.toCanvasCoords(pt);
-      const target = { endpointId: pt.endpointId, roundId: pt.round, x: cx, y: cy, latency: pt.latency, status: pt.status, timestamp: 0 };
-      uiStore.setSelected(target);
-      interactionRenderer?.drawSelection(target);
-    } else {
-      uiStore.setSelected(null);
-      interactionRenderer?.clear();
-    }
+    // Click clears any selection
+    uiStore.setSelected(null);
+    interactionRenderer?.clear();
   }
 
   function handleDblClick(): void {
@@ -412,6 +421,24 @@
   <canvas bind:this={dataCanvas} class="canvas-layer canvas-data" aria-hidden="true"></canvas>
   <canvas bind:this={effectsCanvas} class="canvas-layer canvas-effects" aria-hidden="true"></canvas>
   <canvas bind:this={interactionCanvas} class="canvas-layer canvas-interaction" aria-hidden="true"></canvas>
+
+  {#if tooltipVisible}
+    <div
+      class="tooltip"
+      style:left="{tooltipX}px"
+      style:top="{tooltipY - 32}px"
+      style:border-left-color={tooltipColor}
+    >
+      {tooltipText}
+    </div>
+  {/if}
+
+  <div class="ribbon-legend" aria-hidden="true">
+    <span class="ribbon-legend-band"></span>
+    <span class="ribbon-legend-label">P25–P75 variance</span>
+    <span class="ribbon-legend-line"></span>
+    <span class="ribbon-legend-label">P50 median</span>
+  </div>
 </div>
 
 <style>
@@ -441,7 +468,57 @@
 
   .canvas-interaction {
     z-index: 3;
-    cursor: crosshair;
+    cursor: default;
     touch-action: none;
+  }
+
+  .tooltip {
+    position: absolute;
+    z-index: 10;
+    transform: translateX(-50%);
+    padding: 4px 10px;
+    border-radius: 4px;
+    background: rgba(20, 24, 33, 0.92);
+    border-left: 3px solid;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 11px;
+    font-family: 'Inter', system-ui, sans-serif;
+    white-space: nowrap;
+    pointer-events: none;
+    line-height: 1.4;
+  }
+
+  .ribbon-legend {
+    position: absolute;
+    bottom: 6px;
+    right: 12px;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    font-family: 'Inter', system-ui, sans-serif;
+    color: rgba(255, 255, 255, 0.4);
+    pointer-events: none;
+  }
+
+  .ribbon-legend-band {
+    display: inline-block;
+    width: 16px;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 2px;
+  }
+
+  .ribbon-legend-line {
+    display: inline-block;
+    width: 16px;
+    height: 0;
+    border-top: 1.5px dashed rgba(255, 255, 255, 0.45);
+    margin-left: 6px;
+  }
+
+  .ribbon-legend-label {
+    opacity: 0.7;
   }
 </style>

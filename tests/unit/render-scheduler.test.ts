@@ -1,3 +1,8 @@
+// NOTE: TimelineRenderer is retired from the primary view as of 2026-04-09.
+// The Glass Lanes redesign uses per-lane SVG charts instead of a shared Canvas 2D.
+// These tests remain to ensure the class still compiles and its coordinate math
+// is correct should it be needed for a future alternate view.
+
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { RenderScheduler } from '../../src/lib/renderers/render-scheduler';
 

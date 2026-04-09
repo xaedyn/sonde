@@ -177,6 +177,15 @@ export interface UIState {
   showKeyboardHelp: boolean;
   isSharedView: boolean;
   sharedResultsTimestamp: number | null;
+  laneHoverRound: number | null;
+  laneHoverX: number | null;
+  showEndpoints: boolean;
+}
+
+// ── Lane hover ─────────────────────────────────────────────────────────────
+export interface LaneHoverState {
+  readonly round: number;
+  readonly x: number;  // clientX position of hover line
 }
 
 // ── Share payload ──────────────────────────────────────────────────────────
