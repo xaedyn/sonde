@@ -145,22 +145,26 @@
   role="presentation"
   onclick={handleOverlayClick}
   onkeydown={handleKeydown}
-  style:--surface-overlay={tokens.color.surface.deep}
-  style:--surface-elevated={tokens.color.surface.deep}
-  style:--surface-raised={tokens.color.surface.mid}
-  style:--border={tokens.color.chrome.border}
-  style:--accent={tokens.color.chrome.accent}
-  style:--text-primary={tokens.color.text.primary}
-  style:--text-secondary={tokens.color.text.secondary}
-  style:--text-muted={tokens.color.text.muted}
-  style:--status-error={tokens.color.status.error}
-  style:--status-success={tokens.color.status.success}
-  style:--radius-md="{tokens.radius.md}px"
+  style:--glass-bg={tokens.color.glass.bg}
+  style:--glass-bg-strong={tokens.color.glass.bgStrong}
+  style:--glass-border={tokens.color.glass.border}
+  style:--glass-highlight={tokens.color.glass.highlight}
+  style:--topbar-bg={tokens.color.topbar.bg}
+  style:--t1={tokens.color.text.t1}
+  style:--t2={tokens.color.text.t2}
+  style:--t3={tokens.color.text.t3}
+  style:--accent-cyan={tokens.color.accent.cyan}
+  style:--accent-green={tokens.color.accent.green}
+  style:--radius-lg="{tokens.radius.lg}px"
   style:--radius-sm="{tokens.radius.sm}px"
+  style:--btn-radius="{tokens.radius.btn}px"
   style:--spacing-xs="{tokens.spacing.xs}px"
   style:--spacing-sm="{tokens.spacing.sm}px"
   style:--spacing-md="{tokens.spacing.md}px"
   style:--spacing-lg="{tokens.spacing.lg}px"
+  style:--sans={tokens.typography.sans.fontFamily}
+  style:--mono={tokens.typography.mono.fontFamily}
+  style:--timing-btn="{tokens.timing.btnHover}ms"
 >
   <div
     bind:this={popoverEl}
@@ -250,7 +254,7 @@
   .share-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.6);
+    background: rgba(0,0,0,.6);
     display: flex;
     align-items: flex-start;
     justify-content: flex-end;
@@ -259,18 +263,28 @@
   }
 
   .share-popover {
-    background: var(--surface-elevated);
-    backdrop-filter: blur(30px) saturate(1.3);
-    -webkit-backdrop-filter: blur(30px) saturate(1.3);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
+    position: relative;
+    background: rgba(12,10,20,.92);
+    backdrop-filter: blur(40px) saturate(1.4);
+    -webkit-backdrop-filter: blur(40px) saturate(1.4);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
     padding: var(--spacing-lg);
     width: 320px;
     max-width: calc(100vw - 32px);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 8px 32px rgba(0,0,0,.6);
     display: flex;
     flex-direction: column;
     gap: var(--spacing-md);
+  }
+
+  .share-popover::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 10%; right: 10%;
+    height: 1px; z-index: 2;
+    background: linear-gradient(90deg, transparent, var(--glass-highlight), transparent);
+    pointer-events: none;
   }
 
   /* ── Header ────────────────────────────────────────────────────────────── */
@@ -282,9 +296,10 @@
 
   .share-title {
     margin: 0;
+    font-family: var(--sans);
     font-size: 16px;
     font-weight: 600;
-    color: var(--text-primary);
+    color: var(--t1);
   }
 
   .btn-close {
@@ -293,29 +308,36 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border: none;
-    background: transparent;
-    color: var(--text-muted);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--btn-radius);
+    background: var(--topbar-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: var(--t3);
     font-size: 20px;
     cursor: pointer;
-    border-radius: var(--radius-sm);
     line-height: 1;
     padding: 0;
+    transition: all var(--timing-btn) ease;
   }
 
   .btn-close:hover {
-    background: var(--surface-raised);
-    color: var(--text-primary);
+    background: var(--glass-highlight);
+    border-color: var(--glass-highlight);
+    color: var(--t1);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 12px rgba(0,0,0,.2);
   }
 
   /* ── Warning ───────────────────────────────────────────────────────────── */
   .warning {
     padding: var(--spacing-xs) var(--spacing-sm);
-    background: rgba(255, 140, 0, 0.12);
-    border: 1px solid rgba(255, 140, 0, 0.4);
+    background: rgba(255,140,0,.08);
+    border: 1px solid rgba(255,140,0,.25);
     border-radius: var(--radius-sm);
+    font-family: var(--sans);
     font-size: 12px;
-    color: var(--text-secondary);
+    color: var(--t2);
   }
 
   /* ── Actions ───────────────────────────────────────────────────────────── */
@@ -331,9 +353,14 @@
     justify-content: space-between;
     gap: var(--spacing-sm);
     padding: var(--spacing-sm);
-    border: 1px solid var(--border);
+    border: 1px solid var(--glass-border);
     border-radius: var(--radius-sm);
-    background: var(--surface-raised);
+    background: var(--glass-bg);
+    transition: border-color var(--timing-btn) ease;
+  }
+
+  .share-action:hover {
+    border-color: var(--glass-highlight);
   }
 
   .action-info {
@@ -344,14 +371,16 @@
   }
 
   .action-label {
+    font-family: var(--sans);
     font-size: 13px;
     font-weight: 500;
-    color: var(--text-primary);
+    color: var(--t1);
   }
 
   .action-desc {
+    font-family: var(--mono);
     font-size: 11px;
-    color: var(--text-muted);
+    color: var(--t3);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -360,33 +389,38 @@
   .btn-copy {
     flex-shrink: 0;
     padding: var(--spacing-xs) var(--spacing-sm);
-    border: 1px solid var(--accent);
-    border-radius: var(--radius-sm);
-    background: transparent;
-    color: var(--accent);
+    border: 1px solid var(--accent-cyan);
+    border-radius: var(--btn-radius);
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: var(--accent-cyan);
+    font-family: var(--sans);
     font-size: 12px;
     font-weight: 500;
     cursor: pointer;
-    transition: background 150ms ease, color 150ms ease;
+    transition: all var(--timing-btn) ease;
     white-space: nowrap;
   }
 
   .btn-copy:hover:not(:disabled) {
-    background: var(--accent);
-    color: #fff;
+    background: var(--accent-cyan);
+    color: rgba(12,10,20,.92);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 12px rgba(0,0,0,.2);
   }
 
   .btn-copy:disabled {
     opacity: 0.4;
     cursor: not-allowed;
-    border-color: var(--border);
-    color: var(--text-muted);
+    border-color: var(--glass-border);
+    color: var(--t3);
   }
 
   .btn-copy.copied {
-    background: var(--status-success);
-    border-color: var(--status-success);
-    color: #fff;
+    background: var(--accent-green);
+    border-color: var(--accent-green);
+    color: rgba(12,10,20,.92);
   }
 
   /* ── Clipboard fallback ─────────────────────────────────────────────────── */
@@ -397,25 +431,27 @@
   }
 
   .fallback-label {
+    font-family: var(--sans);
     font-size: 12px;
-    color: var(--text-muted);
+    color: var(--t3);
   }
 
   .fallback-input {
     width: 100%;
     padding: var(--spacing-xs) var(--spacing-sm);
-    background: var(--surface-raised);
-    border: 1px solid var(--border);
+    background: transparent;
+    border: 1px solid var(--glass-border);
     border-radius: var(--radius-sm);
-    color: var(--text-primary);
+    color: var(--t1);
     font-size: 12px;
     font-family: var(--mono);
     box-sizing: border-box;
+    transition: border-color var(--timing-btn) ease;
   }
 
   .fallback-input:focus {
-    outline: 2px solid var(--accent);
-    outline-offset: 1px;
+    outline: none;
+    border-color: var(--accent-cyan);
   }
 
   /* ── Mobile ────────────────────────────────────────────────────────────── */

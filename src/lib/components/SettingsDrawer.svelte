@@ -108,23 +108,31 @@
   bind:this={dialogEl}
   id="settings-drawer"
   class="settings-dialog"
-  style:--surface-base={tokens.color.surface.base}
-  style:--surface-raised={tokens.color.surface.mid}
-  style:--surface-elevated={tokens.color.surface.deep}
-  style:--border={tokens.color.chrome.border}
-  style:--accent={tokens.color.chrome.accent}
-  style:--accent-hover={tokens.color.chrome.accentHover}
-  style:--text-primary={tokens.color.text.primary}
-  style:--text-secondary={tokens.color.text.secondary}
-  style:--text-muted={tokens.color.text.muted}
-  style:--error={tokens.color.status.error}
+  style:--glass-bg={tokens.color.glass.bg}
+  style:--glass-border={tokens.color.glass.border}
+  style:--glass-highlight={tokens.color.glass.highlight}
+  style:--glass-bg-strong={tokens.color.glass.bgStrong}
+  style:--t1={tokens.color.text.t1}
+  style:--t2={tokens.color.text.t2}
+  style:--t3={tokens.color.text.t3}
+  style:--t5={tokens.color.text.t5}
+  style:--accent-cyan={tokens.color.accent.cyan}
+  style:--accent-pink={tokens.color.accent.pink}
+  style:--pink12={tokens.color.accent.pink12}
+  style:--pink06={tokens.color.accent.pink06}
+  style:--pink20={tokens.color.accent.pink20}
+  style:--topbar-bg={tokens.color.topbar.bg}
   style:--radius-sm="{tokens.radius.sm}px"
   style:--radius-md="{tokens.radius.md}px"
+  style:--btn-radius="{tokens.radius.btn}px"
   style:--spacing-xs="{tokens.spacing.xs}px"
   style:--spacing-sm="{tokens.spacing.sm}px"
   style:--spacing-md="{tokens.spacing.md}px"
   style:--spacing-lg="{tokens.spacing.lg}px"
   style:--spacing-xl="{tokens.spacing.xl}px"
+  style:--sans={tokens.typography.sans.fontFamily}
+  style:--mono={tokens.typography.mono.fontFamily}
+  style:--timing-btn="{tokens.timing.btnHover}ms"
   aria-label="Settings"
   onclick={handleBackdropClick}
 >
@@ -291,10 +299,10 @@
   }
 
   .settings-dialog::backdrop {
-    background: rgba(0, 0, 0, 0.6);
+    background: var(--glass-shadow-strong, rgba(0,0,0,.6));
   }
 
-  /* Drawer content slides in from right on desktop, full-width on mobile */
+  /* ── Drawer content — glass panel ────────────────────────────────────────── */
   .drawer-content {
     position: absolute;
     top: 0;
@@ -302,23 +310,32 @@
     bottom: 0;
     width: 360px;
     max-width: 100vw;
-    background: var(--surface-raised);
-    backdrop-filter: blur(30px) saturate(1.3);
-    -webkit-backdrop-filter: blur(30px) saturate(1.3);
-    border-left: 1px solid var(--border);
+    background: rgba(12,10,20,.92);
+    backdrop-filter: blur(40px) saturate(1.4);
+    -webkit-backdrop-filter: blur(40px) saturate(1.4);
+    border-left: 1px solid var(--glass-border);
     display: flex;
     flex-direction: column;
     overflow: hidden;
+  }
+
+  .drawer-content::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 10%; right: 10%;
+    height: 1px; z-index: 2;
+    background: linear-gradient(90deg, transparent, var(--glass-highlight), transparent);
+    pointer-events: none;
   }
 
   @media (max-width: 767px) {
     .drawer-content {
       width: 100%;
       border-left: none;
-      border-top: 1px solid var(--border);
+      border-top: 1px solid var(--glass-border);
       top: auto;
       height: 80vh;
-      border-radius: 12px 12px 0 0;
+      border-radius: var(--radius-md) var(--radius-md) 0 0;
     }
   }
 
@@ -328,7 +345,7 @@
     align-items: center;
     justify-content: space-between;
     padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-md);
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid var(--glass-border);
     flex-shrink: 0;
   }
 
@@ -336,7 +353,7 @@
     font-family: var(--sans);
     font-size: 18px;
     font-weight: 600;
-    color: var(--text-primary);
+    color: var(--t1);
   }
 
   .close-btn {
@@ -345,17 +362,22 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    background: transparent;
-    color: var(--text-muted);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--btn-radius);
+    background: var(--topbar-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: var(--t3);
     cursor: pointer;
-    transition: color 150ms ease, background 150ms ease;
+    transition: all var(--timing-btn) ease;
   }
 
   .close-btn:hover {
-    color: var(--text-primary);
-    background: var(--surface-elevated);
+    color: var(--t1);
+    background: var(--glass-highlight);
+    border-color: var(--glass-highlight);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 12px rgba(0,0,0,.2);
   }
 
   /* ── Body ────────────────────────────────────────────────────────────────── */
@@ -382,37 +404,37 @@
     font-family: var(--sans);
     font-size: 13px;
     font-weight: 500;
-    color: var(--text-primary);
+    color: var(--t2);
   }
 
   .field-hint {
-    font-family: var(--sans);
+    font-family: var(--mono);
     font-size: 11px;
     font-weight: 400;
-    color: var(--text-muted);
+    color: var(--t3);
   }
 
   .field-input {
     padding: var(--spacing-sm) var(--spacing-md);
-    background: var(--surface-elevated);
-    border: 1px solid var(--border);
+    background: transparent;
+    border: 1px solid var(--glass-border);
     border-radius: var(--radius-sm);
-    color: var(--text-primary);
+    color: var(--t1);
     font-family: var(--mono);
     font-size: 13px;
     width: 100%;
-    transition: border-color 150ms ease;
+    transition: border-color var(--timing-btn) ease;
   }
 
   .field-input:focus {
     outline: none;
-    border-color: var(--accent);
+    border-color: var(--accent-cyan);
   }
 
   .field-description {
     font-family: var(--sans);
     font-size: 11px;
-    color: var(--text-muted);
+    color: var(--t3);
     line-height: 1.5;
   }
 
@@ -445,19 +467,20 @@
     gap: 0 var(--spacing-sm);
     cursor: pointer;
     padding: var(--spacing-sm);
-    border: 1px solid var(--border);
+    border: 1px solid var(--glass-border);
     border-radius: var(--radius-sm);
-    transition: border-color 150ms ease, background 150ms ease;
+    background: var(--glass-bg);
+    transition: border-color var(--timing-btn) ease, background var(--timing-btn) ease;
   }
 
   .radio-label:not(.radio-disabled):hover {
-    border-color: var(--accent);
-    background: var(--surface-elevated);
+    border-color: var(--glass-highlight);
+    background: var(--glass-bg-strong);
   }
 
   .radio-label input[type="radio"] {
     grid-row: 1 / 3;
-    accent-color: var(--accent);
+    accent-color: var(--accent-cyan);
     width: 16px;
     height: 16px;
     cursor: pointer;
@@ -470,21 +493,21 @@
   .radio-text {
     font-family: var(--mono);
     font-size: 12px;
-    color: var(--text-primary);
+    color: var(--t1);
   }
 
   .radio-hint {
     font-family: var(--sans);
     font-size: 11px;
-    color: var(--text-muted);
+    color: var(--t3);
   }
 
   .running-note {
     font-family: var(--sans);
     font-size: 10px;
     font-weight: 400;
-    color: var(--error);
-    background: rgba(201, 97, 152, 0.12);
+    color: var(--accent-pink);
+    background: var(--pink12);
     border-radius: 10px;
     padding: 1px 6px;
   }
@@ -492,45 +515,53 @@
   /* ── Divider ─────────────────────────────────────────────────────────────── */
   .divider {
     border: none;
-    border-top: 1px solid var(--border);
+    border-top: 1px solid var(--t5);
     margin: 0;
   }
 
   /* ── Buttons ─────────────────────────────────────────────────────────────── */
   .btn-danger {
     padding: var(--spacing-sm) var(--spacing-md);
-    background: transparent;
-    border: 1px solid var(--error);
-    border-radius: var(--radius-sm);
-    color: var(--error);
+    background: var(--glass-bg);
+    border: 1px solid var(--pink20);
+    border-radius: var(--btn-radius);
+    color: var(--accent-pink);
     font-family: var(--sans);
     font-size: 13px;
     font-weight: 500;
     cursor: pointer;
-    transition: background 150ms ease;
+    transition: all var(--timing-btn) ease;
     min-height: 36px;
   }
 
-  .btn-danger:hover {
-    background: rgba(201, 97, 152, 0.12);
+  .btn-danger:hover:not(:disabled) {
+    background: var(--pink06);
+    box-shadow: 0 0 16px var(--pink12);
+  }
+
+  .btn-danger:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
   }
 
   .btn-secondary {
     padding: var(--spacing-sm) var(--spacing-md);
-    background: var(--surface-elevated);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    color: var(--text-secondary);
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--btn-radius);
+    color: var(--t2);
     font-family: var(--sans);
     font-size: 13px;
     cursor: pointer;
-    transition: background 150ms ease, border-color 150ms ease;
+    transition: all var(--timing-btn) ease;
     min-height: 36px;
   }
 
   .btn-secondary:hover {
-    border-color: var(--accent);
-    color: var(--text-primary);
+    border-color: var(--glass-highlight);
+    color: var(--t1);
+    background: var(--glass-bg-strong);
+    transform: translateY(-1px);
   }
 
   /* ── Confirm ─────────────────────────────────────────────────────────────── */
@@ -539,15 +570,15 @@
     flex-direction: column;
     gap: var(--spacing-sm);
     padding: var(--spacing-sm);
-    border: 1px solid var(--error);
+    border: 1px solid var(--pink20);
     border-radius: var(--radius-sm);
-    background: rgba(201, 97, 152, 0.06);
+    background: var(--pink06);
   }
 
   .confirm-text {
     font-family: var(--sans);
     font-size: 13px;
-    color: var(--text-secondary);
+    color: var(--t2);
   }
 
   .confirm-actions {

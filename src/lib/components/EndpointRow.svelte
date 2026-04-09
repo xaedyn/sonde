@@ -69,18 +69,20 @@
 <div
   class="endpoint-row"
   style:--dot-color={dotColor}
-  style:--border={tokens.color.chrome.border}
-  style:--border-focus={tokens.color.chrome.borderFocus}
-  style:--surface-raised={tokens.color.surface.mid}
-  style:--text-primary={tokens.color.text.primary}
-  style:--text-secondary={tokens.color.text.secondary}
-  style:--text-muted={tokens.color.text.muted}
-  style:--accent={tokens.color.chrome.accent}
-  style:--error={tokens.color.status.error}
+  style:--glass-border={tokens.color.glass.border}
+  style:--glass-highlight={tokens.color.glass.highlight}
+  style:--glass-bg={tokens.color.glass.bg}
+  style:--t1={tokens.color.text.t1}
+  style:--t2={tokens.color.text.t2}
+  style:--t3={tokens.color.text.t3}
+  style:--accent-cyan={tokens.color.accent.cyan}
+  style:--accent-pink={tokens.color.accent.pink}
   style:--radius-sm="{tokens.radius.sm}px"
   style:--spacing-xs="{tokens.spacing.xs}px"
   style:--spacing-sm="{tokens.spacing.sm}px"
   style:--spacing-md="{tokens.spacing.md}px"
+  style:--mono={tokens.typography.mono.fontFamily}
+  style:--timing-btn="{tokens.timing.btnHover}ms"
   style:opacity={endpoint.enabled ? 1 : 0.5}
 >
   <!-- Color dot (pulses when running + enabled) -->
@@ -144,7 +146,7 @@
     align-items: center;
     gap: var(--spacing-sm);
     padding: var(--spacing-sm) var(--spacing-md);
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid var(--glass-border);
     min-height: 44px; /* WCAG touch target */
   }
 
@@ -155,7 +157,7 @@
     height: 10px;
     border-radius: 50%;
     background: var(--dot-color);
-    transition: background 200ms ease;
+    transition: background var(--timing-btn) ease;
   }
 
   .dot.pulse {
@@ -172,18 +174,18 @@
     flex: 1;
     min-width: 0;
     background: transparent;
-    border: 1px solid var(--border);
+    border: 1px solid var(--glass-border);
     border-radius: var(--radius-sm);
-    color: var(--text-primary);
+    color: var(--t1);
     font-size: 13px;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--mono);
     padding: var(--spacing-xs) var(--spacing-sm);
     outline: none;
-    transition: border-color 150ms ease;
+    transition: border-color var(--timing-btn) ease;
   }
 
   .url-input:focus {
-    border-color: var(--border-focus);
+    border-color: var(--accent-cyan);
   }
 
   .url-input[readonly] {
@@ -195,7 +197,7 @@
   .latency-text {
     flex-shrink: 0;
     font-size: 11px;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--mono);
     min-width: 52px;
     text-align: right;
     white-space: nowrap;
@@ -222,8 +224,8 @@
     width: 32px;
     height: 18px;
     border-radius: 9px;
-    background: var(--border);
-    transition: background 150ms ease;
+    background: var(--glass-border);
+    transition: background var(--timing-btn) ease;
     position: relative;
   }
 
@@ -235,21 +237,21 @@
     width: 14px;
     height: 14px;
     border-radius: 50%;
-    background: var(--text-muted);
-    transition: transform 150ms ease, background 150ms ease;
+    background: var(--t3);
+    transition: transform var(--timing-btn) ease, background var(--timing-btn) ease;
   }
 
   .toggle-input:checked + .toggle-track {
-    background: var(--accent);
+    background: var(--accent-cyan);
   }
 
   .toggle-input:checked + .toggle-track::after {
     transform: translateX(14px);
-    background: #fff;
+    background: rgba(12,10,20,.92);
   }
 
   .toggle-input:focus-visible + .toggle-track {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--accent-cyan);
     outline-offset: 2px;
   }
 
@@ -269,15 +271,15 @@
     border: none;
     border-radius: var(--radius-sm);
     background: transparent;
-    color: var(--text-muted);
+    color: var(--t3);
     font-size: 12px;
     cursor: pointer;
-    transition: background 150ms ease, color 150ms ease;
+    transition: background var(--timing-btn) ease, color var(--timing-btn) ease;
   }
 
   .remove-btn:hover:not(:disabled) {
-    background: var(--surface-raised);
-    color: var(--error);
+    background: var(--glass-bg);
+    color: var(--accent-pink);
   }
 
   .remove-btn:disabled {

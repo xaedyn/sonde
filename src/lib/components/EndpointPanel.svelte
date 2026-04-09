@@ -26,18 +26,24 @@
 
 <div
   class="endpoint-panel"
-  style:--border={tokens.color.chrome.border}
-  style:--accent={tokens.color.chrome.accent}
-  style:--surface-raised={tokens.color.surface.mid}
-  style:--surface-canvas={tokens.color.surface.mid}
-  style:--text-secondary={tokens.color.text.secondary}
-  style:--text-muted={tokens.color.text.muted}
-  style:--text-primary={tokens.color.text.primary}
+  style:--glass-bg={tokens.color.glass.bg}
+  style:--glass-bg-strong={tokens.color.glass.bgStrong}
+  style:--glass-border={tokens.color.glass.border}
+  style:--glass-highlight={tokens.color.glass.highlight}
+  style:--topbar-bg={tokens.color.topbar.bg}
+  style:--t1={tokens.color.text.t1}
+  style:--t2={tokens.color.text.t2}
+  style:--t3={tokens.color.text.t3}
+  style:--accent-cyan={tokens.color.accent.cyan}
   style:--radius-sm="{tokens.radius.sm}px"
+  style:--btn-radius="{tokens.radius.btn}px"
   style:--spacing-xs="{tokens.spacing.xs}px"
   style:--spacing-sm="{tokens.spacing.sm}px"
   style:--spacing-md="{tokens.spacing.md}px"
   style:--spacing-lg="{tokens.spacing.lg}px"
+  style:--sans={tokens.typography.sans.fontFamily}
+  style:--mono={tokens.typography.mono.fontFamily}
+  style:--timing-btn="{tokens.timing.btnHover}ms"
 >
   <ul class="endpoint-list" aria-label="Endpoint list">
     {#each $endpointStore as endpoint (endpoint.id)}
@@ -78,8 +84,8 @@
     display: flex;
     flex-direction: column;
     width: 100%;
-    background: var(--surface-canvas);
-    border: 1px solid var(--border);
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
     border-radius: var(--radius-sm);
     overflow: hidden;
   }
@@ -101,26 +107,32 @@
     justify-content: space-between;
     gap: var(--spacing-sm);
     padding: var(--spacing-sm) var(--spacing-md);
-    border-top: 1px solid var(--border);
+    border-top: 1px solid var(--glass-border);
   }
 
   /* ── Add endpoint button ─────────────────────────────────────────────────── */
   .add-btn {
     padding: var(--spacing-xs) var(--spacing-sm);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    background: transparent;
-    color: var(--accent);
-    font-size: 13px;
-    font-family: 'Inter', sans-serif;
+    border: 1px solid var(--glass-border);
+    border-radius: var(--btn-radius);
+    background: var(--topbar-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: var(--accent-cyan);
+    font-size: 11px;
+    font-weight: 500;
+    font-family: var(--sans);
     cursor: pointer;
-    transition: background 150ms ease, border-color 150ms ease;
+    transition: all var(--timing-btn) ease;
     min-height: 32px;
   }
 
   .add-btn:hover:not(:disabled) {
-    background: var(--surface-raised);
-    border-color: var(--accent);
+    background: var(--glass-highlight);
+    border-color: var(--glass-highlight);
+    color: var(--t1);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 12px rgba(0,0,0,.2);
   }
 
   .add-btn:disabled {
@@ -131,8 +143,8 @@
   /* ── Browser note ────────────────────────────────────────────────────────── */
   .browser-note {
     font-size: 11px;
-    font-family: 'Inter', sans-serif;
-    color: var(--text-muted);
+    font-family: var(--mono);
+    color: var(--t3);
     text-align: right;
   }
 </style>
