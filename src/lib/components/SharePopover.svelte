@@ -250,7 +250,7 @@
   .share-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.4);
+    background: rgba(0, 0, 0, 0.6);
     display: flex;
     align-items: flex-start;
     justify-content: flex-end;
@@ -260,6 +260,8 @@
 
   .share-popover {
     background: var(--surface-elevated);
+    backdrop-filter: blur(30px) saturate(1.3);
+    -webkit-backdrop-filter: blur(30px) saturate(1.3);
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
     padding: var(--spacing-lg);
@@ -407,7 +409,7 @@
     border-radius: var(--radius-sm);
     color: var(--text-primary);
     font-size: 12px;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--mono);
     box-sizing: border-box;
   }
 

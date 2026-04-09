@@ -18,6 +18,7 @@
   import SettingsDrawer from './SettingsDrawer.svelte';
   import SharePopover from './SharePopover.svelte';
   import SharedResultsBanner from './SharedResultsBanner.svelte';
+  import EndpointDrawer from './EndpointDrawer.svelte';
   import KeyboardOverlay from './KeyboardOverlay.svelte';
 
   let engine: MeasurementEngine | null = null;
@@ -220,6 +221,9 @@
   <Layout onStart={handleStart} onStop={handleStop} />
   {#if $uiStore.showSettings}
     <SettingsDrawer />
+  {/if}
+  {#if $uiStore.showEndpoints}
+    <EndpointDrawer />
   {/if}
   {#if $uiStore.showShare}
     <SharePopover />

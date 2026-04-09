@@ -291,7 +291,7 @@
   }
 
   .settings-dialog::backdrop {
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.6);
   }
 
   /* Drawer content slides in from right on desktop, full-width on mobile */
@@ -303,6 +303,8 @@
     width: 360px;
     max-width: 100vw;
     background: var(--surface-raised);
+    backdrop-filter: blur(30px) saturate(1.3);
+    -webkit-backdrop-filter: blur(30px) saturate(1.3);
     border-left: 1px solid var(--border);
     display: flex;
     flex-direction: column;
@@ -331,7 +333,7 @@
   }
 
   .drawer-title {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sans);
     font-size: 18px;
     font-weight: 600;
     color: var(--text-primary);
@@ -377,14 +379,14 @@
     display: flex;
     align-items: center;
     gap: var(--spacing-xs);
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sans);
     font-size: 13px;
     font-weight: 500;
     color: var(--text-primary);
   }
 
   .field-hint {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sans);
     font-size: 11px;
     font-weight: 400;
     color: var(--text-muted);
@@ -396,7 +398,7 @@
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     color: var(--text-primary);
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--mono);
     font-size: 13px;
     width: 100%;
     transition: border-color 150ms ease;
@@ -408,7 +410,7 @@
   }
 
   .field-description {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sans);
     font-size: 11px;
     color: var(--text-muted);
     line-height: 1.5;
@@ -466,19 +468,19 @@
   }
 
   .radio-text {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--mono);
     font-size: 12px;
     color: var(--text-primary);
   }
 
   .radio-hint {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sans);
     font-size: 11px;
     color: var(--text-muted);
   }
 
   .running-note {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sans);
     font-size: 10px;
     font-weight: 400;
     color: var(--error);
@@ -501,7 +503,7 @@
     border: 1px solid var(--error);
     border-radius: var(--radius-sm);
     color: var(--error);
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sans);
     font-size: 13px;
     font-weight: 500;
     cursor: pointer;
@@ -519,7 +521,7 @@
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     color: var(--text-secondary);
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sans);
     font-size: 13px;
     cursor: pointer;
     transition: background 150ms ease, border-color 150ms ease;
@@ -543,7 +545,7 @@
   }
 
   .confirm-text {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sans);
     font-size: 13px;
     color: var(--text-secondary);
   }
