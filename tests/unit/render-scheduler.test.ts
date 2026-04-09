@@ -1,6 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { RenderScheduler } from '../../src/lib/renderers/render-scheduler';
 
+// Helper: mark dirty then simulate a frame (mirrors real rAF usage)
+function simulateDirtyFrame(scheduler: RenderScheduler, dataMs: number): void {
+  scheduler.markDirty();
+  scheduler._simulateFrame(dataMs);
+}
+
 describe('RenderScheduler', () => {
   let scheduler: RenderScheduler;
 
@@ -8,66 +14,60 @@ describe('RenderScheduler', () => {
     scheduler = new RenderScheduler();
   });
 
-  it('calls data renderer when _simulateFrame is called', () => {
+  // _simulateFrame mirrors runFrame: effects tick first (unconditionally),
+  // then data+interaction only when dirty.
+
+  it('calls data renderer when _simulateFrame is called with dirty', () => {
     const dataRenderer = vi.fn();
     scheduler.registerDataRenderer(dataRenderer);
-    scheduler._simulateFrame(2);
+    simulateDirtyFrame(scheduler, 2);
     expect(dataRenderer).toHaveBeenCalledTimes(1);
   });
 
-  it('calls multiple data renderers', () => {
+  it('does not call data renderer when not dirty', () => {
+    const dataRenderer = vi.fn();
+    scheduler.registerDataRenderer(dataRenderer);
+    scheduler._simulateFrame(2); // no markDirty
+    expect(dataRenderer).not.toHaveBeenCalled();
+  });
+
+  it('calls multiple data renderers when dirty', () => {
     const dr1 = vi.fn();
     const dr2 = vi.fn();
     scheduler.registerDataRenderer(dr1);
     scheduler.registerDataRenderer(dr2);
-    scheduler._simulateFrame(2);
+    simulateDirtyFrame(scheduler, 2);
     expect(dr1).toHaveBeenCalledTimes(1);
     expect(dr2).toHaveBeenCalledTimes(1);
   });
 
-  it('calls effects renderer when data is under 8ms budget', () => {
+  it('calls effects renderer unconditionally (even when data exceeds budget)', () => {
     const effectsRenderer = vi.fn();
     scheduler.registerEffectsRenderer(effectsRenderer);
-    scheduler._simulateFrame(4); // 4ms < 8ms budget
+    // Effects run regardless of dataMs — no budget gate in production runFrame
+    scheduler._simulateFrame(10); // 10ms > 8ms budget, but effects still tick
     expect(effectsRenderer).toHaveBeenCalledTimes(1);
   });
 
-  it('skips effects renderer when data exceeds 8ms budget', () => {
+  it('calls effects renderer even when not dirty', () => {
     const effectsRenderer = vi.fn();
     scheduler.registerEffectsRenderer(effectsRenderer);
-    scheduler._simulateFrame(10); // 10ms > 8ms budget
-    expect(effectsRenderer).not.toHaveBeenCalled();
+    scheduler._simulateFrame(2); // no markDirty — effects still tick
+    expect(effectsRenderer).toHaveBeenCalledTimes(1);
   });
 
-  it('skips effects at exactly the budget boundary (8ms)', () => {
-    const effectsRenderer = vi.fn();
-    scheduler.registerEffectsRenderer(effectsRenderer);
-    scheduler._simulateFrame(8); // 8ms == budget, should skip (exceeds means >= boundary)
-    // At exactly budget, effects are skipped to protect headroom
-    expect(effectsRenderer).not.toHaveBeenCalled();
-  });
-
-  it('still calls data renderer when effects are skipped over budget', () => {
-    const dataRenderer = vi.fn();
-    const effectsRenderer = vi.fn();
-    scheduler.registerDataRenderer(dataRenderer);
-    scheduler.registerEffectsRenderer(effectsRenderer);
-    scheduler._simulateFrame(10);
-    expect(dataRenderer).toHaveBeenCalledTimes(1);
-    expect(effectsRenderer).not.toHaveBeenCalled();
-  });
-
-  it('disables effects after 10 consecutive frames exceeding 12ms', () => {
+  it('disables effects after 10 consecutive overloaded dirty frames exceeding 12ms', () => {
     const effectsRenderer = vi.fn();
     scheduler.registerEffectsRenderer(effectsRenderer);
 
-    // Simulate 10 consecutive overloaded frames (>12ms)
+    // Simulate 10 consecutive overloaded frames (>12ms each, dirty each time)
     for (let i = 0; i < 10; i++) {
-      scheduler._simulateFrame(15);
+      simulateDirtyFrame(scheduler, 15);
     }
 
     // Effects should now be permanently disabled for subsequent frames
-    scheduler._simulateFrame(1); // even under budget, effects stay disabled
+    effectsRenderer.mockClear();
+    simulateDirtyFrame(scheduler, 1); // even under budget, effects stay disabled
     expect(effectsRenderer).not.toHaveBeenCalled();
   });
 
@@ -77,21 +77,28 @@ describe('RenderScheduler', () => {
 
     // 9 overloaded frames then one under budget
     for (let i = 0; i < 9; i++) {
-      scheduler._simulateFrame(15);
+      simulateDirtyFrame(scheduler, 15);
     }
-    scheduler._simulateFrame(2); // breaks the streak
+    simulateDirtyFrame(scheduler, 2); // breaks the streak
 
-    // Effects should still work under budget (streak reset)
+    // Effects should still work (streak reset)
     effectsRenderer.mockClear();
-    scheduler._simulateFrame(1);
+    simulateDirtyFrame(scheduler, 1);
     expect(effectsRenderer).toHaveBeenCalledTimes(1);
   });
 
-  it('calls interaction renderer independently of effects budget', () => {
+  it('calls interaction renderer when dirty', () => {
     const interactionRenderer = vi.fn();
     scheduler.registerInteractionRenderer(interactionRenderer);
-    scheduler._simulateFrame(15); // high data cost
+    simulateDirtyFrame(scheduler, 15); // high data cost — interaction still runs
     expect(interactionRenderer).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not call interaction renderer when not dirty', () => {
+    const interactionRenderer = vi.fn();
+    scheduler.registerInteractionRenderer(interactionRenderer);
+    scheduler._simulateFrame(15); // no markDirty
+    expect(interactionRenderer).not.toHaveBeenCalled();
   });
 
   it('markDirty does not throw', () => {

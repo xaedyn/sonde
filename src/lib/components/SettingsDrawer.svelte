@@ -88,6 +88,7 @@
   }
 
   function confirmClear(): void {
+    if (isRunning) return;
     showClearConfirm = false;
     measurementStore.reset();
     // Re-init endpoints in measurement store so empty data exists
@@ -253,6 +254,8 @@
           <button
             type="button"
             class="btn-danger"
+            disabled={isRunning}
+            aria-disabled={isRunning}
             onclick={requestClear}
           >
             Clear results
@@ -261,7 +264,7 @@
           <div class="confirm-group" role="alert" aria-live="assertive">
             <p class="confirm-text">This will reset all measurements. Are you sure?</p>
             <div class="confirm-actions">
-              <button type="button" class="btn-danger" onclick={confirmClear}>Yes, clear all</button>
+              <button type="button" class="btn-danger" disabled={isRunning} onclick={confirmClear}>Yes, clear all</button>
               <button type="button" class="btn-secondary" onclick={cancelClear}>Cancel</button>
             </div>
           </div>

@@ -83,10 +83,12 @@ export class HeatmapRenderer {
   private drawCells(cells: HeatmapCell[]): void {
     const { ctx, canvas } = this;
     if (!ctx) return;
+    // Use CSS logical dimensions (not physical pixel dimensions) because
+    // colToX/rowToY return logical coordinates. canvas.width is scaled by DPR.
     const viewLeft   = 0;
-    const viewRight  = canvas.width;
+    const viewRight  = parseFloat(canvas.style.width) || canvas.width;
     const viewTop    = 0;
-    const viewBottom = canvas.height;
+    const viewBottom = parseFloat(canvas.style.height) || canvas.height;
 
     for (const cell of cells) {
       const x = this.colToX(cell.col);

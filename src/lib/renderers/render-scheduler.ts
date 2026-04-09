@@ -111,17 +111,19 @@ export class RenderScheduler {
   // Allows unit tests to exercise scheduler logic without real rAF timing.
 
   _simulateFrame(dataMs: number): void {
-    // Run data renderers
-    for (const fn of this.dataRenderers) fn();
-
-    // Budget check: skip effects when data is at or over budget
-    this.updateOverloadStreak(dataMs);
-
-    if (!this.effectsDisabled && dataMs < DATA_BUDGET_MS) {
+    // Mirror runFrame execution order exactly:
+    // 1. Effects tick unconditionally (animations run independently of data changes)
+    if (!this.effectsDisabled) {
       for (const fn of this.effectsRenderers) fn();
     }
 
-    // Interaction always runs
+    // 2. Data + interaction only when dirty
+    if (!this.dirty) return;
+    this.dirty = false;
+
+    for (const fn of this.dataRenderers) fn();
+    this.updateOverloadStreak(dataMs);
+
     for (const fn of this.interactionRenderers) fn();
   }
 }
