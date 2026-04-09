@@ -74,14 +74,12 @@ describe('share-manager', () => {
     expect(decodeSharePayload('')).toBeNull();
   });
 
-  it('returns null for wrong schema version', () => {
+  it('returns null for wrong schema version', async () => {
     const badPayload = { v: 2, mode: 'config', endpoints: [], settings: {} };
-    const encoded = encodeSharePayload(badPayload as unknown as SharePayload);
     // Manually encode so we bypass our own encodeSharePayload typed guard
-    import('lz-string').then(({ default: LZString }) => {
-      const manualEncoded = LZString.compressToEncodedURIComponent(JSON.stringify(badPayload));
-      expect(decodeSharePayload(manualEncoded)).toBeNull();
-    });
+    const { default: LZString } = await import('lz-string');
+    const manualEncoded = LZString.compressToEncodedURIComponent(JSON.stringify(badPayload));
+    expect(decodeSharePayload(manualEncoded)).toBeNull();
   });
 
   it('config-only payload is small', () => {

@@ -25,6 +25,10 @@ export function decodeSharePayload(encoded: string): SharePayload | null {
 
 // ── Schema validation ──────────────────────────────────────────────────────
 
+function isFiniteNumber(v: unknown): boolean {
+  return typeof v === 'number' && Number.isFinite(v);
+}
+
 function validateSharePayload(data: unknown): SharePayload | null {
   if (data === null || typeof data !== 'object') return null;
   const obj = data as Record<string, unknown>;
@@ -33,15 +37,28 @@ function validateSharePayload(data: unknown): SharePayload | null {
   if (obj['mode'] !== 'config' && obj['mode'] !== 'results') return null;
   if (!Array.isArray(obj['endpoints'])) return null;
 
+  // Validate each endpoint has required string fields
+  for (const ep of obj['endpoints'] as unknown[]) {
+    if (ep === null || typeof ep !== 'object') return null;
+    const e = ep as Record<string, unknown>;
+    if (typeof e['url'] !== 'string') return null;
+  }
+
   const settings = obj['settings'];
-  if (
-    settings === null ||
-    typeof settings !== 'object' ||
-    typeof (settings as Record<string, unknown>)['timeout'] !== 'number' ||
-    typeof (settings as Record<string, unknown>)['delay'] !== 'number' ||
-    typeof (settings as Record<string, unknown>)['cap'] !== 'number'
-  ) {
+  if (settings === null || typeof settings !== 'object') return null;
+  const s = settings as Record<string, unknown>;
+  if (!isFiniteNumber(s['timeout']) || !isFiniteNumber(s['delay']) || !isFiniteNumber(s['cap'])) {
     return null;
+  }
+
+  // Validate results array if present
+  if (obj['results'] !== undefined) {
+    if (!Array.isArray(obj['results'])) return null;
+    for (const result of obj['results'] as unknown[]) {
+      if (result === null || typeof result !== 'object') return null;
+      const r = result as Record<string, unknown>;
+      if (!Array.isArray(r['samples'])) return null;
+    }
   }
 
   return data as SharePayload;
@@ -119,7 +136,7 @@ function slicePayload(payload: SharePayload, keepRounds: number): SharePayload {
 
   const results = payload.results.map((endpoint) => ({
     ...endpoint,
-    samples: endpoint.samples.slice(-keepRounds),
+    samples: keepRounds <= 0 ? [] : endpoint.samples.slice(-keepRounds),
   }));
 
   return { ...payload, results };
