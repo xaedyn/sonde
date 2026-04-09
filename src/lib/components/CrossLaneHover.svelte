@@ -65,6 +65,7 @@
   class:active={isActive}
   style:left="{hoverX}px"
   style:--t3={tokens.color.text.t3}
+  style:--glass-highlight={tokens.color.glass.highlight}
   aria-hidden="true"
 ></div>
 
@@ -80,9 +81,11 @@
     style:--t1={tokens.color.text.t1}
     style:--t3={tokens.color.text.t3}
     style:--t4={tokens.color.text.t4}
+    style:--t5={tokens.color.text.t5}
     style:--mono={tokens.typography.mono.fontFamily}
+    style:--glass-shadow-strong={tokens.color.glass.shadowStrong}
+    style:--glass-shadow={tokens.color.glass.shadow}
     role="tooltip"
-    aria-live="polite"
   >
     <div class="tip-inner">
       <div class="tip-round">Round {hoverRound}</div>
@@ -105,7 +108,7 @@
     position: fixed; top: 0; bottom: 0;
     width: 1px; pointer-events: none; z-index: 5;
     opacity: 0; transition: opacity 0.08s;
-    background: linear-gradient(180deg, transparent 10%, rgba(255,255,255,.12) 50%, transparent 90%);
+    background: linear-gradient(180deg, transparent 10%, var(--glass-highlight) 50%, transparent 90%);
   }
   .hover-line.active { opacity: 1; }
   .hover-tip {
@@ -115,17 +118,17 @@
   .hover-tip.active { opacity: 1; }
   .tip-inner {
     background: var(--tooltip-bg);
-    border: 1px solid rgba(255,255,255,.1);
+    border: 1px solid var(--glass-border);
     border-radius: 12px; padding: 10px 14px;
     backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-    box-shadow: 0 8px 32px rgba(0,0,0,.5), 0 0 1px rgba(255,255,255,.1);
+    box-shadow: 0 8px 32px var(--glass-shadow-strong), 0 0 1px var(--glass-border);
     min-width: 160px;
   }
   .tip-round {
     font-family: var(--mono); font-size: 9px; font-weight: 400;
     color: var(--t3); text-transform: uppercase; letter-spacing: 0.06em;
     margin-bottom: 8px; padding-bottom: 6px;
-    border-bottom: 1px solid rgba(255,255,255,.06);
+    border-bottom: 1px solid var(--t5);
   }
   .tip-row { display: flex; align-items: center; gap: 8px; margin: 5px 0; }
   .tip-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
@@ -134,6 +137,6 @@
   .tip-delta {
     font-family: var(--mono); font-size: 9px; color: var(--t4);
     text-align: right; margin-top: 6px; padding-top: 5px;
-    border-top: 1px solid rgba(255,255,255,.04);
+    border-top: 1px solid var(--t5);
   }
 </style>
