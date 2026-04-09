@@ -1,17 +1,16 @@
 <!-- src/lib/components/Layout.svelte -->
-<!-- CSS Grid shell: header, sidebar (EndpointPanel), main area (viz + cards),  -->
-<!-- and controls bar. Responsive across mobile/tablet/desktop.                   -->
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { get } from 'svelte/store';
-  import { tokens } from '$lib/tokens';
   import { measurementStore } from '$lib/stores/measurements';
   import { endpointStore } from '$lib/stores/endpoints';
-  import Header from './Header.svelte';
-  import EndpointPanel from './EndpointPanel.svelte';
-  import VisualizationArea from './VisualizationArea.svelte';
-  import SummaryCards from './SummaryCards.svelte';
-  import Controls from './Controls.svelte';
+  import { settingsStore } from '$lib/stores/settings';
+  import { tokens } from '$lib/tokens';
+  import Topbar from './Topbar.svelte';
+  import LanesView from './LanesView.svelte';
+  import XAxisBar from './XAxisBar.svelte';
+  import FooterBar from './FooterBar.svelte';
+  import CrossLaneHover from './CrossLaneHover.svelte';
 
   let { onStart, onStop }: {
     onStart?: () => void;
@@ -25,81 +24,54 @@
   function announce(msg: string): void {
     if (!announcer) return;
     announcer.textContent = '';
-    // Force a DOM flush so screen readers pick up the change
     setTimeout(() => { announcer.textContent = msg; }, 50);
   }
+
+  const totalRounds = $derived($settingsStore.cap > 0 ? $settingsStore.cap : 30);
+  const currentRound = $derived($measurementStore.roundCounter);
 
   onMount(() => {
     unsubLifecycle = measurementStore.subscribe((state) => {
       const cur = state.lifecycle;
       const prev = prevLifecycle;
-
       if (prev !== 'running' && cur === 'running') {
         const n = get(endpointStore).filter(ep => ep.enabled).length;
         announce(`Test started with ${n} endpoint${n === 1 ? '' : 's'}`);
       } else if (prev === 'running' && cur === 'stopping') {
-        const rounds = state.roundCounter;
-        announce(`Test stopped after ${rounds} round${rounds === 1 ? '' : 's'}`);
+        announce(`Test stopped after ${state.roundCounter} rounds`);
       } else if (prev !== 'completed' && cur === 'completed') {
-        const rounds = state.roundCounter;
-        announce(`Test completed after ${rounds} round${rounds === 1 ? '' : 's'}`);
+        announce(`Test completed after ${state.roundCounter} rounds`);
       }
-
       prevLifecycle = cur;
     });
   });
 
-  onDestroy(() => {
-    unsubLifecycle?.();
-  });
+  onDestroy(() => { unsubLifecycle?.(); });
 </script>
 
-<a href="#results" class="skip-link">Skip to results</a>
+<a href="#lanes" class="skip-link">Skip to lanes</a>
+
+<div class="bg" aria-hidden="true"></div>
+<div class="orb orb-1" aria-hidden="true"></div>
+<div class="orb orb-2" aria-hidden="true"></div>
+<div class="orb orb-3" aria-hidden="true"></div>
 
 <div
-  class="app-layout"
-  style:--border={tokens.color.chrome.border}
-  style:--surface-base={tokens.color.surface.base}
-  style:--surface-canvas={tokens.color.surface.canvas}
-  style:--surface-raised={tokens.color.surface.raised}
-  style:--text-primary={tokens.color.text.primary}
-  style:--spacing-md="{tokens.spacing.md}px"
-  style:--spacing-lg="{tokens.spacing.lg}px"
+  class="app"
+  style:--bg-base={tokens.color.surface.base}
+  style:--orb-cyan={tokens.color.orb.cyan}
+  style:--orb-pink={tokens.color.orb.pink}
+  style:--orb-violet={tokens.color.orb.violet}
+  style:--t1={tokens.color.text.t1}
 >
-  <!-- Top header bar -->
-  <header class="layout-header">
-    <Header />
-    <!-- Controls inline on desktop -->
-    <div class="header-controls desktop-only">
-      <Controls {onStart} {onStop} />
-    </div>
-  </header>
-
-  <!-- Main content area -->
-  <div class="layout-body">
-    <!-- Sidebar: EndpointPanel -->
-    <aside class="layout-sidebar" aria-label="Endpoints">
-      <EndpointPanel />
-    </aside>
-
-    <!-- Main column: visualization + summary cards -->
-    <main id="results" class="layout-main">
-      <div class="layout-viz">
-        <VisualizationArea />
-      </div>
-      <div class="layout-cards">
-        <SummaryCards />
-      </div>
-    </main>
-  </div>
-
-  <!-- Controls fixed at bottom on mobile -->
-  <div class="layout-controls mobile-only" role="toolbar" aria-label="Test controls">
-    <Controls {onStart} {onStop} />
-  </div>
+  <Topbar {onStart} {onStop} />
+  <LanesView />
+  <XAxisBar {totalRounds} {currentRound} />
+  <FooterBar />
 </div>
 
-<!-- ARIA live region for test state announcements -->
+<CrossLaneHover {totalRounds} />
+
 <div
   bind:this={announcer}
   id="sonde-announcer"
@@ -110,141 +82,65 @@
 ></div>
 
 <style>
-  /* ── Skip link ───────────────────────────────────────────────────────────── */
   .skip-link {
-    position: absolute;
-    top: -40px;
-    left: 0;
-    z-index: 9999;
-    padding: 8px 16px;
-    background: var(--accent, #4a90d9);
-    color: #fff;
-    font-weight: 600;
-    text-decoration: none;
-    border-radius: 0 0 4px 0;
-    transition: top 100ms ease;
+    position: absolute; top: -40px; left: 0; z-index: 9999;
+    padding: 8px 16px; background: #67e8f9; color: #0c0a14;
+    font-weight: 600; text-decoration: none;
+    border-radius: 0 0 4px 0; transition: top 100ms ease;
+  }
+  .skip-link:focus { top: 0; }
+
+  .bg {
+    position: fixed; inset: 0; z-index: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 10%, rgba(103,232,249,.07) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 80% at 85% 90%, rgba(249,168,212,.06) 0%, transparent 50%),
+      radial-gradient(ellipse 50% 50% at 50% 50%, rgba(139,92,246,.04) 0%, transparent 60%),
+      linear-gradient(160deg, #0c0a14 0%, #100e1e 40%, #0e0c18 100%);
+    animation: bgShift 20s ease-in-out infinite alternate;
+  }
+  @keyframes bgShift {
+    0%   { filter: hue-rotate(0deg) brightness(1); }
+    100% { filter: hue-rotate(8deg) brightness(1.02); }
   }
 
-  .skip-link:focus {
-    top: 0;
+  .orb {
+    position: fixed; border-radius: 50%; pointer-events: none;
+    z-index: 0; filter: blur(80px);
+    animation: float 15s ease-in-out infinite;
+  }
+  .orb-1 {
+    width: 400px; height: 400px; top: -80px; left: 10%;
+    background: var(--orb-cyan); animation-delay: 0s;
+  }
+  .orb-2 {
+    width: 350px; height: 350px; bottom: -60px; right: 5%;
+    background: var(--orb-pink); animation-delay: -5s; animation-duration: 18s;
+  }
+  .orb-3 {
+    width: 250px; height: 250px; top: 40%; left: 50%;
+    background: var(--orb-violet); animation-delay: -10s; animation-duration: 22s;
+  }
+  @keyframes float {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33%       { transform: translate(30px, -20px) scale(1.05); }
+    66%       { transform: translate(-20px, 15px) scale(.95); }
   }
 
-  /* ── Screen-reader only ──────────────────────────────────────────────────── */
+  .app {
+    position: relative; z-index: 1;
+    height: 100vh; display: flex; flex-direction: column;
+    overflow: hidden; color: var(--t1);
+  }
+
   .sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
+    position: absolute; width: 1px; height: 1px;
+    padding: 0; margin: -1px; overflow: hidden;
+    clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
   }
 
-  /* ── Root layout ─────────────────────────────────────────────────────────── */
-  .app-layout {
-    display: grid;
-    grid-template-rows: auto 1fr auto;
-    height: 100%;
-    background: var(--surface-base);
-    overflow: hidden;
-  }
-
-  /* ── Header ──────────────────────────────────────────────────────────────── */
-  .layout-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-shrink: 0;
-    /* Header component handles its own padding/border */
-  }
-
-  .header-controls {
-    padding-right: 16px;
-  }
-
-  /* ── Body (sidebar + main) ───────────────────────────────────────────────── */
-  .layout-body {
-    display: grid;
-    /* Desktop: 280px sidebar + remaining main */
-    grid-template-columns: 280px 1fr;
-    grid-template-rows: 1fr;
-    min-height: 0;
-    overflow: hidden;
-  }
-
-  /* ── Sidebar ─────────────────────────────────────────────────────────────── */
-  .layout-sidebar {
-    border-right: 1px solid var(--border);
-    overflow-y: auto;
-    overflow-x: hidden;
-    background: var(--surface-canvas);
-    min-height: 0;
-  }
-
-  /* ── Main column ─────────────────────────────────────────────────────────── */
-  .layout-main {
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    overflow: hidden;
-  }
-
-  .layout-viz {
-    flex: 1;
-    min-height: 0;
-    overflow: hidden;
-  }
-
-  .layout-cards {
-    flex-shrink: 0;
-    overflow-y: auto;
-    max-height: 40%;
-    border-top: 1px solid var(--border);
-  }
-
-  /* ── Mobile controls bar ─────────────────────────────────────────────────── */
-  .layout-controls {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 8px 16px;
-    border-top: 1px solid var(--border);
-    background: var(--surface-raised);
-    flex-shrink: 0;
-  }
-
-  /* Visibility helpers */
-  .desktop-only { display: flex; }
-  .mobile-only  { display: none; }
-
-  /* ── Tablet breakpoint (768px) ───────────────────────────────────────────── */
-  @media (max-width: 1023px) {
-    .layout-body {
-      /* Sidebar collapses to full width above main on tablet */
-      grid-template-columns: 1fr;
-      grid-template-rows: auto 1fr;
-    }
-
-    .layout-sidebar {
-      border-right: none;
-      border-bottom: 1px solid var(--border);
-      max-height: 180px;
-    }
-  }
-
-  /* ── Mobile breakpoint (375px) ───────────────────────────────────────────── */
-  @media (max-width: 767px) {
-    .app-layout {
-      grid-template-rows: auto 1fr auto;
-    }
-
-    .layout-cards {
-      max-height: 50%;
-    }
-
-    .desktop-only { display: none; }
-    .mobile-only  { display: flex; }
+  @media (prefers-reduced-motion: reduce) {
+    .bg { animation: none; }
+    .orb { animation: none; }
   }
 </style>
