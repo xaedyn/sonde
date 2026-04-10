@@ -213,13 +213,15 @@
       <!-- Divider -->
       <div class="divider" aria-hidden="true"></div>
 
-      <!-- Clear results -->
+      <!-- Danger zone -->
       <div class="field danger-field">
+        <span class="field-label danger-label">Danger zone</span>
+        <span class="danger-desc">Permanently clears all measurement data, statistics, and round history.</span>
         {#if !showClearConfirm}
           <button type="button" class="btn-danger" disabled={isRunning} aria-disabled={isRunning} onclick={requestClear}>Clear all results</button>
         {:else}
           <div class="confirm-group" role="alert" aria-live="assertive">
-            <p class="confirm-text">Reset all measurements?</p>
+            <p class="confirm-text">This cannot be undone. Continue?</p>
             <div class="confirm-actions">
               <button type="button" class="btn-danger" disabled={isRunning} onclick={confirmClear}>Yes, clear</button>
               <button type="button" class="btn-secondary" onclick={cancelClear}>Cancel</button>
@@ -398,6 +400,19 @@
   .danger-field {
     background: none;
     padding: 0;
+    gap: var(--spacing-xs);
+  }
+
+  .danger-label {
+    color: var(--accent-pink);
+  }
+
+  .danger-desc {
+    font-family: var(--sans);
+    font-size: 11px;
+    color: var(--t3);
+    line-height: 1.4;
+    margin-bottom: var(--spacing-xs);
   }
 
   .field-label {
