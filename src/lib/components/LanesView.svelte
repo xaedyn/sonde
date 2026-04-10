@@ -7,6 +7,8 @@
   import { uiStore } from '$lib/stores/ui';
   import { prepareFrame, computeHeatmapCells } from '$lib/renderers/timeline-data-pipeline';
   import { tokens } from '$lib/tokens';
+  import { deriveLayoutMode } from '$lib/layout';
+  import type { LayoutMode } from '$lib/layout';
   import type { HeatmapCellData } from '$lib/types';
   import Lane from './Lane.svelte';
   import LaneSvgChart from './LaneSvgChart.svelte';
@@ -20,6 +22,33 @@
   } = $props();
 
   const endpoints = $derived($endpointStore.filter(ep => ep.enabled));
+
+  // ── Layout mode derivation ────────────────────────────────────────────────────
+  let containerHeight = $state(0);
+  let isMobile = $state(
+    typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches,
+  );
+
+  $effect(() => {
+    const ro = new ResizeObserver(([entry]) => {
+      containerHeight = entry.contentRect.height;
+    });
+    ro.observe(lanesEl);
+    return () => ro.disconnect();
+  });
+
+  $effect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const handler = (e: MediaQueryListEvent): void => { isMobile = e.matches; };
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  });
+
+  const layoutMode: LayoutMode = $derived(
+    deriveLayoutMode(endpoints.length, containerHeight, isMobile),
+  );
+
+  const isCompact: boolean = $derived(layoutMode !== 'full');
 
   // Call prepareFrame() ONCE for all enabled endpoints
   const frameData = $derived(prepareFrame(endpoints, $measurementStore));
@@ -51,20 +80,24 @@
   }
 
   let lanesEl: HTMLDivElement;
-  const PANEL_W = tokens.lane.panelWidth + tokens.lane.paddingX; // 260
 
   function handleMouseMove(e: MouseEvent): void {
-    const rect = lanesEl.getBoundingClientRect();
-    const panelW = window.matchMedia('(max-width: 767px)').matches ? 0 : PANEL_W;
-    const x = e.clientX - rect.left;
-    if (x < panelW) {
+    const lane = (e.target as HTMLElement).closest('.lane');
+    const chartEl = lane?.querySelector('.lane-chart') as HTMLElement | null;
+    if (!chartEl) {
       uiStore.clearLaneHover();
       return;
     }
-    const chartW = rect.width - panelW;
-    if (chartW <= 0) return;
-    const pct = (x - panelW) / chartW;
-    const round = Math.round(pct * (visibleEnd - visibleStart)) + visibleStart;
+    const chartRect = chartEl.getBoundingClientRect();
+    const x = e.clientX - chartRect.left;
+    const chartW = chartRect.width;
+    if (chartW <= 0 || x < 0 || x > chartW) {
+      uiStore.clearLaneHover();
+      return;
+    }
+    const pct = x / chartW;
+    const span = visibleEnd - visibleStart;
+    const round = Math.round(pct * span + visibleStart);
     const clamped = Math.max(visibleStart, Math.min($measurementStore.roundCounter, round));
     if (clamped < visibleStart || clamped > $measurementStore.roundCounter) {
       uiStore.clearLaneHover();
@@ -99,6 +132,7 @@
   role="region"
   aria-label="Endpoint lanes"
   bind:this={lanesEl}
+  class:grid-2col={layoutMode === 'compact-2col'}
   onmousemove={handleMouseMove}
   onmouseleave={handleMouseLeave}
   style:--lanes-gap="{tokens.lane.gapPx}px"
@@ -113,7 +147,6 @@
     {#each endpoints as ep (ep.id)}
       {@const laneProps = getLaneProps(ep.id)}
       {@const lastLatency = $measurementStore.endpoints[ep.id]?.lastLatency ?? null}
-      {@const isRunning = $measurementStore.lifecycle === 'running'}
       <Lane
         endpointId={ep.id}
         color={ep.color}
@@ -125,7 +158,7 @@
         lossPercent={laneProps.lossPercent}
         ready={laneProps.ready}
         {lastLatency}
-        {isRunning}
+        compact={isCompact}
       >
         {#snippet children()}
           {@const allPoints = frameData.pointsByEndpoint.get(ep.id) ?? []}
@@ -158,6 +191,23 @@
     overflow: auto;
     min-height: 0;
   }
+
+  /* 2-column grid mode (AC3) */
+  .lanes.grid-2col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-auto-flow: row;
+    gap: var(--lanes-gap);
+    align-content: start;
+  }
+
+  /* Mobile override: force 2-col back to single column */
+  @media (max-width: 767px) {
+    .lanes.grid-2col {
+      grid-template-columns: 1fr;
+    }
+  }
+
   .no-endpoints {
     flex: 1; display: flex; align-items: center; justify-content: center;
     font-family: 'Martian Mono', monospace;
