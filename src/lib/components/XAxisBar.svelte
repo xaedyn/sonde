@@ -1,15 +1,20 @@
 <!-- src/lib/components/XAxisBar.svelte -->
 <script lang="ts">
   import { tokens } from '$lib/tokens';
+  import { formatElapsed } from '$lib/renderers/timeline-data-pipeline';
 
   let {
     startRound,
     endRound,
     currentRound,
+    startedAt,
+    sampleTimestamps,
   }: {
     startRound: number;
     endRound: number;
     currentRound: number;
+    startedAt: number | null;
+    sampleTimestamps: readonly number[];
   } = $props();
 
   const ticks: Array<{ label: string; isFuture: boolean }> = $derived.by(() => {
@@ -17,11 +22,19 @@
     if (span <= 0) return [];
     const step = Math.max(1, Math.ceil(span / 6));
     const result: Array<{ label: string; isFuture: boolean }> = [];
-    for (let r = startRound + step; r <= endRound; r += step) {
-      result.push({ label: String(r), isFuture: r > currentRound });
+
+    function elapsedLabel(round: number): string {
+      if (startedAt === null) return '0:00';
+      const ts = sampleTimestamps[round - 1];
+      if (ts === undefined) return '0:00';
+      return formatElapsed(ts - startedAt);
     }
-    if (result.length === 0 || result[result.length - 1]?.label !== String(endRound)) {
-      result.push({ label: String(endRound), isFuture: endRound > currentRound });
+
+    for (let r = startRound + step; r <= endRound; r += step) {
+      result.push({ label: elapsedLabel(r), isFuture: r > currentRound });
+    }
+    if (result.length === 0 || result[result.length - 1]?.label !== elapsedLabel(endRound)) {
+      result.push({ label: elapsedLabel(endRound), isFuture: endRound > currentRound });
     }
     return result;
   });
@@ -29,7 +42,7 @@
 
 <div
   class="x-bar"
-  aria-label="Round axis"
+  aria-label="Elapsed time axis"
   style:--t3={tokens.color.text.t3}
   style:--t4={tokens.color.text.t4}
   style:--mono={tokens.typography.mono.fontFamily}
@@ -38,11 +51,11 @@
   style:--lanes-padding-x="{tokens.lane.paddingX}px"
 >
   <div class="x-spacer" aria-hidden="true">
-    <span class="x-spacer-label">Round</span>
+    <span class="x-spacer-label">Elapsed</span>
   </div>
-  <div class="x-labels" role="list" aria-label="Round markers">
+  <div class="x-labels" role="list" aria-label="Elapsed time markers">
     {#each ticks as tick}
-      <span class="x-tick" class:future={tick.isFuture} role="listitem" aria-label="Round {tick.label}{tick.isFuture ? ' (future)' : ''}">{tick.label}</span>
+      <span class="x-tick" class:future={tick.isFuture} role="listitem" aria-label="{tick.label}{tick.isFuture ? ' (future)' : ''}">{tick.label}</span>
     {/each}
   </div>
 </div>

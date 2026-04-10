@@ -36,6 +36,26 @@
   const visibleStart = $derived(Math.max(1, currentRound - visibleSpan + 1));
   const visibleEnd = $derived(Math.max(visibleSpan, currentRound));
 
+  // Earliest timestamp per round (index i = round i+1) across all endpoints
+  const sampleTimestamps = $derived.by((): readonly number[] => {
+    const endpoints = Object.values($measurementStore.endpoints);
+    const byRound = new Map<number, number>();
+    for (const ep of endpoints) {
+      for (const sample of ep.samples) {
+        const prev = byRound.get(sample.round);
+        if (prev === undefined || sample.timestamp < prev) {
+          byRound.set(sample.round, sample.timestamp);
+        }
+      }
+    }
+    const maxRound = currentRound;
+    const result: number[] = [];
+    for (let r = 1; r <= maxRound; r++) {
+      result.push(byRound.get(r) ?? 0);
+    }
+    return result;
+  });
+
   onMount(() => {
     unsubLifecycle = measurementStore.subscribe((state) => {
       const cur = state.lifecycle;
@@ -72,7 +92,7 @@
 >
   <Topbar {onStart} {onStop} />
   <LanesView {visibleStart} {visibleEnd} />
-  <XAxisBar startRound={visibleStart} endRound={visibleEnd} {currentRound} />
+  <XAxisBar startRound={visibleStart} endRound={visibleEnd} {currentRound} startedAt={$measurementStore.startedAt} {sampleTimestamps} />
   <FooterBar />
 </div>
 
