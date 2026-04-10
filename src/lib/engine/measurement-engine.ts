@@ -22,6 +22,9 @@ export class MeasurementEngine {
   private roundTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly freezeDetector: FreezeDetector;
   private readonly workerFactory: WorkerFactory;
+  private roundBuffer: Map<number, WorkerToMainMessage[]> = new Map();
+  private expectedResponses: number = 0;
+  private flushTimers: Map<number, ReturnType<typeof setTimeout>> = new Map();
 
   constructor(workerFactory?: WorkerFactory) {
     this.workerFactory = workerFactory ?? defaultWorkerFactory;
@@ -93,6 +96,15 @@ export class MeasurementEngine {
     }
 
     this.workers = [];
+
+    // Clean up flush timers and round buffer
+    for (const timer of this.flushTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.flushTimers.clear();
+    this.roundBuffer.clear();
+    this.expectedResponses = 0;
+
     this.freezeDetector.stop();
     measurementStore.setStoppedAt(Date.now());
     measurementStore.setLifecycle('stopped');
@@ -122,40 +134,62 @@ export class MeasurementEngine {
     const currentEpoch = get(measurementStore).epoch;
     if (msg.epoch !== currentEpoch) return; // stale — discard
 
-    const timestamp = Date.now();
-
-    switch (msg.type) {
-      case 'result':
-        measurementStore.addSample(
-          msg.endpointId,
-          msg.roundId,
-          msg.timing.total,
-          'ok',
-          timestamp,
-          msg.timing
-        );
-        break;
-
-      case 'timeout':
-        measurementStore.addSample(
-          msg.endpointId,
-          msg.roundId,
-          msg.timeoutValue,
-          'timeout',
-          timestamp
-        );
-        break;
-
-      case 'error':
-        measurementStore.addSample(
-          msg.endpointId,
-          msg.roundId,
-          0,
-          'error',
-          timestamp
-        );
-        break;
+    const roundId = msg.roundId;
+    if (!this.roundBuffer.has(roundId)) {
+      this.roundBuffer.set(roundId, []);
     }
+    this.roundBuffer.get(roundId)!.push(msg);
+
+    // Flush when all expected responses arrive, or immediately if no dispatch
+    // is tracking (e.g., direct _handleWorkerMessage calls in tests)
+    if (this.expectedResponses === 0 || this.roundBuffer.get(roundId)!.length >= this.expectedResponses) {
+      this._flushRound(roundId);
+    }
+  }
+
+  private _flushRound(roundId: number): void {
+    const messages = this.roundBuffer.get(roundId);
+    if (!messages || messages.length === 0) return;
+    this.roundBuffer.delete(roundId);
+
+    // Clear any pending flush timeout for this round
+    if (this.flushTimers.has(roundId)) {
+      clearTimeout(this.flushTimers.get(roundId)!);
+      this.flushTimers.delete(roundId);
+    }
+
+    const timestamp = Date.now();
+    const entries = messages.map(msg => {
+      switch (msg.type) {
+        case 'result':
+          return {
+            endpointId: msg.endpointId,
+            round: msg.roundId,
+            latency: msg.timing.total,
+            status: 'ok' as const,
+            timestamp,
+            tier2: msg.timing,
+          };
+        case 'timeout':
+          return {
+            endpointId: msg.endpointId,
+            round: msg.roundId,
+            latency: msg.timeoutValue,
+            status: 'timeout' as const,
+            timestamp,
+          };
+        case 'error':
+          return {
+            endpointId: msg.endpointId,
+            round: msg.roundId,
+            latency: 0,
+            status: 'error' as const,
+            timestamp,
+          };
+      }
+    });
+
+    measurementStore.addSamples(entries);
   }
 
   // ── Private helpers ───────────────────────────────────────────────────────
@@ -193,7 +227,11 @@ export class MeasurementEngine {
 
     const endpoints = get(endpointStore).filter(ep => ep.enabled && ep.url.trim().length > 0);
 
-    for (const managed of this.workers) {
+    // Count active workers for this round to know when the batch is complete
+    const activeWorkers = this.workers.filter(m => endpoints.some(e => e.id === m.endpointId));
+    this.expectedResponses = activeWorkers.length;
+
+    for (const managed of activeWorkers) {
       const ep = endpoints.find(e => e.id === managed.endpointId);
       if (!ep) continue;
 
@@ -212,6 +250,11 @@ export class MeasurementEngine {
         // Worker died unexpectedly — skip this round for that endpoint.
       }
     }
+
+    // Flush timeout for stragglers (200ms)
+    this.flushTimers.set(roundCounter, setTimeout(() => {
+      this._flushRound(roundCounter);
+    }, 200));
 
     measurementStore.incrementRound();
     this._scheduleNextRound();
