@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { percentile, percentileSorted, stddev, confidenceInterval95, computeEndpointStatistics } from '../../src/lib/utils/statistics';
-import { statisticsStore } from '../../src/lib/stores/statistics';
+import { statisticsStore, resetStatisticsCache } from '../../src/lib/stores/statistics';
 import { measurementStore } from '../../src/lib/stores/measurements';
-import type { MeasurementSample } from '../../src/lib/types';
+import type { MeasurementSample, EndpointStatistics } from '../../src/lib/types';
 
 // ── Pure function helpers ──────────────────────────────────────────────────
 
@@ -231,6 +231,7 @@ describe('percentileSorted', () => {
 describe('statisticsStore', () => {
   beforeEach(() => {
     measurementStore.reset();
+    resetStatisticsCache();
   });
 
   it('is initially empty', () => {
@@ -249,5 +250,39 @@ describe('statisticsStore', () => {
     statisticsStore.subscribe(s => { stats = s; })();
     expect(stats['ep-test']).toBeDefined();
     expect((stats['ep-test'] as { sampleCount: number }).sampleCount).toBe(5);
+  });
+
+  it('reuses cached stats when sample count is unchanged for an endpoint', () => {
+    // Set up endpoint with samples
+    measurementStore.initEndpoint('ep-a');
+    measurementStore.initEndpoint('ep-b');
+    for (let i = 0; i < 3; i++) {
+      measurementStore.addSample('ep-a', i + 1, 100 + i, 'ok', Date.now() + i);
+      measurementStore.addSample('ep-b', i + 1, 200 + i, 'ok', Date.now() + i);
+    }
+
+    // First subscription captures initial stats
+    let firstStats: Record<string, EndpointStatistics> = {};
+    const unsub1 = statisticsStore.subscribe(s => { firstStats = s; });
+
+    const epARef = firstStats['ep-a'];
+    const epBRef = firstStats['ep-b'];
+    expect(epARef).toBeDefined();
+    expect(epBRef).toBeDefined();
+
+    // Add a sample only to ep-b — ep-a should reuse its cached reference
+    measurementStore.addSample('ep-b', 4, 210, 'ok', Date.now() + 100);
+
+    let secondStats: Record<string, EndpointStatistics> = {};
+    const unsub2 = statisticsStore.subscribe(s => { secondStats = s; });
+
+    // ep-a was not changed — same object reference (memoized)
+    expect(secondStats['ep-a']).toBe(epARef);
+    // ep-b got a new sample — recomputed, different reference
+    expect(secondStats['ep-b']).not.toBe(epBRef);
+    expect(secondStats['ep-b'].sampleCount).toBe(4);
+
+    unsub1();
+    unsub2();
   });
 });

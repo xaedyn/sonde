@@ -83,14 +83,15 @@ export function computeEndpointStatistics(
     };
   }
 
-  const p50 = percentile(latencies, 50);
-  const p95 = percentile(latencies, 95);
-  const p99 = percentile(latencies, 99);
-  const p25 = percentile(latencies, 25);
-  const p75 = percentile(latencies, 75);
-  const p90 = percentile(latencies, 90);
-  const min = Math.min(...latencies);
-  const max = Math.max(...latencies);
+  const sorted = latencies.slice().sort((a, b) => a - b);
+  const p50 = percentileSorted(sorted, 50);
+  const p95 = percentileSorted(sorted, 95);
+  const p99 = percentileSorted(sorted, 99);
+  const p25 = percentileSorted(sorted, 25);
+  const p75 = percentileSorted(sorted, 75);
+  const p90 = percentileSorted(sorted, 90);
+  const min = sorted[0];
+  const max = sorted[sorted.length - 1];
   const sd = stddev(latencies);
   const ci95 = confidenceInterval95(p50, sd, count);
 
