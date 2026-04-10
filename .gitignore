@@ -5,4 +5,3 @@ coverage/
 *.local
 .worktrees/
 design-concepts/
-docs/plans/
