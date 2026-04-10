@@ -84,9 +84,6 @@
     display: flex;
     flex-direction: column;
     width: 100%;
-    background: var(--glass-bg);
-    border: 1px solid var(--glass-border);
-    border-radius: var(--radius-sm);
     overflow: hidden;
   }
 
@@ -106,25 +103,36 @@
     align-items: center;
     justify-content: space-between;
     gap: var(--spacing-sm);
-    padding: var(--spacing-sm) var(--spacing-md);
-    border-top: 1px solid var(--glass-border);
+    padding: var(--spacing-md);
+    margin-top: var(--spacing-sm);
+    position: relative;
   }
 
-  /* ── Add endpoint button ─────────────────────────────────────────────────── */
+  .panel-footer::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 10%; right: 10%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--glass-highlight), transparent);
+  }
+
+  /* ── Add endpoint button — matches topbar button exactly ────────────────── */
   .add-btn {
-    padding: var(--spacing-xs) var(--spacing-sm);
+    padding: 7px 16px;
     border: 1px solid var(--glass-border);
     border-radius: var(--btn-radius);
     background: var(--topbar-bg);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    color: var(--accent-cyan);
+    color: var(--t2);
     font-size: 11px;
     font-weight: 500;
     font-family: var(--sans);
+    letter-spacing: 0.01em;
     cursor: pointer;
     transition: all var(--timing-btn) ease;
     min-height: 32px;
+    white-space: nowrap;
   }
 
   .add-btn:hover:not(:disabled) {

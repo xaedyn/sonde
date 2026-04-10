@@ -52,16 +52,20 @@
   style:--glass-border={tokens.color.glass.border}
   style:--glass-highlight={tokens.color.glass.highlight}
   style:--topbar-bg={tokens.color.topbar.bg}
+  style:--accent-cyan={tokens.color.accent.cyan}
+  style:--accent-pink={tokens.color.accent.pink}
   style:--t1={tokens.color.text.t1}
   style:--t2={tokens.color.text.t2}
   style:--t3={tokens.color.text.t3}
   style:--radius-sm="{tokens.radius.sm}px"
   style:--radius-md="{tokens.radius.md}px"
+  style:--radius-lg="{tokens.radius.lg}px"
   style:--btn-radius="{tokens.radius.btn}px"
   style:--spacing-xs="{tokens.spacing.xs}px"
   style:--spacing-sm="{tokens.spacing.sm}px"
   style:--spacing-md="{tokens.spacing.md}px"
   style:--spacing-lg="{tokens.spacing.lg}px"
+  style:--spacing-xl="{tokens.spacing.xl}px"
   style:--sans={tokens.typography.sans.fontFamily}
   style:--mono={tokens.typography.mono.fontFamily}
   style:--timing-btn="{tokens.timing.btnHover}ms"
@@ -107,7 +111,13 @@
   }
 
   .endpoint-dialog::backdrop {
-    background: rgba(0,0,0,.3);
+    background: rgba(0,0,0,.5);
+    animation: backdropFade 300ms cubic-bezier(0.0, 0.0, 0.2, 1) forwards;
+  }
+
+  @keyframes backdropFade {
+    from { opacity: 0; }
+    to   { opacity: 1; }
   }
 
   /* ── Drawer content — glass panel ────────────────────────────────────────── */
@@ -118,15 +128,24 @@
     bottom: 0;
     width: 360px;
     max-width: 100vw;
-    background: rgba(12,10,20,.7);
+    background: rgba(12,10,20,.75);
     backdrop-filter: blur(40px) saturate(1.4);
     -webkit-backdrop-filter: blur(40px) saturate(1.4);
     border-left: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg) 0 0 var(--radius-lg);
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    animation: drawerSlideIn 300ms cubic-bezier(0.0, 0.0, 0.2, 1) forwards;
+    box-shadow: -8px 0 40px rgba(0,0,0,.3);
   }
 
+  @keyframes drawerSlideIn {
+    from { transform: translateX(100%); }
+    to   { transform: translateX(0); }
+  }
+
+  /* Top-edge gradient highlight */
   .drawer-content::before {
     content: '';
     position: absolute;
@@ -136,6 +155,15 @@
     pointer-events: none;
   }
 
+  /* Left-edge cyan glow */
+  .drawer-content::after {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0; width: 80px; z-index: 1;
+    pointer-events: none;
+    background: linear-gradient(90deg, rgba(103,232,249,.03), transparent);
+  }
+
   @media (max-width: 767px) {
     .drawer-content {
       width: 100%;
@@ -143,7 +171,16 @@
       border-top: 1px solid var(--glass-border);
       top: auto;
       height: 80vh;
-      border-radius: var(--radius-md) var(--radius-md) 0 0;
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+      animation: drawerSlideUp 300ms cubic-bezier(0.0, 0.0, 0.2, 1) forwards;
+      box-shadow: 0 -8px 40px rgba(0,0,0,.3);
+    }
+    .drawer-content::after {
+      display: none;
+    }
+    @keyframes drawerSlideUp {
+      from { transform: translateY(100%); }
+      to   { transform: translateY(0); }
     }
   }
 
@@ -152,27 +189,38 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-md);
-    border-bottom: 1px solid var(--glass-border);
+    padding: var(--spacing-xl) var(--spacing-xl) var(--spacing-lg);
     flex-shrink: 0;
+    position: relative;
+  }
+
+  .drawer-header::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 10%; right: 10%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--glass-highlight), transparent);
   }
 
   .drawer-title {
     font-family: var(--sans);
     font-size: 18px;
     font-weight: 600;
-    color: var(--t1);
+    background: linear-gradient(135deg, var(--accent-cyan), var(--accent-pink));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
 
   .close-btn {
-    width: 32px;
-    height: 32px;
+    width: 28px;
+    height: 28px;
     display: flex;
     align-items: center;
     justify-content: center;
     border: 1px solid var(--glass-border);
-    border-radius: var(--btn-radius);
-    background: var(--topbar-bg);
+    border-radius: 50%;
+    background: var(--glass-bg);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     color: var(--t3);
@@ -183,15 +231,16 @@
   .close-btn:hover {
     color: var(--t1);
     background: var(--glass-highlight);
-    border-color: var(--glass-highlight);
-    transform: translateY(-1px);
-    box-shadow: 0 2px 12px rgba(0,0,0,.2);
+    border-color: rgba(103,232,249,.2);
+    box-shadow: 0 0 12px rgba(103,232,249,.2);
   }
 
   /* ── Body ────────────────────────────────────────────────────────────────── */
   .drawer-body {
     flex: 1;
     overflow-y: auto;
-    padding: var(--spacing-lg);
+    padding: var(--spacing-xl);
+    position: relative;
+    z-index: 2;
   }
 </style>

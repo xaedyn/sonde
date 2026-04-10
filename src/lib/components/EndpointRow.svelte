@@ -77,6 +77,7 @@
   style:--t3={tokens.color.text.t3}
   style:--accent-cyan={tokens.color.accent.cyan}
   style:--accent-pink={tokens.color.accent.pink}
+  style:--btn-radius="{tokens.radius.btn}px"
   style:--radius-sm="{tokens.radius.sm}px"
   style:--spacing-xs="{tokens.spacing.xs}px"
   style:--spacing-sm="{tokens.spacing.sm}px"
@@ -145,9 +146,27 @@
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
-    padding: var(--spacing-sm) var(--spacing-md);
-    border-bottom: 1px solid var(--glass-border);
+    padding: var(--spacing-md);
     min-height: 44px; /* WCAG touch target */
+    position: relative;
+  }
+
+  /* Gradient separator between rows */
+  .endpoint-row + :global(.endpoint-row),
+  :global(li + li) .endpoint-row {
+    /* handled by li separator below */
+  }
+
+  :global(.endpoint-list > li + li) {
+    position: relative;
+  }
+
+  :global(.endpoint-list > li + li)::before {
+    content: '';
+    display: block;
+    height: 1px;
+    margin: 0 12%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.07), transparent);
   }
 
   /* ── Color dot ───────────────────────────────────────────────────────────── */
@@ -157,7 +176,8 @@
     height: 10px;
     border-radius: 50%;
     background: var(--dot-color);
-    transition: background var(--timing-btn) ease;
+    box-shadow: 0 0 8px color-mix(in srgb, var(--dot-color) 40%, transparent);
+    transition: background var(--timing-btn) ease, box-shadow var(--timing-btn) ease;
   }
 
   .dot.pulse {
@@ -173,19 +193,21 @@
   .url-input {
     flex: 1;
     min-width: 0;
-    background: transparent;
+    background: rgba(0,0,0,.2);
     border: 1px solid var(--glass-border);
-    border-radius: var(--radius-sm);
+    border-radius: var(--btn-radius);
     color: var(--t1);
     font-size: 13px;
     font-family: var(--mono);
     padding: var(--spacing-xs) var(--spacing-sm);
     outline: none;
-    transition: border-color var(--timing-btn) ease;
+    box-shadow: inset 0 1px 4px rgba(0,0,0,.3);
+    transition: border-color var(--timing-btn) ease, box-shadow var(--timing-btn) ease;
   }
 
   .url-input:focus {
     border-color: var(--accent-cyan);
+    box-shadow: inset 0 1px 4px rgba(0,0,0,.3), 0 0 12px rgba(103,232,249,.15);
   }
 
   .url-input[readonly] {
@@ -225,7 +247,7 @@
     height: 18px;
     border-radius: 9px;
     background: var(--glass-border);
-    transition: background var(--timing-btn) ease;
+    transition: background var(--timing-btn) ease, box-shadow var(--timing-btn) ease;
     position: relative;
   }
 
@@ -243,6 +265,7 @@
 
   .toggle-input:checked + .toggle-track {
     background: var(--accent-cyan);
+    box-shadow: 0 0 10px rgba(103,232,249,.25);
   }
 
   .toggle-input:checked + .toggle-track::after {
@@ -268,18 +291,20 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border: none;
-    border-radius: var(--radius-sm);
+    border: 1px solid transparent;
+    border-radius: 50%;
     background: transparent;
     color: var(--t3);
     font-size: 12px;
     cursor: pointer;
-    transition: background var(--timing-btn) ease, color var(--timing-btn) ease;
+    transition: all var(--timing-btn) ease;
   }
 
   .remove-btn:hover:not(:disabled) {
     background: var(--glass-bg);
+    border-color: rgba(249,168,212,.15);
     color: var(--accent-pink);
+    box-shadow: 0 0 8px rgba(249,168,212,.1);
   }
 
   .remove-btn:disabled {
