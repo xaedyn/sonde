@@ -30,24 +30,60 @@ describe('Lane', () => {
     expect(getByText(/P50 Median Latency/i)).toBeTruthy();
   });
 
-  it('renders live latency label when isRunning and lastLatency are set', () => {
+  it('renders latency label when lastLatency is set', () => {
     const { getByText } = render(Lane, {
-      props: { ...props, isRunning: true, lastLatency: 42.7 },
+      props: { ...props, lastLatency: 42.7 },
     });
     expect(getByText('43ms')).toBeTruthy();
   });
 
-  it('does not render live latency label when isRunning is false', () => {
-    const { queryByText } = render(Lane, {
-      props: { ...props, isRunning: false, lastLatency: 42.7 },
-    });
-    expect(queryByText('43ms')).toBeNull();
-  });
-
-  it('does not render live latency label when lastLatency is null', () => {
+  it('does not render latency label when lastLatency is null', () => {
     const { container } = render(Lane, {
-      props: { ...props, isRunning: true, lastLatency: null },
+      props: { ...props, lastLatency: null },
     });
     expect(container.querySelector('.now-label')).toBeNull();
+  });
+
+  // ── Compact mode (AC1, AC2) ──────────────────────────────────────────────────
+
+  it('renders .lane-panel visible when compact is false (AC1)', () => {
+    const { container } = render(Lane, { props });
+    const panel = container.querySelector('.lane-panel');
+    expect(panel).not.toBeNull();
+    expect(panel?.classList.contains('sr-only')).toBe(false);
+  });
+
+  it('hides .lane-panel via sr-only when compact is true (AC2)', () => {
+    const { container } = render(Lane, { props: { ...props, compact: true } });
+    const panel = container.querySelector('.lane-panel');
+    expect(panel).not.toBeNull(); // still in DOM for screen readers
+    expect(panel?.classList.contains('sr-only')).toBe(true);
+  });
+
+  it('renders .lane-compact-header when compact is true (AC2)', () => {
+    const { container } = render(Lane, { props: { ...props, compact: true } });
+    expect(container.querySelector('.lane-compact-header')).not.toBeNull();
+  });
+
+  it('does not render .lane-compact-header when compact is false (AC1)', () => {
+    const { container } = render(Lane, { props });
+    expect(container.querySelector('.lane-compact-header')).toBeNull();
+  });
+
+  it('compact header contains the URL text (AC2)', () => {
+    const { container } = render(Lane, { props: { ...props, compact: true } });
+    const header = container.querySelector('.lane-compact-header');
+    expect(header?.textContent).toContain('www.google.com');
+  });
+
+  it('compact header shows P50 hero value (AC2)', () => {
+    const { getAllByText } = render(Lane, { props: { ...props, compact: true } });
+    const matches = getAllByText(/38/);
+    expect(matches.length).toBeGreaterThan(0);
+  });
+
+  it('lane has compact class applied when compact=true', () => {
+    const { container } = render(Lane, { props: { ...props, compact: true } });
+    expect(container.querySelector('.lane.compact')).not.toBeNull();
   });
 });
