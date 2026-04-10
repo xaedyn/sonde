@@ -70,18 +70,27 @@
   }
 
   function applyTimeout(e: Event): void {
-    const val = parseInt((e.target as HTMLInputElement).value, 10);
-    if (!isNaN(val)) settingsStore.update(s => ({ ...s, timeout: val }));
+    const raw = parseInt((e.target as HTMLInputElement).value, 10);
+    if (isNaN(raw)) return;
+    const val = Math.max(200, Math.min(15000, raw));
+    timeout = val;
+    settingsStore.update(s => ({ ...s, timeout: val }));
   }
 
   function applyDelay(e: Event): void {
-    const val = parseInt((e.target as HTMLInputElement).value, 10);
-    if (!isNaN(val)) settingsStore.update(s => ({ ...s, delay: val }));
+    const raw = parseInt((e.target as HTMLInputElement).value, 10);
+    if (isNaN(raw)) return;
+    const val = Math.max(0, Math.min(60000, raw));
+    delay = val;
+    settingsStore.update(s => ({ ...s, delay: val }));
   }
 
   function applyCap(e: Event): void {
-    const val = parseInt((e.target as HTMLInputElement).value, 10);
-    if (!isNaN(val)) settingsStore.update(s => ({ ...s, cap: val }));
+    const raw = parseInt((e.target as HTMLInputElement).value, 10);
+    if (isNaN(raw)) return;
+    const val = Math.max(0, Math.min(10000, raw));
+    cap = val;
+    settingsStore.update(s => ({ ...s, cap: val }));
   }
 
   function applyCorsMode(mode: 'no-cors' | 'cors'): void {
@@ -165,17 +174,17 @@
       <div class="field">
         <label class="field-label" for="setting-timeout">
           Timeout
-          <span class="field-hint">ms</span>
+          <span class="field-hint">ms, 200–15000</span>
         </label>
-        <input id="setting-timeout" type="number" class="field-input" min="1000" max="30000" step="500" bind:value={timeout} onchange={applyTimeout} />
+        <input id="setting-timeout" type="number" class="field-input" min="200" max="15000" step="100" bind:value={timeout} onchange={applyTimeout} />
       </div>
 
       <div class="field">
         <label class="field-label" for="setting-delay">
           Interval
-          <span class="field-hint">ms between rounds</span>
+          <span class="field-hint">ms, 0–60000</span>
         </label>
-        <input id="setting-delay" type="number" class="field-input" min="0" max="10000" step="100" bind:value={delay} onchange={applyDelay} />
+        <input id="setting-delay" type="number" class="field-input" min="0" max="60000" step="100" bind:value={delay} onchange={applyDelay} />
       </div>
 
       <div class="field">
