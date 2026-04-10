@@ -105,8 +105,8 @@ describe('adaptive lanes tokens', () => {
     expect(tokens.lane.minHeight).toBe(120);
   });
 
-  it('exposes tokens.lane.compactHeaderHeight as 32', () => {
-    expect(tokens.lane.compactHeaderHeight).toBe(32);
+  it('exposes tokens.lane.compactHeaderHeight as 28', () => {
+    expect(tokens.lane.compactHeaderHeight).toBe(28);
   });
 
   it('exposes tokens.lane.compactThreshold as 4 (AC2: compact triggers at 4 endpoints)', () => {

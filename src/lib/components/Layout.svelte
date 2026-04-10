@@ -36,7 +36,7 @@
   const visibleStart = $derived(Math.max(1, currentRound - visibleSpan + 1));
   const visibleEnd = $derived(Math.max(visibleSpan, currentRound));
 
-  // Earliest timestamp per round (index i = round i+1) across all endpoints
+  // Earliest timestamp per round across all endpoints (index i = round i)
   const sampleTimestamps = $derived.by((): readonly number[] => {
     const endpoints = Object.values($measurementStore.endpoints);
     const byRound = new Map<number, number>();
@@ -50,7 +50,7 @@
     }
     const maxRound = currentRound;
     const result: number[] = [];
-    for (let r = 1; r <= maxRound; r++) {
+    for (let r = 0; r <= maxRound; r++) {
       result.push(byRound.get(r) ?? 0);
     }
     return result;

@@ -198,7 +198,7 @@
   /* Compact overlay header */
   .lane-compact-header {
     position: absolute; top: 0; left: 0; right: 0; z-index: 3;
-    height: 28px;
+    height: var(--compact-header-height);
     display: flex; align-items: center; gap: 10px; padding: 0 10px;
     background: rgba(12, 10, 20, 0.7);
     backdrop-filter: blur(12px) saturate(1.2);
