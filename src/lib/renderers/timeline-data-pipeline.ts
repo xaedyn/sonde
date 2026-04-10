@@ -335,6 +335,27 @@ function computeRibbonsPerLane(
   return result;
 }
 
+// ── Elapsed time formatting ────────────────────────────────────────────────
+
+export function formatElapsed(ms: number): string {
+  if (ms <= 0) return '0:00';
+  const totalSec = Math.floor((ms / 1000) * 10) / 10;
+  if (totalSec < 10) {
+    return `${totalSec.toFixed(1)}s`;
+  }
+  const totalSecInt = Math.floor(totalSec);
+  const hours = Math.floor(totalSecInt / 3600);
+  const minutes = Math.floor((totalSecInt % 3600) / 60);
+  const seconds = totalSecInt % 60;
+  if (hours > 0) {
+    const mm = String(minutes).padStart(2, '0');
+    const ss = String(seconds).padStart(2, '0');
+    return `${hours}:${mm}:${ss}`;
+  }
+  const ss = String(seconds).padStart(2, '0');
+  return `${minutes}:${ss}`;
+}
+
 // ── Main entry point ───────────────────────────────────────────────────────
 
 export function prepareFrame(
