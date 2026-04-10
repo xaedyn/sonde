@@ -32,6 +32,8 @@ const primitive = {
   pink20:     'rgba(249,168,212,.2)',
   pink12:     'rgba(249,168,212,.12)',
   pink06:     'rgba(249,168,212,.06)',
+  pink70:     'rgba(249,168,212,.7)',
+  amber:      '#fbbf24',
 
   green:     '#86efac',
   greenGlow: 'rgba(134,239,172,.5)',
@@ -153,6 +155,13 @@ export const tokens = {
       nowDotCyan:      primitive.nowDotCyan,
       nowDotPink:      primitive.nowDotPink,
       thresholdStroke: primitive.thresholdStroke,
+    },
+
+    heatmap: {
+      fast:     primitive.greenGlow,
+      elevated: primitive.amber,
+      slow:     primitive.pink70,
+      timeout:  primitive.pinkBright,
     },
 
     orb: {

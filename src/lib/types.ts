@@ -188,6 +188,16 @@ export interface LaneHoverState {
   readonly x: number;  // clientX position of hover line
 }
 
+// ── Heatmap strip ──────────────────────────────────────────────────────────
+export interface HeatmapCellData {
+  readonly startRound: number;
+  readonly endRound: number;
+  readonly worstLatency: number;
+  readonly worstStatus: SampleStatus;
+  readonly startElapsed: number;
+  readonly endElapsed: number;
+}
+
 // ── Share payload ──────────────────────────────────────────────────────────
 export interface SharePayload {
   readonly v: 1;

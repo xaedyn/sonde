@@ -86,6 +86,20 @@ describe('Glass token additions', () => {
   });
 });
 
+describe('heatmap tokens', () => {
+  it('exports color.heatmap group with all 4 keys (AC10)', () => {
+    expect(tokens.color.heatmap).toBeDefined();
+    expect(tokens.color.heatmap.fast).toBeDefined();
+    expect(tokens.color.heatmap.elevated).toBeDefined();
+    expect(tokens.color.heatmap.slow).toBeDefined();
+    expect(tokens.color.heatmap.timeout).toBeDefined();
+  });
+  it('heatmap.elevated is not a raw hex — comes from primitive (AC10)', () => {
+    expect(typeof tokens.color.heatmap.elevated).toBe('string');
+    expect(tokens.color.heatmap.elevated.length).toBeGreaterThan(0);
+  });
+});
+
 describe('new pipeline tokens', () => {
   it('exposes canvas.ribbon tokens', () => {
     expect(tokens.canvas.ribbon.fillOpacity).toBe(0.15);

@@ -15,7 +15,7 @@ import type {
   TestLifecycleState,
 } from '../../src/lib/types';
 import { DEFAULT_SETTINGS, DEFAULT_ENDPOINTS } from '../../src/lib/types';
-import type { FrameData, RibbonData, XTick, YRange, Gridline } from '../../src/lib/types';
+import type { FrameData, RibbonData, XTick, YRange, Gridline, HeatmapCellData } from '../../src/lib/types';
 
 describe('types', () => {
   it('TestLifecycleState is a valid discriminated union', () => {
@@ -121,6 +121,17 @@ describe('types', () => {
       sharedResultsTimestamp: null,
     };
     expect(state.isSharedView).toBe(false);
+  });
+});
+
+describe('HeatmapCellData type', () => {
+  it('HeatmapCellData interface has all required fields', () => {
+    const cell: HeatmapCellData = {
+      startRound: 1, endRound: 5, worstLatency: 142, worstStatus: 'ok',
+      startElapsed: 1000, endElapsed: 5000,
+    };
+    expect(cell.startRound).toBe(1);
+    expect(cell.endRound).toBe(5);
   });
 });
 
