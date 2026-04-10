@@ -284,6 +284,10 @@ export const tokens = {
     topbarHeight:   54,
     xAxisHeight:    30,
     footerHeight:   38,
+    minHeight:           120,   // px — minimum lane height before 2-col triggers (AC3)
+    compactHeaderHeight:  32,   // px — height of compact overlay header
+    compactThreshold:      4,   // endpoint count that triggers compact mode (AC2)
+    maxEndpoints:         10,   // hard cap on endpoint count (AC4)
   },
 
   // Kept for timeline-data-pipeline.ts (still used by LaneSvgChart)

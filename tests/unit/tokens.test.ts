@@ -100,6 +100,24 @@ describe('heatmap tokens', () => {
   });
 });
 
+describe('adaptive lanes tokens', () => {
+  it('exposes tokens.lane.minHeight as 120 (AC3: minimum readable lane height)', () => {
+    expect(tokens.lane.minHeight).toBe(120);
+  });
+
+  it('exposes tokens.lane.compactHeaderHeight as 32', () => {
+    expect(tokens.lane.compactHeaderHeight).toBe(32);
+  });
+
+  it('exposes tokens.lane.compactThreshold as 4 (AC2: compact triggers at 4 endpoints)', () => {
+    expect(tokens.lane.compactThreshold).toBe(4);
+  });
+
+  it('exposes tokens.lane.maxEndpoints as 10 (AC4: hard cap)', () => {
+    expect(tokens.lane.maxEndpoints).toBe(10);
+  });
+});
+
 describe('new pipeline tokens', () => {
   it('exposes canvas.ribbon tokens', () => {
     expect(tokens.canvas.ribbon.fillOpacity).toBe(0.15);
