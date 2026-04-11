@@ -16,6 +16,7 @@
     compact = false,
     showGrip = true,
     dragging = false,
+    settling = false,
     translateY = 0,
     onGripPointerDown = undefined,
     children,
@@ -33,6 +34,7 @@
     compact?: boolean;
     showGrip?: boolean;
     dragging?: boolean;
+    settling?: boolean;
     translateY?: number;
     onGripPointerDown?: (e: PointerEvent) => void;
     children?: import('svelte').Snippet;
@@ -58,6 +60,7 @@
   class="lane"
   class:compact={compact}
   class:is-dragging={dragging}
+  class:is-settling={settling}
   aria-label="Endpoint {url}"
   data-dragging={dragging ? 'true' : undefined}
   style:--drag-translate="{translateY}px"
@@ -161,17 +164,35 @@
     transform: translateY(var(--drag-translate, 0px));
     transition: border-color var(--timing-hover) ease, box-shadow var(--timing-hover) ease;
   }
-  .lane:not(.is-dragging) {
+  /* Neighbors shift with spring easing */
+  .lane:not(.is-dragging):not(.is-settling) {
     transition:
-      transform 200ms cubic-bezier(0.4, 0.0, 0.2, 1),
+      transform 250ms cubic-bezier(0.34, 1.56, 0.64, 1),
       border-color var(--timing-hover) ease,
       box-shadow var(--timing-hover) ease;
+  }
+
+  /* Pickup: pop-lift keyframe — overshoot scale then settle */
+  @keyframes drag-lift {
+    0%   { transform: translateY(var(--drag-translate, 0px)) scale(1); opacity: 1; }
+    40%  { transform: translateY(var(--drag-translate, 0px)) scale(1.03); opacity: 0.92; }
+    100% { transform: translateY(var(--drag-translate, 0px)) scale(1.01); opacity: 0.92; }
   }
   .lane.is-dragging {
     opacity: 0.92;
     transform: translateY(var(--drag-translate, 0px)) scale(1.01);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
     z-index: 10;
+    animation: drag-lift 180ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+
+  /* Drop settle: spring back to resting state */
+  .lane.is-settling {
+    z-index: 10;
+    transition:
+      transform 280ms cubic-bezier(0.34, 1.56, 0.64, 1),
+      opacity 280ms ease-out,
+      box-shadow 280ms ease-out;
   }
   .lane:hover {
     border-color: var(--glass-highlight);

@@ -119,6 +119,7 @@
 
   let dragState = $state<DragState | null>(null);
   let dragOffsets = $state<Record<number, number>>({});
+  let settlingIndex = $state<number | null>(null);
 
   function indexOfEndpoint(id: string): number {
     return endpoints.findIndex(ep => ep.id === id);
@@ -217,17 +218,18 @@
       }
     }
 
-    // Remove is-dragging so the card gets the neighbor transition
+    // Switch from is-dragging to is-settling — spring transition to target
     dragState = null;
+    settlingIndex = fromIndex;
     dragOffsets = finalOffsets;
 
-    // Wait for the CSS transition to finish, then commit the reorder
-    // and clear transforms in the same frame
+    // Wait for the spring transition to finish, then commit the reorder
     requestAnimationFrame(() => {
       setTimeout(() => {
+        settlingIndex = null;
         dragOffsets = {};
         endpointStore.reorderEndpoint(fromIndex, toIndex);
-      }, 200); // matches the 200ms CSS transition duration
+      }, 280); // matches the 280ms settling transition duration
     });
   }
 
@@ -299,6 +301,7 @@
       {@const laneProps = getLaneProps(ep.id)}
       {@const lastLatency = $measurementStore.endpoints[ep.id]?.lastLatency ?? null}
       {@const isDragging = dragState?.fromIndex === i}
+      {@const isSettling = settlingIndex === i}
       {@const offset = dragOffsets[i] ?? 0}
       <Lane
         endpointId={ep.id}
@@ -314,6 +317,7 @@
         compact={isCompact}
         showGrip={endpoints.length > 1}
         dragging={isDragging}
+        settling={isSettling}
         translateY={offset}
         onGripPointerDown={handleGripPointerDown}
       >
