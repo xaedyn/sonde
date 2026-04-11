@@ -81,11 +81,13 @@ export function classifyLatencyTier(
 if (typeof (globalThis as any).WorkerGlobalScope !== 'undefined' && self instanceof (globalThis as any).WorkerGlobalScope) {
   let abortController: AbortController | null = null;
   let measuring = false;
+  let stopRequested = false;
 
   self.addEventListener('message', async (event: MessageEvent<MainToWorkerMessage>) => {
     const msg = event.data;
 
     if (msg.type === 'stop') {
+      stopRequested = true;
       abortController?.abort();
       abortController = null;
       measuring = false;
@@ -108,6 +110,7 @@ if (typeof (globalThis as any).WorkerGlobalScope !== 'undefined' && self instanc
       }
 
       measuring = true;
+      stopRequested = false;
       abortController = new AbortController();
       const signal = abortController.signal;
 
@@ -167,7 +170,10 @@ if (typeof (globalThis as any).WorkerGlobalScope !== 'undefined' && self instanc
         clearTimeout(timeoutId);
         measuring = false;
 
-        if (signal.aborted) {
+        if (stopRequested) {
+          // Intentional stop — don't record a false timeout.
+          return;
+        } else if (signal.aborted) {
           const timeoutReply: WorkerToMainMessage = {
             type: 'timeout',
             endpointId: url,
