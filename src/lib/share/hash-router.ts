@@ -81,6 +81,8 @@ export function applySharePayload(payload: SharePayload): string[] {
       startedAt: null,
       stoppedAt: null,
       freezeEvents: [],
+      errorCount: 0,
+      timeoutCount: 0,
     };
 
     measurementStore.loadSnapshot(snapshot);
