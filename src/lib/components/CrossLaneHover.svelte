@@ -90,6 +90,20 @@
     const preferred = hoverY - estH / 2; // center on cursor
     return Math.max(TOOLTIP_MARGIN, Math.min(preferred, viewH - estH - TOOLTIP_MARGIN));
   });
+
+  // ── Heatmap tooltip positioning ─────────────────────────────────────────
+  let heatmapTipEl: HTMLDivElement | undefined = $state(undefined);
+
+  const heatmapTipLeft: number = $derived.by(() => {
+    const ht = $uiStore.heatmapTooltip;
+    if (!ht) return 0;
+    const tipW = heatmapTipEl?.offsetWidth ?? 200;
+    const viewW = typeof window !== 'undefined' ? window.innerWidth : 1920;
+    const margin = 8;
+    // Try to center on cursor, clamp to viewport
+    const centered = ht.x - tipW / 2;
+    return Math.max(margin, Math.min(centered, viewW - tipW - margin));
+  });
 </script>
 
 <div
@@ -136,14 +150,11 @@
 {/if}
 
 {#if $uiStore.heatmapTooltip}
-  {@const hx = $uiStore.heatmapTooltip.x}
-  {@const hy = $uiStore.heatmapTooltip.y}
-  {@const hTipW = 280}
-  {@const clampedLeft = Math.max(hTipW / 2 + 8, Math.min(hx, (typeof window !== 'undefined' ? window.innerWidth : 1920) - hTipW / 2 - 8))}
   <div
     class="heatmap-tip"
-    style:left="{clampedLeft}px"
-    style:top="{hy}px"
+    bind:this={heatmapTipEl}
+    style:left="{heatmapTipLeft}px"
+    style:top="{$uiStore.heatmapTooltip.y}px"
     style:--tooltip-bg={tokens.color.tooltip.bg}
     style:--glass-border={tokens.color.glass.border}
     style:--mono={tokens.typography.mono.fontFamily}
@@ -189,7 +200,7 @@
   }
   .heatmap-tip {
     position: fixed; z-index: 20; pointer-events: none;
-    transform: translate(-50%, 0) translateY(8px);
+    transform: translateY(8px);
     background: var(--tooltip-bg);
     border: 1px solid var(--glass-border);
     border-radius: 6px; padding: 5px 10px;
