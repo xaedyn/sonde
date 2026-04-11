@@ -51,7 +51,7 @@ function validateSharePayload(data: unknown): SharePayload | null {
     if (ep === null || typeof ep !== 'object') return null;
     const e = ep as Record<string, unknown>;
     if (!isHttpUrl(e['url'])) return null;
-    if ('enabled' in e && typeof e['enabled'] !== 'boolean') return null;
+    if (typeof e['enabled'] !== 'boolean') return null;
   }
 
   const settings = obj['settings'];

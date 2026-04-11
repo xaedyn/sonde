@@ -20,6 +20,7 @@
     noTransition = false,
     translateY = 0,
     onGripPointerDown = undefined,
+    onGripKeyDown = undefined,
     children,
   }: {
     endpointId: string;
@@ -39,6 +40,7 @@
     noTransition?: boolean;
     translateY?: number;
     onGripPointerDown?: (e: PointerEvent) => void;
+    onGripKeyDown?: (e: KeyboardEvent) => void;
     children?: import('svelte').Snippet;
   } = $props();
 
@@ -90,6 +92,7 @@
         data-endpoint-id={endpointId}
         type="button"
         onpointerdown={onGripPointerDown}
+        onkeydown={onGripKeyDown}
       >
         <svg width="10" height="14" viewBox="0 0 10 14" aria-hidden="true">
           {#each GRIP_DOTS as [cx, cy], i (i)}
@@ -124,6 +127,7 @@
           data-endpoint-id={endpointId}
           type="button"
           onpointerdown={onGripPointerDown}
+          onkeydown={onGripKeyDown}
         >
           <svg width="10" height="14" viewBox="0 0 10 14" aria-hidden="true">
             {#each GRIP_DOTS as [cx, cy], i (i)}

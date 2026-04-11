@@ -275,6 +275,15 @@ describe('share-manager', () => {
       expect(decodeSharePayload(encoded)).toBeNull();
     });
 
+    it('rejects endpoint with missing enabled field', async () => {
+      const encoded = await manualEncode({
+        v: 1, mode: 'config',
+        endpoints: [{ url: 'https://example.com' }],
+        settings: validSettings,
+      });
+      expect(decodeSharePayload(encoded)).toBeNull();
+    });
+
     it('accepts valid sample with timeout status', async () => {
       const encoded = await manualEncode({
         v: 1, mode: 'results',

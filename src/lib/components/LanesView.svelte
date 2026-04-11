@@ -127,6 +127,30 @@
     return endpoints.findIndex(ep => ep.id === id);
   }
 
+  function handleGripKeyDown(e: KeyboardEvent): void {
+    if (reorderPending) return;
+    if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+    e.preventDefault();
+
+    const grip = e.currentTarget as HTMLElement;
+    const endpointId = grip.dataset['endpointId'];
+    if (!endpointId) return;
+
+    const fromIndex = indexOfEndpoint(endpointId);
+    if (fromIndex === -1) return;
+
+    const toIndex = e.key === 'ArrowUp' ? fromIndex - 1 : fromIndex + 1;
+    if (toIndex < 0 || toIndex >= endpoints.length) return;
+
+    endpointStore.reorderEndpoint(endpoints[fromIndex].id, endpoints[toIndex].id);
+
+    // Re-focus the grip after DOM reorder
+    requestAnimationFrame(() => {
+      const newGrip = lanesEl.querySelector(`[data-endpoint-id="${endpointId}"]`) as HTMLElement | null;
+      newGrip?.focus();
+    });
+  }
+
   function handleGripPointerDown(e: PointerEvent): void {
     if (reorderPending) return;
     if (e.button !== 0 && e.pointerType === 'mouse') return;
@@ -221,6 +245,10 @@
       }
     }
 
+    // Capture IDs now — the reactive `endpoints` array may change during the delay
+    const fromId = endpoints[fromIndex].id;
+    const toId = endpoints[toIndex].id;
+
     // Switch from is-dragging to is-settling — spring transition to target
     dragState = null;
     settlingIndex = fromIndex;
@@ -234,7 +262,7 @@
         suppressTransition = true;
         settlingIndex = null;
         dragOffsets = {};
-        endpointStore.reorderEndpoint(endpoints[fromIndex].id, endpoints[toIndex].id);
+        endpointStore.reorderEndpoint(fromId, toId);
         // Re-enable transitions after the DOM settles
         requestAnimationFrame(() => {
           suppressTransition = false;
@@ -242,6 +270,13 @@
         });
       }, 280); // matches the 280ms settling transition duration
     });
+  }
+
+  function handleGripPointerCancel(e: PointerEvent): void {
+    if (!dragState || e.pointerId !== dragState.pointerId) return;
+    dragState = null;
+    dragOffsets = {};
+    settlingIndex = null;
   }
 
   function handleMouseMove(e: MouseEvent): void {
@@ -299,6 +334,7 @@
   onmouseleave={handleMouseLeave}
   onpointermove={handleGripPointerMove}
   onpointerup={handleGripPointerUp}
+  onpointercancel={handleGripPointerCancel}
   style:--lanes-gap="{tokens.lane.gapPx}px"
   style:--lanes-pad-x="{tokens.lane.paddingX}px"
   style:--lanes-pad-y="{tokens.lane.paddingY}px"
@@ -332,6 +368,7 @@
         noTransition={suppressTransition}
         translateY={offset}
         onGripPointerDown={handleGripPointerDown}
+        onGripKeyDown={handleGripKeyDown}
       >
           {@const allPoints = frameData.pointsByEndpoint.get(ep.id) ?? []}
           {@const windowedPoints = allPoints.filter(p => p.round >= visibleStart && p.round <= visibleEnd)}
