@@ -106,6 +106,8 @@ export interface MeasurementState {
   startedAt: number | null;
   stoppedAt: number | null;
   freezeEvents: FreezeEvent[];
+  errorCount: number;
+  timeoutCount: number;
 }
 
 // ── Statistics store ───────────────────────────────────────────────────────
