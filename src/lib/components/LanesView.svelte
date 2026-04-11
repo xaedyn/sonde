@@ -128,7 +128,7 @@
       uiStore.clearLaneHover();
       return;
     }
-    uiStore.setLaneHover(clamped, e.clientX);
+    uiStore.setLaneHover(clamped, e.clientX, e.clientY);
   }
 
   function handleMouseLeave(): void {

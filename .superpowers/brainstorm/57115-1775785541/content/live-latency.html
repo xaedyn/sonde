@@ -1,0 +1,117 @@
+<h2>Where does the live latency value go?</h2>
+<p class="subtitle">The instantaneous "right now" measurement — not the P50 median, but the actual last response time.</p>
+
+<div class="options">
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Label on the now-dot (in the chart)</h3>
+      <p>The glowing now-dot already draws your eye. Add a small floating label next to it. The left panel stays unchanged — clean aggregates only.</p>
+      <div style="margin-top:16px; background:#0c0a14; border-radius:18px; overflow:hidden; border:1px solid rgba(255,255,255,.07);">
+        <div style="display:flex;">
+          <!-- Left panel -->
+          <div style="width:140px; padding:16px 20px; border-right:1px solid rgba(255,255,255,.05); flex-shrink:0;">
+            <div style="font-family:monospace; font-size:9px; color:rgba(255,255,255,.4);">www.google.com</div>
+            <div style="font-size:32px; font-weight:200; color:#67e8f9; line-height:1; margin-top:4px;">26<span style="font-size:11px; color:rgba(255,255,255,.3);">ms</span></div>
+            <div style="font-family:monospace; font-size:7px; color:rgba(255,255,255,.25); text-transform:uppercase; letter-spacing:0.08em; margin-top:4px;">P50 Median Latency</div>
+            <div style="display:flex; gap:8px; margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,.04);">
+              <div><div style="font-family:monospace;font-size:6px;color:rgba(255,255,255,.25);text-transform:uppercase;">P95</div><div style="font-family:monospace;font-size:11px;color:rgba(255,255,255,.5);">42ms</div></div>
+              <div><div style="font-family:monospace;font-size:6px;color:rgba(255,255,255,.25);text-transform:uppercase;">P99</div><div style="font-family:monospace;font-size:11px;color:rgba(255,255,255,.5);">89ms</div></div>
+              <div><div style="font-family:monospace;font-size:6px;color:rgba(255,255,255,.25);text-transform:uppercase;">Jitter</div><div style="font-family:monospace;font-size:11px;color:rgba(255,255,255,.5);">6ms</div></div>
+            </div>
+          </div>
+          <!-- Chart area -->
+          <div style="flex:1; padding:8px 12px; position:relative; min-height:120px;">
+            <svg viewBox="0 0 400 100" style="width:100%; height:100px;" preserveAspectRatio="none">
+              <line x1="0" y1="25" x2="400" y2="25" stroke="rgba(255,255,255,.03)" stroke-width="0.5"/>
+              <line x1="0" y1="50" x2="400" y2="50" stroke="rgba(255,255,255,.03)" stroke-width="0.5"/>
+              <line x1="0" y1="75" x2="400" y2="75" stroke="rgba(255,255,255,.03)" stroke-width="0.5"/>
+              <polyline points="0,55 30,52 60,58 90,50 120,53 150,48 180,55 210,30 240,52 270,54 300,50 330,53 360,54" fill="none" stroke="#67e8f9" stroke-width="1" opacity="0.35"/>
+              <circle cx="0" cy="55" r="2" fill="#67e8f9" opacity="0.85"/>
+              <circle cx="30" cy="52" r="2" fill="#67e8f9" opacity="0.85"/>
+              <circle cx="60" cy="58" r="2" fill="#67e8f9" opacity="0.85"/>
+              <circle cx="90" cy="50" r="2" fill="#67e8f9" opacity="0.85"/>
+              <circle cx="120" cy="53" r="2" fill="#67e8f9" opacity="0.85"/>
+              <circle cx="150" cy="48" r="2" fill="#67e8f9" opacity="0.85"/>
+              <circle cx="180" cy="55" r="2" fill="#67e8f9" opacity="0.85"/>
+              <circle cx="210" cy="30" r="2" fill="#67e8f9" opacity="0.85"/>
+              <circle cx="240" cy="52" r="2" fill="#67e8f9" opacity="0.85"/>
+              <circle cx="270" cy="54" r="2" fill="#67e8f9" opacity="0.85"/>
+              <circle cx="300" cy="50" r="2" fill="#67e8f9" opacity="0.85"/>
+              <circle cx="330" cy="53" r="2" fill="#67e8f9" opacity="0.85"/>
+              <!-- Now dot with glow -->
+              <circle cx="360" cy="54" r="5" fill="#67e8f9" opacity="0.15"/>
+              <circle cx="360" cy="54" r="3.5" fill="#67e8f9" opacity="1"/>
+              <!-- Live label floating above the dot -->
+              <text x="360" y="46" fill="#67e8f9" font-size="7" font-family="'Martian Mono', monospace" text-anchor="middle" font-weight="500">31ms</text>
+            </svg>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:10px; font-size:12px; color:#888;">
+        <strong>The value lives where the action is.</strong> Your eye already goes to the glowing dot — the label is right there. Left panel stays clean: aggregates only. The chart tells the live story.
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Secondary hero in the left panel + now-dot</h3>
+      <p>Keep P50 as the big number. Add a live "NOW" value below the label — smaller, pulsing, updating each tick. The left panel becomes the complete dashboard for that endpoint.</p>
+      <div style="margin-top:16px; background:#0c0a14; border-radius:18px; overflow:hidden; border:1px solid rgba(255,255,255,.07);">
+        <div style="display:flex;">
+          <!-- Left panel -->
+          <div style="width:140px; padding:16px 20px; border-right:1px solid rgba(255,255,255,.05); flex-shrink:0;">
+            <div style="font-family:monospace; font-size:9px; color:rgba(255,255,255,.4);">www.google.com</div>
+            <div style="font-size:32px; font-weight:200; color:#67e8f9; line-height:1; margin-top:4px;">26<span style="font-size:11px; color:rgba(255,255,255,.3);">ms</span></div>
+            <div style="font-family:monospace; font-size:7px; color:rgba(255,255,255,.25); text-transform:uppercase; letter-spacing:0.08em; margin-top:4px;">P50 Median Latency</div>
+            <!-- NEW: Live pulse value -->
+            <div style="margin-top:6px; display:flex; align-items:center; gap:5px;">
+              <div style="width:5px; height:5px; border-radius:50%; background:#67e8f9; box-shadow:0 0 6px rgba(103,232,249,.5);"></div>
+              <span style="font-family:'Martian Mono', monospace; font-size:13px; font-weight:400; color:#67e8f9;">31ms</span>
+              <span style="font-family:monospace; font-size:7px; color:rgba(255,255,255,.2); text-transform:uppercase; letter-spacing:0.06em;">now</span>
+            </div>
+            <div style="display:flex; gap:8px; margin-top:10px; padding-top:10px; border-top:1px solid rgba(255,255,255,.04);">
+              <div><div style="font-family:monospace;font-size:6px;color:rgba(255,255,255,.25);text-transform:uppercase;">P95</div><div style="font-family:monospace;font-size:11px;color:rgba(255,255,255,.5);">42ms</div></div>
+              <div><div style="font-family:monospace;font-size:6px;color:rgba(255,255,255,.25);text-transform:uppercase;">P99</div><div style="font-family:monospace;font-size:11px;color:rgba(255,255,255,.5);">89ms</div></div>
+              <div><div style="font-family:monospace;font-size:6px;color:rgba(255,255,255,.25);text-transform:uppercase;">Jitter</div><div style="font-family:monospace;font-size:11px;color:rgba(255,255,255,.5);">6ms</div></div>
+            </div>
+          </div>
+          <!-- Chart area -->
+          <div style="flex:1; padding:8px 12px; position:relative; min-height:120px;">
+            <svg viewBox="0 0 400 100" style="width:100%; height:100px;" preserveAspectRatio="none">
+              <line x1="0" y1="25" x2="400" y2="25" stroke="rgba(255,255,255,.03)" stroke-width="0.5"/>
+              <line x1="0" y1="50" x2="400" y2="50" stroke="rgba(255,255,255,.03)" stroke-width="0.5"/>
+              <line x1="0" y1="75" x2="400" y2="75" stroke="rgba(255,255,255,.03)" stroke-width="0.5"/>
+              <polyline points="0,55 30,52 60,58 90,50 120,53 150,48 180,55 210,30 240,52 270,54 300,50 330,53 360,54" fill="none" stroke="#67e8f9" stroke-width="1" opacity="0.35"/>
+              <circle cx="0" cy="55" r="2" fill="#67e8f9" opacity="0.85"/>
+              <circle cx="30" cy="52" r="2" fill="#67e8f9" opacity="0.85"/>
+              <circle cx="60" cy="58" r="2" fill="#67e8f9" opacity="0.85"/>
+              <circle cx="90" cy="50" r="2" fill="#67e8f9" opacity="0.85"/>
+              <circle cx="120" cy="53" r="2" fill="#67e8f9" opacity="0.85"/>
+              <circle cx="150" cy="48" r="2" fill="#67e8f9" opacity="0.85"/>
+              <circle cx="180" cy="55" r="2" fill="#67e8f9" opacity="0.85"/>
+              <circle cx="210" cy="30" r="2" fill="#67e8f9" opacity="0.85"/>
+              <circle cx="240" cy="52" r="2" fill="#67e8f9" opacity="0.85"/>
+              <circle cx="270" cy="54" r="2" fill="#67e8f9" opacity="0.85"/>
+              <circle cx="300" cy="50" r="2" fill="#67e8f9" opacity="0.85"/>
+              <circle cx="330" cy="53" r="2" fill="#67e8f9" opacity="0.85"/>
+              <!-- Now dot -->
+              <circle cx="360" cy="54" r="5" fill="#67e8f9" opacity="0.15"/>
+              <circle cx="360" cy="54" r="3.5" fill="#67e8f9" opacity="1"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:10px; font-size:12px; color:#888;">
+        <strong>The left panel tells everything.</strong> P50 trend + live pulse + stats grid. You don't need to look at the chart to know what's happening right now. But it adds vertical content to the panel, and the live value competes visually with the P50 hero.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:24px; padding:16px; background:rgba(103,232,249,.03); border:1px solid rgba(103,232,249,.08); border-radius:8px;">
+  <h3 style="color:#67e8f9; margin-top:0;">My lean: B</h3>
+  <p style="font-size:14px;">B keeps separation of concerns — the left panel is aggregates, the chart is live action. C makes the left panel busier and creates two competing numbers (P50 vs NOW). But C does have the advantage of being readable without looking at the chart at all. Depends on how you use it — do you glance at the panel or watch the chart?</p>
+</div>

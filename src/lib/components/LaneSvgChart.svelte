@@ -1,6 +1,7 @@
 <!-- src/lib/components/LaneSvgChart.svelte -->
 <script lang="ts">
   import { tokens } from '$lib/tokens';
+  import { uiStore } from '$lib/stores/ui';
   import type { ScatterPoint, RibbonData, YRange, XTick, HeatmapCellData } from '$lib/types';
   import { normalizeLatency, formatElapsed } from '$lib/renderers/timeline-data-pipeline';
 
@@ -37,7 +38,7 @@
   const VB_H = 210;
   const PAD_Y_TOP = 6;
   const PAD_Y_BOT = 4;
-  const HEATMAP_H = 8;       // px in viewBox units — slim strip
+  const HEATMAP_H = 14;      // px in viewBox units — visible at compact lane heights
   const HEATMAP_GAP = 2;     // tight gap between scatter area and strip
   const PLOT_H = VB_H - PAD_Y_TOP - PAD_Y_BOT - HEATMAP_H - HEATMAP_GAP; // 190
 
@@ -126,31 +127,43 @@
   });
 
   // ── Heatmap tooltip state ────────────────────────────────────────────────
-  let hoveredCellIdx: number | null = $state(null);
+  let svgEl: SVGSVGElement;
 
-  interface HeatmapTooltip {
-    text: string;
-    x: number;   // SVG viewBox x (0–1000)
-    y: number;   // SVG viewBox y
+  function handleSvgMouseMove(e: MouseEvent) {
+    if (!svgEl || cellRects.length === 0) return;
+    const svgRect = svgEl.getBoundingClientRect();
+    const pctY = (e.clientY - svgRect.top) / svgRect.height;
+    const vbY = pctY * VB_H;
+    if (vbY >= HEATMAP_Y && vbY <= HEATMAP_Y + HEATMAP_H) {
+      const pctX = (e.clientX - svgRect.left) / svgRect.width;
+      const idx = Math.floor(pctX * cellRects.length);
+      if (idx >= 0 && idx < cellRects.length) {
+        const rect = cellRects[idx];
+        if (rect) {
+          const { cell } = rect;
+          const isSingle = cell.startRound === cell.endRound;
+          const latencyStr = `${Math.round(cell.worstLatency)}ms`;
+          const startEl = formatElapsed(cell.startElapsed);
+          const endEl = formatElapsed(cell.endElapsed);
+          const text = isSingle
+            ? `Round ${cell.startRound} · ${latencyStr} · ${startEl}`
+            : `Rounds ${cell.startRound}–${cell.endRound} · worst: ${latencyStr} · ${startEl}–${endEl}`;
+          uiStore.setHeatmapTooltip(text, e.clientX, e.clientY);
+          return;
+        }
+      }
+    }
+    uiStore.clearHeatmapTooltip();
   }
 
-  const heatmapTooltip: HeatmapTooltip | null = $derived.by(() => {
-    if (hoveredCellIdx === null) return null;
-    const rect = cellRects[hoveredCellIdx];
-    if (!rect) return null;
-    const { cell } = rect;
-    const isSingle = cell.startRound === cell.endRound;
-    const latencyStr = `${Math.round(cell.worstLatency)}ms`;
-    const startEl = formatElapsed(cell.startElapsed);
-    const endEl = formatElapsed(cell.endElapsed);
-    const text = isSingle
-      ? `Round ${cell.startRound} · ${latencyStr} · ${startEl}`
-      : `Rounds ${cell.startRound}–${cell.endRound} · worst: ${latencyStr} · ${startEl}–${endEl}`;
-    return { text, x: rect.x + rect.w / 2, y: HEATMAP_Y - 4 };
-  });
+  function handleSvgMouseLeave() {
+    uiStore.clearHeatmapTooltip();
+  }
 </script>
 
+<div class="lane-svg-wrap" onmousemove={handleSvgMouseMove} onmouseleave={handleSvgMouseLeave}>
 <svg
+  bind:this={svgEl}
   class="lane-svg"
   viewBox="0 0 {VB_W} {VB_H}"
   preserveAspectRatio="none"
@@ -245,31 +258,16 @@
       rx="1"
       role="img"
       aria-label="Round {rect.cell.startRound}{rect.cell.endRound !== rect.cell.startRound ? `–${rect.cell.endRound}` : ''}: {Math.round(rect.cell.worstLatency)}ms"
-      onmouseenter={() => { hoveredCellIdx = i; }}
-      onmouseleave={() => { hoveredCellIdx = null; }}
     />
   {/each}
 
-  <!-- Heatmap tooltip (SVG foreignObject for rich text is overengineering; use SVG text) -->
-  {#if heatmapTooltip}
-    <rect
-      class="heatmap-tooltip-bg"
-      x={Math.max(0, Math.min(heatmapTooltip.x - 100, VB_W - 205))}
-      y={heatmapTooltip.y - 18}
-      width="210"
-      height="20"
-      rx="3"
-    />
-    <text
-      class="heatmap-tooltip-text"
-      x={Math.max(105, Math.min(heatmapTooltip.x, VB_W - 105))}
-      y={heatmapTooltip.y - 5}
-      text-anchor="middle"
-    >{heatmapTooltip.text}</text>
-  {/if}
+
 </svg>
+</div>
+
 
 <style>
+  .lane-svg-wrap { width: 100%; height: 100%; }
   .lane-svg { width: 100%; height: 100%; display: block; }
   .grid-line { stroke: var(--grid-line); stroke-width: 0.5; }
   .future-zone { fill: var(--future-zone); }
@@ -285,6 +283,4 @@
   .timeout-label { font-family: 'Martian Mono', monospace; font-size: 5px; font-weight: 400; fill: var(--timeout-stroke); opacity: 0.5; }
   /* Heatmap */
   .heatmap-cell { cursor: default; }
-  .heatmap-tooltip-bg { fill: var(--tooltip-bg); }
-  .heatmap-tooltip-text { font-family: 'Martian Mono', monospace; font-size: 8px; font-weight: 300; fill: rgba(255,255,255,.8); }
 </style>

@@ -65,6 +65,12 @@ export type WorkerToMainMessage =
       roundId: number;
       errorType: string;
       message: string;
+    }
+  | {
+      type: 'busy';
+      endpointId: string;
+      epoch: number;
+      roundId: number;
     };
 
 // ── Measurement store ──────────────────────────────────────────────────────
@@ -185,6 +191,8 @@ export interface UIState {
   sharedResultsTimestamp: number | null;
   laneHoverRound: number | null;
   laneHoverX: number | null;
+  laneHoverY: number | null;
+  heatmapTooltip: { text: string; x: number; y: number } | null;
   showEndpoints: boolean;
 }
 

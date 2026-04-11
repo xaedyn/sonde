@@ -28,7 +28,7 @@ describe('CrossLaneHover (AC5)', () => {
 
   it('hover line activates when uiStore has a hover round (AC5)', async () => {
     const { container } = render(CrossLaneHover, { props: { visibleStart: 1, visibleEnd: 30 } });
-    uiStore.setLaneHover(5, 400);
+    uiStore.setLaneHover(5, 400, 300);
     await tick();
     const line = container.querySelector('.hover-line');
     expect(line?.classList.contains('active')).toBe(true);

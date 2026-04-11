@@ -131,8 +131,17 @@ function createMeasurementStore() {
               ? 2
               : existing.tierLevel;
 
-          // Mutable push — O(1) amortized instead of O(n) spread
-          existing.samples.push(sample);
+          // Insert in round order — almost always appends (O(1) typical),
+          // but handles stragglers arriving after the next round flushed.
+          const samples = existing.samples;
+          if (samples.length === 0 || sample.round >= samples[samples.length - 1]!.round) {
+            samples.push(sample);
+          } else {
+            // Walk backward to find insertion point (usually 1-2 steps)
+            let i = samples.length - 1;
+            while (i > 0 && samples[i - 1]!.round > sample.round) i--;
+            samples.splice(i, 0, sample);
+          }
 
           // New endpoint object reference to trigger per-endpoint reactivity
           nextEndpoints[entry.endpointId] = {

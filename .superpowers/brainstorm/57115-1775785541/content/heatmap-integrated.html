@@ -1,0 +1,138 @@
+<h2>Integrated vs Separated</h2>
+<p class="subtitle">What if the heatmap isn't a new element — it's part of the chart?</p>
+
+<div class="options">
+  <div class="option" data-choice="integrated" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Integrated: Heatmap strip inside the SVG chart</h3>
+      <p>A 12px strip at the very bottom of each lane's SVG area. It's rendered as part of the chart — same viewBox, same component. Grows from left to right as data arrives. When the sliding window scrolls, the chart dots move but the heatmap stays, showing the full history compressed. It looks like a colored scrollbar indicator — subtle, always there, never in the way.</p>
+      <div style="margin-top:16px; background:#0c0a14; border-radius:18px; padding:0; overflow:hidden; border:1px solid rgba(255,255,255,.07);">
+        <div style="display:flex;">
+          <!-- Left panel -->
+          <div style="width:140px; padding:16px 20px; border-right:1px solid rgba(255,255,255,.05); flex-shrink:0;">
+            <div style="font-family:monospace; font-size:9px; color:rgba(255,255,255,.4);">www.google.com</div>
+            <div style="font-size:32px; font-weight:200; color:#67e8f9; line-height:1; margin-top:4px;">26<span style="font-size:11px; color:rgba(255,255,255,.3);">ms</span></div>
+            <div style="font-family:monospace; font-size:7px; color:rgba(255,255,255,.25); text-transform:uppercase; letter-spacing:0.08em; margin-top:4px;">P50 Median Latency</div>
+            <div style="display:flex; gap:8px; margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,.04);">
+              <div><div style="font-family:monospace;font-size:6px;color:rgba(255,255,255,.25);text-transform:uppercase;">P95</div><div style="font-family:monospace;font-size:11px;color:rgba(255,255,255,.5);">42ms</div></div>
+              <div><div style="font-family:monospace;font-size:6px;color:rgba(255,255,255,.25);text-transform:uppercase;">P99</div><div style="font-family:monospace;font-size:11px;color:rgba(255,255,255,.5);">89ms</div></div>
+              <div><div style="font-family:monospace;font-size:6px;color:rgba(255,255,255,.25);text-transform:uppercase;">Jitter</div><div style="font-family:monospace;font-size:11px;color:rgba(255,255,255,.5);">6ms</div></div>
+            </div>
+          </div>
+          <!-- Chart area -->
+          <div style="flex:1; padding:8px 12px 0; position:relative; min-height:120px;">
+            <!-- Scatter dots simulation -->
+            <svg viewBox="0 0 400 100" style="width:100%; height:90px;" preserveAspectRatio="none">
+              <!-- Grid lines -->
+              <line x1="0" y1="25" x2="400" y2="25" stroke="rgba(255,255,255,.03)" stroke-width="0.5"/>
+              <line x1="0" y1="50" x2="400" y2="50" stroke="rgba(255,255,255,.03)" stroke-width="0.5"/>
+              <line x1="0" y1="75" x2="400" y2="75" stroke="rgba(255,255,255,.03)" stroke-width="0.5"/>
+              <!-- Timeout line -->
+              <line x1="0" y1="12" x2="400" y2="12" stroke="#f9a8d4" stroke-width="0.8" stroke-dasharray="4 3" opacity="0.4"/>
+              <text x="396" y="10" fill="#f9a8d4" font-size="5" text-anchor="end" opacity="0.5">timeout</text>
+              <!-- Trace line -->
+              <polyline points="0,55 25,52 50,58 75,50 100,53 125,48 150,55 175,30 200,52 225,54 250,50 275,53 300,55 325,51 350,54 375,52" fill="none" stroke="#67e8f9" stroke-width="1" opacity="0.35"/>
+              <!-- Dots -->
+              <circle cx="0" cy="55" r="2.5" fill="#67e8f9" opacity="0.85"/>
+              <circle cx="25" cy="52" r="2.5" fill="#67e8f9" opacity="0.85"/>
+              <circle cx="50" cy="58" r="2.5" fill="#67e8f9" opacity="0.85"/>
+              <circle cx="75" cy="50" r="2.5" fill="#67e8f9" opacity="0.85"/>
+              <circle cx="100" cy="53" r="2.5" fill="#67e8f9" opacity="0.85"/>
+              <circle cx="125" cy="48" r="2.5" fill="#67e8f9" opacity="0.85"/>
+              <circle cx="150" cy="55" r="2.5" fill="#67e8f9" opacity="0.85"/>
+              <circle cx="175" cy="30" r="2.5" fill="#67e8f9" opacity="0.85"/>
+              <circle cx="200" cy="52" r="2.5" fill="#67e8f9" opacity="0.85"/>
+              <circle cx="225" cy="54" r="2.5" fill="#67e8f9" opacity="0.85"/>
+              <circle cx="250" cy="50" r="2.5" fill="#67e8f9" opacity="0.85"/>
+              <circle cx="275" cy="53" r="2.5" fill="#67e8f9" opacity="0.85"/>
+              <circle cx="300" cy="55" r="2.5" fill="#67e8f9" opacity="0.85"/>
+              <circle cx="325" cy="51" r="2.5" fill="#67e8f9" opacity="0.85"/>
+              <circle cx="350" cy="54" r="2.5" fill="#67e8f9" opacity="0.85"/>
+              <circle cx="375" cy="52" r="3.5" fill="#67e8f9" opacity="1"/>
+            </svg>
+            <!-- Heatmap strip - THE NEW THING -->
+            <div style="height:12px; margin:2px 0 8px; border-radius:3px; overflow:hidden; display:flex; gap:1px;">
+              <div style="flex:1;background:#22c55e;opacity:0.7;border-radius:1px;"></div>
+              <div style="flex:1;background:#22c55e;opacity:0.7;border-radius:1px;"></div>
+              <div style="flex:1;background:#22c55e;opacity:0.7;border-radius:1px;"></div>
+              <div style="flex:1;background:#4ade80;opacity:0.7;border-radius:1px;"></div>
+              <div style="flex:1;background:#22c55e;opacity:0.7;border-radius:1px;"></div>
+              <div style="flex:1;background:#eab308;opacity:0.7;border-radius:1px;"></div>
+              <div style="flex:1;background:#22c55e;opacity:0.7;border-radius:1px;"></div>
+              <div style="flex:1;background:#22c55e;opacity:0.7;border-radius:1px;"></div>
+              <div style="flex:1;background:#22c55e;opacity:0.7;border-radius:1px;"></div>
+              <div style="flex:1;background:#22c55e;opacity:0.7;border-radius:1px;"></div>
+              <div style="flex:1;background:#ef4444;opacity:0.7;border-radius:1px;"></div>
+              <div style="flex:1;background:#22c55e;opacity:0.7;border-radius:1px;"></div>
+              <div style="flex:1;background:#22c55e;opacity:0.7;border-radius:1px;"></div>
+              <div style="flex:1;background:#4ade80;opacity:0.7;border-radius:1px;"></div>
+              <div style="flex:1;background:#22c55e;opacity:0.7;border-radius:1px;"></div>
+              <div style="flex:1;background:#22c55e;opacity:0.7;border-radius:1px;"></div>
+              <div style="flex:1;background:#eab308;opacity:0.7;border-radius:1px;"></div>
+              <div style="flex:1;background:#22c55e;opacity:0.7;border-radius:1px;"></div>
+              <div style="flex:1;background:#22c55e;opacity:0.7;border-radius:1px;"></div>
+              <div style="flex:1;background:#22c55e;opacity:0.7;border-radius:1px;"></div>
+              <div style="flex:1;background:#22c55e;opacity:0.7;border-radius:1px;"></div>
+              <div style="flex:1;background:#22c55e;opacity:0.7;border-radius:1px;"></div>
+              <div style="flex:1;background:#eab308;opacity:0.7;border-radius:1px;"></div>
+              <div style="flex:1;background:#22c55e;opacity:0.7;border-radius:1px;"></div>
+              <div style="flex:1;background:#22c55e;opacity:0.7;border-radius:1px;"></div>
+              <div style="flex:1;background:#22c55e;opacity:0.7;border-radius:1px;"></div>
+              <div style="flex:1;background:#ef4444;opacity:0.7;border-radius:1px;"></div>
+              <div style="flex:1;background:#22c55e;opacity:0.7;border-radius:1px;"></div>
+              <div style="flex:1;background:#22c55e;opacity:0.7;border-radius:1px;"></div>
+              <div style="flex:1;background:#22c55e;opacity:0.7;border-radius:1px;"></div>
+              <!-- Remaining space is empty (future rounds) -->
+              <div style="flex:3;background:rgba(255,255,255,.02);border-radius:1px;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:12px; font-size:12px; color:#888;">
+        The heatmap strip is <strong>part of the chart</strong>, not a separate element. Each cell = one measurement. Green = fast, yellow = elevated, red = timeout/error. It's the full history minimap — when the scatter chart's 60-round window scrolls past round 200, you can still see that red spike from round 45.
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="separated" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Separated: Dedicated heatmap section below all lanes</h3>
+      <p>A distinct "History" section between the lanes and the x-axis. Stacked thin rows, one per endpoint, each showing the full run as color cells. Has its own visual container.</p>
+      <div style="margin-top:16px; background:#0c0a14; border-radius:12px; padding:12px; border:1px solid rgba(255,255,255,.05);">
+        <div style="height:40px; background:rgba(255,255,255,.02); border-radius:6px; margin-bottom:6px; display:flex; align-items:center; padding:0 12px; color:rgba(255,255,255,.2); font-size:10px;">Lane 1 — Google (chart area)</div>
+        <div style="height:40px; background:rgba(255,255,255,.02); border-radius:6px; margin-bottom:12px; display:flex; align-items:center; padding:0 12px; color:rgba(255,255,255,.2); font-size:10px;">Lane 2 — Cloudflare (chart area)</div>
+
+        <div style="background:rgba(255,255,255,.02); border-radius:8px; padding:8px 12px; border:1px solid rgba(255,255,255,.04);">
+          <div style="font-family:monospace; font-size:8px; color:rgba(255,255,255,.25); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px;">History</div>
+          <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+            <div style="width:8px; height:8px; border-radius:50%; background:#67e8f9; flex-shrink:0;"></div>
+            <div style="flex:1; height:8px; display:flex; gap:1px;">
+              <div style="flex:1;background:#22c55e;border-radius:1px;"></div><div style="flex:1;background:#22c55e;border-radius:1px;"></div><div style="flex:1;background:#eab308;border-radius:1px;"></div><div style="flex:1;background:#22c55e;border-radius:1px;"></div><div style="flex:1;background:#22c55e;border-radius:1px;"></div><div style="flex:1;background:#ef4444;border-radius:1px;"></div><div style="flex:1;background:#22c55e;border-radius:1px;"></div><div style="flex:1;background:#22c55e;border-radius:1px;"></div><div style="flex:1;background:#22c55e;border-radius:1px;"></div><div style="flex:1;background:#22c55e;border-radius:1px;"></div>
+              <div style="flex:2;background:rgba(255,255,255,.02);border-radius:1px;"></div>
+            </div>
+          </div>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <div style="width:8px; height:8px; border-radius:50%; background:#f9a8d4; flex-shrink:0;"></div>
+            <div style="flex:1; height:8px; display:flex; gap:1px;">
+              <div style="flex:1;background:#eab308;border-radius:1px;"></div><div style="flex:1;background:#22c55e;border-radius:1px;"></div><div style="flex:1;background:#22c55e;border-radius:1px;"></div><div style="flex:1;background:#22c55e;border-radius:1px;"></div><div style="flex:1;background:#ef4444;border-radius:1px;"></div><div style="flex:1;background:#22c55e;border-radius:1px;"></div><div style="flex:1;background:#22c55e;border-radius:1px;"></div><div style="flex:1;background:#eab308;border-radius:1px;"></div><div style="flex:1;background:#22c55e;border-radius:1px;"></div><div style="flex:1;background:#22c55e;border-radius:1px;"></div>
+              <div style="flex:2;background:rgba(255,255,255,.02);border-radius:1px;"></div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:6px; font-family:monospace; font-size:8px; color:rgba(255,255,255,.2); display:flex; justify-content:space-between; padding:0 12px;">
+          <span>1</span><span>50</span><span>100</span><span>150</span><span>200</span>
+        </div>
+      </div>
+      <div style="margin-top:12px; font-size:12px; color:#888;">
+        A separate "History" card. Clear, but adds a new UI section. Cross-endpoint comparison is easier (stacked rows), but it's another thing to look at.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:24px; padding:16px; background:rgba(103,232,249,.03); border:1px solid rgba(103,232,249,.08); border-radius:8px;">
+  <h3 style="color:#67e8f9; margin-top:0;">My recommendation: A (Integrated)</h3>
+  <p style="font-size:14px;">The Apple way is to not add new sections. The heatmap strip is <em>context for the chart</em> — it belongs inside the chart. 12 pixels at the bottom of each lane tells the full story without adding cognitive load. It's subtle when you don't need it and invaluable when you do. The separated version (B) creates another mental model to parse — "look up here for recent data, look down there for history." Integrated means one place to look, one story per lane.</p>
+</div>

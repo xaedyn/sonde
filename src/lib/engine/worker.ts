@@ -154,21 +154,37 @@ function waitForResourceEntry(
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 if (typeof (globalThis as any).WorkerGlobalScope !== 'undefined' && self instanceof (globalThis as any).WorkerGlobalScope) {
   let abortController: AbortController | null = null;
+  let measuring = false;
+  let stopRequested = false;
 
   self.addEventListener('message', async (event: MessageEvent<MainToWorkerMessage>) => {
     const msg = event.data;
 
     if (msg.type === 'stop') {
+      stopRequested = true;
       abortController?.abort();
       abortController = null;
+      measuring = false;
       return;
     }
 
     if (msg.type === 'measure') {
       const { url, timeout, corsMode, epoch, roundId } = msg;
 
-      // Each measurement gets its own AbortController so a stop() mid-flight aborts cleanly.
-      abortController?.abort();
+      // If already measuring, reply busy — don't abort the in-flight request.
+      if (measuring) {
+        const busyReply: WorkerToMainMessage = {
+          type: 'busy',
+          endpointId: url,
+          epoch,
+          roundId,
+        };
+        (self as unknown as Worker).postMessage(busyReply);
+        return;
+      }
+
+      measuring = true;
+      stopRequested = false;
       abortController = new AbortController();
       const signal = abortController.signal;
 
@@ -208,12 +224,17 @@ if (typeof (globalThis as any).WorkerGlobalScope !== 'undefined' && self instanc
           timing,
         };
 
+        measuring = false;
         (self as unknown as Worker).postMessage(reply);
       } catch (err: unknown) {
         clearTimeout(timeoutId);
+        measuring = false;
         performance.clearResourceTimings();
 
-        if (signal.aborted) {
+        if (stopRequested) {
+          // Intentional stop — don't record a false timeout.
+          return;
+        } else if (signal.aborted) {
           const timeoutReply: WorkerToMainMessage = {
             type: 'timeout',
             endpointId: url,

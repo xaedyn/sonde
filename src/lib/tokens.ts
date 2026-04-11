@@ -158,10 +158,11 @@ export const tokens = {
     },
 
     heatmap: {
-      fast:     primitive.greenGlow,
-      elevated: primitive.amber,
-      slow:     primitive.pink70,
-      timeout:  primitive.pinkBright,
+      fast:     'rgba(103,232,249,.6)',   // cyan — clearly good
+      normal:   'rgba(148,163,184,.3)',   // slate — quiet, unalarming
+      elevated: '#fbbf24',                // amber — attention
+      slow:     'rgba(249,168,212,.7)',   // pink — problem
+      timeout:  '#fbcfe8',                // bright pink — critical
     },
 
     orb: {

@@ -167,8 +167,11 @@ export class MeasurementEngine {
       this.flushTimers.delete(roundId);
     }
 
-    // Still advance cadence even if no responses arrived for this round
-    if (messages.length === 0) {
+    // Filter out busy replies — worker was still processing the previous round.
+    const actionable = messages.filter(msg => msg.type !== 'busy');
+
+    // Still advance cadence even if no actionable responses arrived
+    if (actionable.length === 0) {
       if (get(measurementStore).lifecycle === 'running') {
         this._scheduleNextRound();
       }
@@ -176,7 +179,7 @@ export class MeasurementEngine {
     }
 
     const timestamp = Date.now();
-    const entries = messages.map(msg => {
+    const entries = actionable.map(msg => {
       switch (msg.type) {
         case 'result':
           return {
@@ -262,6 +265,13 @@ export class MeasurementEngine {
     // Count active workers for this round to know when the batch is complete
     const activeWorkers = this.workers.filter(m => endpoints.some(e => e.id === m.endpointId));
     this.expectedResponses = activeWorkers.length;
+
+    // No workers to dispatch — skip this round entirely.
+    if (activeWorkers.length === 0) {
+      measurementStore.incrementRound();
+      this._scheduleNextRound();
+      return;
+    }
 
     for (const managed of activeWorkers) {
       const ep = endpoints.find(e => e.id === managed.endpointId);

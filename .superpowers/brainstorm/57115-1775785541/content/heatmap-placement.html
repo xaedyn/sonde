@@ -1,0 +1,92 @@
+<h2>Where does the heatmap live?</h2>
+<p class="subtitle">The heatmap shows the FULL history of every measurement as a dense color grid. It's the most space-hungry new feature. Where should it go?</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Inside each lane — below the SVG chart</h3>
+      <p>Each lane card grows taller to include a thin heatmap strip (20-30px) beneath the scatter chart. The heatmap scrolls with the lane. Keeps everything per-endpoint self-contained.</p>
+      <div style="margin-top:12px; background:#1a1a2e; border-radius:8px; padding:12px; font-family:monospace; font-size:11px; color:#667;">
+        <div style="color:#9ca3af; font-size:10px; margin-bottom:4px;">LANE CARD</div>
+        <div style="display:flex; gap:8px;">
+          <div style="width:100px; color:#67e8f9;">
+            <div style="font-size:9px; color:#555;">www.google.com</div>
+            <div style="font-size:28px; font-weight:200;">26<span style="font-size:12px;">ms</span></div>
+          </div>
+          <div style="flex:1;">
+            <div style="height:60px; background:#0d0b19; border-radius:4px; display:flex; align-items:center; justify-content:center; color:#333; font-size:10px;">SVG scatter chart</div>
+            <div style="height:20px; margin-top:4px; background: linear-gradient(90deg, #22c55e, #22c55e, #eab308, #22c55e, #22c55e, #ef4444, #22c55e, #22c55e); border-radius:3px; opacity:0.7;"></div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:8px; font-size:12px; color:#888;">
+        <strong>Pro:</strong> Each endpoint's history is right there with its chart<br>
+        <strong>Con:</strong> Lane cards get taller, less vertical space for charts
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Shared strip between lanes and x-axis</h3>
+      <p>A horizontal band below all lanes showing stacked heatmap rows (one per endpoint). Like a minimap of the full run. The x-axis moves below this strip.</p>
+      <div style="margin-top:12px; background:#1a1a2e; border-radius:8px; padding:12px; font-family:monospace; font-size:11px; color:#667;">
+        <div style="height:30px; background:#0d0b19; border-radius:4px; margin-bottom:4px; display:flex; align-items:center; padding:0 8px; color:#333; font-size:10px;">Lane 1 chart</div>
+        <div style="height:30px; background:#0d0b19; border-radius:4px; margin-bottom:8px; display:flex; align-items:center; padding:0 8px; color:#333; font-size:10px;">Lane 2 chart</div>
+        <div style="color:#9ca3af; font-size:9px; margin-bottom:2px;">HISTORY</div>
+        <div style="height:10px; background: linear-gradient(90deg, #22c55e, #22c55e, #eab308, #22c55e, #ef4444, #22c55e, #22c55e, #22c55e, #eab308, #22c55e); border-radius:2px; margin-bottom:2px; opacity:0.8;"></div>
+        <div style="height:10px; background: linear-gradient(90deg, #eab308, #22c55e, #22c55e, #22c55e, #22c55e, #ef4444, #eab308, #22c55e, #22c55e, #22c55e); border-radius:2px; opacity:0.8;"></div>
+        <div style="margin-top:6px; color:#555; font-size:9px;">ROUND &nbsp;&nbsp; 1 &nbsp;&nbsp;&nbsp;&nbsp; 100 &nbsp;&nbsp;&nbsp;&nbsp; 200 &nbsp;&nbsp;&nbsp;&nbsp; 300</div>
+      </div>
+      <div style="margin-top:8px; font-size:12px; color:#888;">
+        <strong>Pro:</strong> Compact, doesn't steal from chart height, shows full history<br>
+        <strong>Con:</strong> Separated from individual lanes, less per-endpoint context
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Replace the left panel stats when enough data</h3>
+      <p>Once stats are populated (after ~20 rounds), the left panel transitions from the stats grid to a per-endpoint heatmap grid. Stats move to hover tooltip or a secondary view. The heatmap becomes the lane's "identity" — you see the full history at a glance.</p>
+      <div style="margin-top:12px; background:#1a1a2e; border-radius:8px; padding:12px; font-family:monospace; font-size:11px; color:#667;">
+        <div style="display:flex; gap:8px;">
+          <div style="width:100px;">
+            <div style="font-size:9px; color:#555;">www.google.com</div>
+            <div style="font-size:28px; font-weight:200; color:#67e8f9;">26<span style="font-size:12px;">ms</span></div>
+            <div style="margin-top:8px; display:grid; grid-template-columns: repeat(10, 1fr); gap:1px;">
+              <div style="width:8px;height:8px;background:#22c55e;border-radius:1px;"></div>
+              <div style="width:8px;height:8px;background:#22c55e;border-radius:1px;"></div>
+              <div style="width:8px;height:8px;background:#eab308;border-radius:1px;"></div>
+              <div style="width:8px;height:8px;background:#22c55e;border-radius:1px;"></div>
+              <div style="width:8px;height:8px;background:#22c55e;border-radius:1px;"></div>
+              <div style="width:8px;height:8px;background:#ef4444;border-radius:1px;"></div>
+              <div style="width:8px;height:8px;background:#22c55e;border-radius:1px;"></div>
+              <div style="width:8px;height:8px;background:#22c55e;border-radius:1px;"></div>
+              <div style="width:8px;height:8px;background:#22c55e;border-radius:1px;"></div>
+              <div style="width:8px;height:8px;background:#eab308;border-radius:1px;"></div>
+              <div style="width:8px;height:8px;background:#22c55e;border-radius:1px;"></div>
+              <div style="width:8px;height:8px;background:#22c55e;border-radius:1px;"></div>
+              <div style="width:8px;height:8px;background:#22c55e;border-radius:1px;"></div>
+              <div style="width:8px;height:8px;background:#22c55e;border-radius:1px;"></div>
+              <div style="width:8px;height:8px;background:#eab308;border-radius:1px;"></div>
+              <div style="width:8px;height:8px;background:#22c55e;border-radius:1px;"></div>
+              <div style="width:8px;height:8px;background:#22c55e;border-radius:1px;"></div>
+              <div style="width:8px;height:8px;background:#22c55e;border-radius:1px;"></div>
+              <div style="width:8px;height:8px;background:#ef4444;border-radius:1px;"></div>
+              <div style="width:8px;height:8px;background:#22c55e;border-radius:1px;"></div>
+            </div>
+          </div>
+          <div style="flex:1; height:80px; background:#0d0b19; border-radius:4px; display:flex; align-items:center; justify-content:center; color:#333; font-size:10px;">SVG scatter chart</div>
+        </div>
+      </div>
+      <div style="margin-top:8px; font-size:12px; color:#888;">
+        <strong>Pro:</strong> No extra vertical space needed, heatmap is per-endpoint, visually rich<br>
+        <strong>Con:</strong> Loses always-visible P95/P99/Jitter/Loss stats grid
+      </div>
+    </div>
+  </div>
+</div>

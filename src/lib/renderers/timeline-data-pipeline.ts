@@ -411,19 +411,11 @@ export function computeHeatmapCells(
 }
 
 function heatmapColor(
-  latency: number, status: SampleStatus, stats: EndpointStatistics, endpointColor: string,
+  latency: number, status: SampleStatus, stats: EndpointStatistics, _endpointColor: string,
 ): string {
   if (status === 'timeout' || status === 'error') return tokens.color.heatmap.timeout;
   if (latency < stats.p25) return tokens.color.heatmap.fast;
-  if (latency <= stats.p75) {
-    if (/^#[0-9a-fA-F]{6}$/.test(endpointColor)) {
-      const r = parseInt(endpointColor.slice(1, 3), 16);
-      const g = parseInt(endpointColor.slice(3, 5), 16);
-      const b = parseInt(endpointColor.slice(5, 7), 16);
-      return `rgba(${r},${g},${b},.4)`;
-    }
-    return 'rgba(103,232,249,.4)';
-  }
+  if (latency <= stats.p75) return tokens.color.heatmap.normal;
   if (latency <= stats.p95) return tokens.color.heatmap.elevated;
   return tokens.color.heatmap.slow;
 }

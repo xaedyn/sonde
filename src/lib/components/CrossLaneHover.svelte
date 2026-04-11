@@ -8,6 +8,7 @@
   let { visibleStart = 1, visibleEnd = 60 }: { visibleStart?: number; visibleEnd?: number } = $props();
 
   let hoverX: number | null = $derived($uiStore.laneHoverX);
+  let hoverY: number | null = $derived($uiStore.laneHoverY);
   let hoverRound: number | null = $derived($uiStore.laneHoverRound);
   let isActive: boolean = $derived(hoverX !== null && hoverRound !== null);
 
@@ -18,15 +19,34 @@
     latency: number | null;
   }
 
+  /** Find the sample nearest to targetRound via binary search (samples are sorted by round). */
+  function findNearest<T extends { round: number }>(samples: readonly T[], targetRound: number): T | null {
+    if (samples.length === 0) return null;
+    let lo = 0, hi = samples.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (samples[mid]!.round < targetRound) lo = mid + 1;
+      else hi = mid;
+    }
+    const a = samples[lo];
+    const b = lo > 0 ? samples[lo - 1] : undefined;
+    if (!a) return b ?? null;
+    if (!b) return a;
+    return Math.abs(a.round - targetRound) <= Math.abs(b.round - targetRound) ? a : b;
+  }
+
   const hoverRows: EndpointHoverRow[] = $derived.by(() => {
     if (hoverRound === null || hoverRound < visibleStart || hoverRound > visibleEnd) return [];
     const endpoints = $endpointStore.filter(ep => ep.enabled);
     return endpoints.map(ep => {
       const epState = $measurementStore.endpoints[ep.id];
-      const sample = epState?.samples.find(s => s.round === hoverRound) ?? null;
+      const sample = epState ? findNearest(epState.samples, hoverRound) : null;
+      const rawLabel = ep.label || ep.url;
+      // Strip protocol and www. for compact display
+      const shortLabel = rawLabel.replace(/^https?:\/\/(www\.)?/, '');
       return {
         id: ep.id,
-        label: ep.label || ep.url,
+        label: shortLabel,
         color: ep.color,
         latency: sample?.status === 'ok' ? sample.latency : null,
       };
@@ -52,29 +72,55 @@
 
   const TOOLTIP_W = 200; // approximate max width including padding
   const TOOLTIP_MARGIN = 8;
+  // Approximate tooltip height: header + rows + delta + padding
+  const TOOLTIP_ROW_H = 22;
+  const TOOLTIP_CHROME = 60; // header, delta, padding
+
   const tipLeft: number = $derived.by(() => {
     if (hoverX === null) return 0;
     const preferred = hoverX + 16;
     const maxLeft = (typeof window !== 'undefined' ? window.innerWidth : 1920) - TOOLTIP_W - TOOLTIP_MARGIN;
     return Math.min(preferred, maxLeft);
   });
+
+  const tipTop: number = $derived.by(() => {
+    if (hoverY === null) return 74;
+    const estH = TOOLTIP_CHROME + hoverRows.length * TOOLTIP_ROW_H;
+    const viewH = typeof window !== 'undefined' ? window.innerHeight : 800;
+    const preferred = hoverY - estH / 2; // center on cursor
+    return Math.max(TOOLTIP_MARGIN, Math.min(preferred, viewH - estH - TOOLTIP_MARGIN));
+  });
+
+  // ── Heatmap tooltip positioning ─────────────────────────────────────────
+  let heatmapTipEl: HTMLDivElement | undefined = $state(undefined);
+
+  const heatmapTipLeft: number = $derived.by(() => {
+    const ht = $uiStore.heatmapTooltip;
+    if (!ht) return 0;
+    const tipW = heatmapTipEl?.offsetWidth ?? 200;
+    const viewW = typeof window !== 'undefined' ? window.innerWidth : 1920;
+    const margin = 8;
+    // Try to center on cursor, clamp to viewport
+    const centered = ht.x - tipW / 2;
+    return Math.max(margin, Math.min(centered, viewW - tipW - margin));
+  });
 </script>
 
 <div
   class="hover-line"
-  class:active={isActive}
+  class:active={isActive && !$uiStore.heatmapTooltip}
   style:left="{hoverX}px"
   style:--t3={tokens.color.text.t3}
   style:--glass-highlight={tokens.color.glass.highlight}
   aria-hidden="true"
 ></div>
 
-{#if isActive && hoverRound !== null && hoverX !== null}
+{#if isActive && hoverRound !== null && hoverX !== null && !$uiStore.heatmapTooltip}
   <div
     class="hover-tip"
     class:active={isActive}
     style:left="{tipLeft}px"
-    style:top="74px"
+    style:top="{tipTop}px"
     style:--tooltip-bg={tokens.color.tooltip.bg}
     style:--glass-border={tokens.color.glass.border}
     style:--glass-highlight={tokens.color.glass.highlight}
@@ -101,6 +147,19 @@
       {/if}
     </div>
   </div>
+{/if}
+
+{#if $uiStore.heatmapTooltip}
+  <div
+    class="heatmap-tip"
+    bind:this={heatmapTipEl}
+    style:left="{heatmapTipLeft}px"
+    style:top="{$uiStore.heatmapTooltip.y}px"
+    style:--tooltip-bg={tokens.color.tooltip.bg}
+    style:--glass-border={tokens.color.glass.border}
+    style:--mono={tokens.typography.mono.fontFamily}
+    role="tooltip"
+  >{$uiStore.heatmapTooltip.text}</div>
 {/if}
 
 <style>
@@ -138,5 +197,17 @@
     font-family: var(--mono); font-size: 9px; color: var(--t4);
     text-align: right; margin-top: 6px; padding-top: 5px;
     border-top: 1px solid var(--t5);
+  }
+  .heatmap-tip {
+    position: fixed; z-index: 20; pointer-events: none;
+    transform: translateY(8px);
+    background: var(--tooltip-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 6px; padding: 5px 10px;
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    font-family: var(--mono, 'Martian Mono', monospace);
+    font-size: 11px; font-weight: 400;
+    color: rgba(255,255,255,.85);
+    white-space: nowrap;
   }
 </style>
