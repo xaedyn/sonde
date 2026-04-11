@@ -207,6 +207,84 @@ describe('share-manager', () => {
       expect(decodeSharePayload(encoded)).toBeNull();
     });
 
+    // AC #2b — burstRounds and monitorDelay validation
+    it('rejects Infinity burstRounds', async () => {
+      const encoded = await manualEncode({
+        v: 1, mode: 'config',
+        endpoints: [{ url: 'https://example.com', enabled: true }],
+        settings: { timeout: 5000, delay: 0, cap: 0, corsMode: 'no-cors', burstRounds: Infinity },
+      });
+      expect(decodeSharePayload(encoded)).toBeNull();
+    });
+
+    it('rejects negative monitorDelay', async () => {
+      const encoded = await manualEncode({
+        v: 1, mode: 'config',
+        endpoints: [{ url: 'https://example.com', enabled: true }],
+        settings: { timeout: 5000, delay: 0, cap: 0, corsMode: 'no-cors', monitorDelay: -100 },
+      });
+      expect(decodeSharePayload(encoded)).toBeNull();
+    });
+
+    it('accepts valid burstRounds and monitorDelay', async () => {
+      const encoded = await manualEncode({
+        v: 1, mode: 'config',
+        endpoints: [{ url: 'https://example.com', enabled: true }],
+        settings: { timeout: 5000, delay: 0, cap: 0, corsMode: 'no-cors', burstRounds: 50, monitorDelay: 3000 },
+      });
+      expect(decodeSharePayload(encoded)).not.toBeNull();
+    });
+
+    it('accepts omitted burstRounds and monitorDelay', async () => {
+      const encoded = await manualEncode({
+        v: 1, mode: 'config',
+        endpoints: [{ url: 'https://example.com', enabled: true }],
+        settings: { timeout: 5000, delay: 0, cap: 0, corsMode: 'no-cors' },
+      });
+      expect(decodeSharePayload(encoded)).not.toBeNull();
+    });
+
+    // AC #2c — Sample value hardening
+    it('rejects NaN sample latency', async () => {
+      const encoded = await manualEncode({
+        v: 1, mode: 'results',
+        endpoints: [{ url: 'https://example.com', enabled: true }],
+        settings: validSettings,
+        results: [{ samples: [{ round: 0, latency: NaN, status: 'ok' }] }],
+      });
+      expect(decodeSharePayload(encoded)).toBeNull();
+    });
+
+    it('rejects negative sample round', async () => {
+      const encoded = await manualEncode({
+        v: 1, mode: 'results',
+        endpoints: [{ url: 'https://example.com', enabled: true }],
+        settings: validSettings,
+        results: [{ samples: [{ round: -1, latency: 50, status: 'ok' }] }],
+      });
+      expect(decodeSharePayload(encoded)).toBeNull();
+    });
+
+    it('rejects invalid sample status string', async () => {
+      const encoded = await manualEncode({
+        v: 1, mode: 'results',
+        endpoints: [{ url: 'https://example.com', enabled: true }],
+        settings: validSettings,
+        results: [{ samples: [{ round: 0, latency: 50, status: 'bogus' }] }],
+      });
+      expect(decodeSharePayload(encoded)).toBeNull();
+    });
+
+    it('accepts valid sample with timeout status', async () => {
+      const encoded = await manualEncode({
+        v: 1, mode: 'results',
+        endpoints: [{ url: 'https://example.com', enabled: true }],
+        settings: validSettings,
+        results: [{ samples: [{ round: 0, latency: 5000, status: 'timeout' }] }],
+      });
+      expect(decodeSharePayload(encoded)).not.toBeNull();
+    });
+
     // AC #3 — Array size limits
     it('rejects >50 endpoints', async () => {
       const endpoints = Array.from({ length: 51 }, (_, i) => ({

@@ -60,6 +60,8 @@ function validateSharePayload(data: unknown): SharePayload | null {
   if (!isNonNegativeFiniteNumber(s['timeout'])) return null;
   if (!isNonNegativeFiniteNumber(s['delay'])) return null;
   if (!isNonNegativeFiniteNumber(s['cap'])) return null;
+  if (s['burstRounds'] !== undefined && !isNonNegativeFiniteNumber(s['burstRounds'])) return null;
+  if (s['monitorDelay'] !== undefined && !isNonNegativeFiniteNumber(s['monitorDelay'])) return null;
   if (s['corsMode'] !== 'no-cors' && s['corsMode'] !== 'cors') return null;
 
   if (obj['results'] !== undefined) {
@@ -74,9 +76,9 @@ function validateSharePayload(data: unknown): SharePayload | null {
         if (sample === null || typeof sample !== 'object') return null;
         const samp = sample as Record<string, unknown>;
         if (
-          typeof samp['round'] !== 'number' ||
-          typeof samp['latency'] !== 'number' ||
-          typeof samp['status'] !== 'string'
+          !isNonNegativeFiniteNumber(samp['round']) ||
+          !isNonNegativeFiniteNumber(samp['latency']) ||
+          (samp['status'] !== 'ok' && samp['status'] !== 'timeout' && samp['status'] !== 'error')
         ) return null;
       }
     }

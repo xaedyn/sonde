@@ -64,14 +64,14 @@ function createEndpointStore() {
       );
     },
 
-    reorderEndpoint(fromIndex: number, toIndex: number): void {
+    reorderEndpoint(fromId: string, toId: string): void {
       update(endpoints => {
+        const fromIndex = endpoints.findIndex(ep => ep.id === fromId);
+        const toIndex = endpoints.findIndex(ep => ep.id === toId);
         if (
-          fromIndex === toIndex ||
-          fromIndex < 0 ||
-          toIndex < 0 ||
-          fromIndex >= endpoints.length ||
-          toIndex >= endpoints.length
+          fromIndex === -1 ||
+          toIndex === -1 ||
+          fromIndex === toIndex
         ) {
           return endpoints;
         }

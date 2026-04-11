@@ -121,12 +121,14 @@
   let dragOffsets = $state<Record<number, number>>({});
   let settlingIndex = $state<number | null>(null);
   let suppressTransition = $state(false);
+  let reorderPending = $state(false);
 
   function indexOfEndpoint(id: string): number {
     return endpoints.findIndex(ep => ep.id === id);
   }
 
   function handleGripPointerDown(e: PointerEvent): void {
+    if (reorderPending) return;
     if (e.button !== 0 && e.pointerType === 'mouse') return;
 
     const grip = e.currentTarget as HTMLElement;
@@ -225,16 +227,18 @@
     dragOffsets = finalOffsets;
 
     // Wait for the spring transition to finish, then commit the reorder
+    reorderPending = true;
     requestAnimationFrame(() => {
       setTimeout(() => {
         // Suppress transitions so neighbors don't twitch during DOM reorder
         suppressTransition = true;
         settlingIndex = null;
         dragOffsets = {};
-        endpointStore.reorderEndpoint(fromIndex, toIndex);
+        endpointStore.reorderEndpoint(endpoints[fromIndex].id, endpoints[toIndex].id);
         // Re-enable transitions after the DOM settles
         requestAnimationFrame(() => {
           suppressTransition = false;
+          reorderPending = false;
         });
       }, 280); // matches the 280ms settling transition duration
     });
@@ -322,7 +326,7 @@
         ready={laneProps.ready}
         {lastLatency}
         compact={isCompact}
-        showGrip={endpoints.length > 1}
+        showGrip={endpoints.length > 1 && layoutMode !== 'compact-2col'}
         dragging={isDragging}
         settling={isSettling}
         noTransition={suppressTransition}

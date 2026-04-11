@@ -83,7 +83,7 @@
   style:--timing-hover="{tokens.timing.btnHover}ms"
 >
   <div class="lane-panel" class:sr-only={compact}>
-    {#if showGrip}
+    {#if showGrip && !compact}
       <button
         class="lane-grip"
         aria-label="Reorder lane"
@@ -116,7 +116,7 @@
     {/if}
   </div>
   {#if compact}
-    <div class="lane-compact-header" aria-hidden="true">
+    <div class="lane-compact-header">
       {#if showGrip}
         <button
           class="lane-grip lane-grip--compact"

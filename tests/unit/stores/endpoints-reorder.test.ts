@@ -12,7 +12,7 @@ describe('endpointStore.reorderEndpoint', () => {
     const idA = before[0]!.id;
     const idB = before[1]!.id;
 
-    endpointStore.reorderEndpoint(0, 1);
+    endpointStore.reorderEndpoint(idA, idB);
 
     const after = get(endpointStore);
     expect(after[0]!.id).toBe(idB);
@@ -24,38 +24,38 @@ describe('endpointStore.reorderEndpoint', () => {
     const idA = before[0]!.id;
     const idB = before[1]!.id;
 
-    endpointStore.reorderEndpoint(1, 0);
+    endpointStore.reorderEndpoint(idB, idA);
 
     const after = get(endpointStore);
     expect(after[0]!.id).toBe(idB);
     expect(after[1]!.id).toBe(idA);
   });
 
-  it('no-ops when fromIndex === toIndex', () => {
+  it('no-ops when fromId === toId', () => {
     const before = get(endpointStore);
     const idsBefore = before.map(ep => ep.id);
 
-    endpointStore.reorderEndpoint(0, 0);
+    endpointStore.reorderEndpoint(before[0]!.id, before[0]!.id);
 
     const after = get(endpointStore);
     expect(after.map(ep => ep.id)).toEqual(idsBefore);
   });
 
-  it('no-ops when fromIndex is out of bounds', () => {
+  it('no-ops when fromId is not found', () => {
     const before = get(endpointStore);
     const idsBefore = before.map(ep => ep.id);
 
-    endpointStore.reorderEndpoint(99, 0);
+    endpointStore.reorderEndpoint('nonexistent', before[0]!.id);
 
     const after = get(endpointStore);
     expect(after.map(ep => ep.id)).toEqual(idsBefore);
   });
 
-  it('no-ops when toIndex is out of bounds', () => {
+  it('no-ops when toId is not found', () => {
     const before = get(endpointStore);
     const idsBefore = before.map(ep => ep.id);
 
-    endpointStore.reorderEndpoint(0, 99);
+    endpointStore.reorderEndpoint(before[0]!.id, 'nonexistent');
 
     const after = get(endpointStore);
     expect(after.map(ep => ep.id)).toEqual(idsBefore);
@@ -65,7 +65,7 @@ describe('endpointStore.reorderEndpoint', () => {
     const before = get(endpointStore);
     const epA = before[0]!;
 
-    endpointStore.reorderEndpoint(0, 1);
+    endpointStore.reorderEndpoint(epA.id, before[1]!.id);
 
     const after = get(endpointStore);
     expect(after[1]).toEqual(epA);
@@ -78,7 +78,7 @@ describe('endpointStore.reorderEndpoint', () => {
     const idB = before[1]!.id;
     const idC = before[2]!.id;
 
-    endpointStore.reorderEndpoint(1, 0);
+    endpointStore.reorderEndpoint(idB, idA);
 
     const after = get(endpointStore);
     expect(after[0]!.id).toBe(idB);
@@ -93,7 +93,7 @@ describe('endpointStore.reorderEndpoint', () => {
     const idB = before[1]!.id;
     const idC = before[2]!.id;
 
-    endpointStore.reorderEndpoint(0, 2);
+    endpointStore.reorderEndpoint(idA, idC);
 
     const after = get(endpointStore);
     expect(after[0]!.id).toBe(idB);

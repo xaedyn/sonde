@@ -113,6 +113,33 @@ describe('measurementStore — error/timeout counters', () => {
     expect(state.timeoutCount).toBe(1);
   });
 
+  it('removeEndpoint adjusts counters', () => {
+    measurementStore.initEndpoint('ep1');
+    measurementStore.initEndpoint('ep2');
+    measurementStore.addSample('ep1', 1, 0, 'error', Date.now());
+    measurementStore.addSample('ep1', 2, 5000, 'timeout', Date.now());
+    measurementStore.addSample('ep2', 1, 0, 'error', Date.now());
+
+    measurementStore.removeEndpoint('ep1');
+
+    const state = get(measurementStore);
+    expect(state.errorCount).toBe(1);
+    expect(state.timeoutCount).toBe(0);
+  });
+
+  it('removeEndpoint with no failures zeroes nothing extra', () => {
+    measurementStore.initEndpoint('ep1');
+    measurementStore.initEndpoint('ep2');
+    measurementStore.addSample('ep1', 1, 50, 'ok', Date.now());
+    measurementStore.addSample('ep2', 1, 0, 'error', Date.now());
+
+    measurementStore.removeEndpoint('ep1');
+
+    const state = get(measurementStore);
+    expect(state.errorCount).toBe(1);
+    expect(state.timeoutCount).toBe(0);
+  });
+
   it('loadSnapshot handles multiple endpoints', () => {
     const snapshot = {
       lifecycle: 'stopped' as const,

@@ -77,7 +77,8 @@ function createMeasurementStore() {
       update(s => {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { [endpointId]: _removed, ...rest } = s.endpoints;
-        return { ...s, endpoints: rest };
+        const { errorCount, timeoutCount } = recomputeCounts(rest);
+        return { ...s, endpoints: rest, errorCount, timeoutCount };
       });
     },
 
