@@ -124,7 +124,7 @@ export function computeEndpointStatistics(
   // ── Tier 2 averages ───────────────────────────────────────────────────
   let tier2Averages: EndpointStatistics['tier2Averages'];
   if (tier2Samples.length > 0) {
-    const avg = (field: keyof NonNullable<MeasurementSample['tier2']>) =>
+    const avg = (field: 'dnsLookup' | 'tcpConnect' | 'tlsHandshake' | 'ttfb' | 'contentTransfer') =>
       tier2Samples.reduce((sum, s) => sum + s.tier2![field], 0) / tier2Samples.length;
 
     tier2Averages = {

@@ -8,7 +8,8 @@
   let lifecycle = $derived($measurementStore.lifecycle);
   let roundCounter = $derived($measurementStore.roundCounter);
   let cap = $derived($settingsStore.cap);
-  let delay = $derived($settingsStore.delay);
+  let burstRounds = $derived($settingsStore.burstRounds);
+  let monitorDelay = $derived($settingsStore.monitorDelay);
   let timeout = $derived($settingsStore.timeout);
 
   let errorCount = $derived.by(() => {
@@ -44,7 +45,12 @@
   let startedAt = $derived($measurementStore.startedAt);
   let elapsed = $derived(startedAt !== null ? Math.max(0, now - startedAt) : 0);
 
-  let configLabel = $derived(`${delay / 1000}s interval · ${timeout / 1000}s timeout`);
+  let isBurst = $derived(roundCounter < burstRounds);
+  let configLabel = $derived(
+    isBurst
+      ? `Burst · ${roundCounter}/${burstRounds} · ${timeout / 1000}s timeout`
+      : `${monitorDelay / 1000}s interval · ${timeout / 1000}s timeout`
+  );
 </script>
 
 <footer

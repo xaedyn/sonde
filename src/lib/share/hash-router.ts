@@ -7,6 +7,7 @@ import { endpointStore } from '../stores/endpoints';
 import { settingsStore } from '../stores/settings';
 import { measurementStore } from '../stores/measurements';
 import { uiStore } from '../stores/ui';
+import { DEFAULT_SETTINGS } from '../types';
 import type { SharePayload, MeasurementState, Endpoint } from '../types';
 import { tokens } from '../tokens';
 
@@ -30,7 +31,12 @@ export function applySharePayload(payload: SharePayload): string[] {
   }));
 
   endpointStore.setEndpoints(endpoints);
-  settingsStore.set(payload.settings);
+  settingsStore.set({
+    ...DEFAULT_SETTINGS,
+    ...payload.settings,
+    burstRounds: payload.settings.burstRounds ?? DEFAULT_SETTINGS.burstRounds,
+    monitorDelay: payload.settings.monitorDelay ?? DEFAULT_SETTINGS.monitorDelay,
+  });
 
   const ids = endpoints.map((ep) => ep.id);
 

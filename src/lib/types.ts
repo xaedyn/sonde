@@ -39,6 +39,8 @@ export interface TimingPayload {
   tlsHandshake: number;
   ttfb: number;
   contentTransfer: number;
+  connectionReused?: boolean;
+  protocol?: string;
 }
 
 export type WorkerToMainMessage =
@@ -137,13 +139,17 @@ export type StatisticsState = Record<string, EndpointStatistics>;
 export interface Settings {
   timeout: number;
   delay: number;
+  burstRounds: number;
+  monitorDelay: number;
   cap: number;
   corsMode: 'no-cors' | 'cors';
 }
 
 export const DEFAULT_SETTINGS: Settings = {
   timeout: 5000,
-  delay: 1000,
+  delay: 0,
+  burstRounds: 50,
+  monitorDelay: 3000,
   cap: 0,
   corsMode: 'no-cors',
 };
@@ -207,6 +213,8 @@ export interface SharePayload {
   readonly settings: {
     readonly timeout: number;
     readonly delay: number;
+    readonly burstRounds?: number;
+    readonly monitorDelay?: number;
     readonly cap: number;
     readonly corsMode: 'no-cors' | 'cors';
   };
@@ -222,7 +230,7 @@ export interface SharePayload {
 
 // ── Persistence schema ─────────────────────────────────────────────────────
 export interface PersistedSettings {
-  version: 2;
+  version: 2 | 3;
   endpoints: { url: string; enabled: boolean }[];
   settings: Settings;
   ui: {

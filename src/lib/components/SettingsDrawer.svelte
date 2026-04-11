@@ -18,14 +18,16 @@
 
   // Local copies of settings for binding
   let timeout: number = $state(get(settingsStore).timeout);
-  let delay: number = $state(get(settingsStore).delay);
+  let burstRounds: number = $state(get(settingsStore).burstRounds);
+  let monitorDelay: number = $state(get(settingsStore).monitorDelay);
   let cap: number = $state(get(settingsStore).cap);
   let corsMode: 'no-cors' | 'cors' = $state(get(settingsStore).corsMode);
 
   // Sync local state when store changes externally (e.g. loaded from persistence)
   $effect(() => {
     timeout = $settingsStore.timeout;
-    delay = $settingsStore.delay;
+    burstRounds = $settingsStore.burstRounds;
+    monitorDelay = $settingsStore.monitorDelay;
     cap = $settingsStore.cap;
     corsMode = $settingsStore.corsMode;
   });
@@ -77,12 +79,20 @@
     settingsStore.update(s => ({ ...s, timeout: val }));
   }
 
-  function applyDelay(e: Event): void {
+  function applyBurstRounds(e: Event): void {
+    const raw = parseInt((e.target as HTMLInputElement).value, 10);
+    if (isNaN(raw)) return;
+    const val = Math.max(0, Math.min(500, raw));
+    burstRounds = val;
+    settingsStore.update(s => ({ ...s, burstRounds: val }));
+  }
+
+  function applyMonitorDelay(e: Event): void {
     const raw = parseInt((e.target as HTMLInputElement).value, 10);
     if (isNaN(raw)) return;
     const val = Math.max(0, Math.min(60000, raw));
-    delay = val;
-    settingsStore.update(s => ({ ...s, delay: val }));
+    monitorDelay = val;
+    settingsStore.update(s => ({ ...s, monitorDelay: val }));
   }
 
   function applyCap(e: Event): void {
@@ -180,11 +190,19 @@
       </div>
 
       <div class="field">
-        <label class="field-label" for="setting-delay">
-          Interval
+        <label class="field-label" for="setting-burst-rounds">
+          Burst rounds
+          <span class="field-hint">0–500, 0 = skip burst</span>
+        </label>
+        <input id="setting-burst-rounds" type="number" class="field-input" min="0" max="500" step="10" bind:value={burstRounds} onchange={applyBurstRounds} />
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="setting-monitor-delay">
+          Monitor interval
           <span class="field-hint">ms, 0–60000</span>
         </label>
-        <input id="setting-delay" type="number" class="field-input" min="0" max="60000" step="100" bind:value={delay} onchange={applyDelay} />
+        <input id="setting-monitor-delay" type="number" class="field-input" min="0" max="60000" step="100" bind:value={monitorDelay} onchange={applyMonitorDelay} />
       </div>
 
       <div class="field">

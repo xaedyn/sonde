@@ -1,6 +1,6 @@
 // src/lib/engine/measurement-engine.ts
-// Orchestrates one Worker per enabled endpoint, synchronized round dispatch,
-// AbortController-based cancellation, and epoch-based stale-message invalidation.
+// Orchestrates one Worker per enabled endpoint, response-gated round dispatch,
+// two-phase cadence (burst → monitor), and epoch-based stale-message invalidation.
 
 import { get } from 'svelte/store';
 import { measurementStore } from '../stores/measurements';
@@ -25,6 +25,7 @@ export class MeasurementEngine {
   private roundBuffer: Map<number, WorkerToMainMessage[]> = new Map();
   private expectedResponses: number = 0;
   private flushTimers: Map<number, ReturnType<typeof setTimeout>> = new Map();
+  private flushedRounds: Set<number> = new Set();
 
   constructor(workerFactory?: WorkerFactory) {
     this.workerFactory = workerFactory ?? defaultWorkerFactory;
@@ -67,7 +68,8 @@ export class MeasurementEngine {
       this._spawnWorkers(endpoints);
       measurementStore.setLifecycle('running');
       this.freezeDetector.start();
-      this._scheduleNextRound();
+      // Dispatch the first round immediately (no delay for the very first round).
+      this._dispatchRound();
     } catch {
       // Worker creation failed (e.g., jsdom environment).
       // Stay in 'starting' — tests that only check epoch / lifecycle transition still pass.
@@ -97,12 +99,13 @@ export class MeasurementEngine {
 
     this.workers = [];
 
-    // Clean up flush timers and round buffer
+    // Clean up flush timers, round buffer, and flushed rounds tracking
     for (const timer of this.flushTimers.values()) {
       clearTimeout(timer);
     }
     this.flushTimers.clear();
     this.roundBuffer.clear();
+    this.flushedRounds.clear();
     this.expectedResponses = 0;
 
     this.freezeDetector.stop();
@@ -135,6 +138,10 @@ export class MeasurementEngine {
     if (msg.epoch !== currentEpoch) return; // stale — discard
 
     const roundId = msg.roundId;
+
+    // Discard orphaned responses for already-flushed rounds
+    if (this.flushedRounds.has(roundId)) return;
+
     if (!this.roundBuffer.has(roundId)) {
       this.roundBuffer.set(roundId, []);
     }
@@ -151,6 +158,9 @@ export class MeasurementEngine {
     const messages = this.roundBuffer.get(roundId);
     if (!messages || messages.length === 0) return;
     this.roundBuffer.delete(roundId);
+
+    // Mark this round as flushed to discard late-arriving orphaned responses
+    this.flushedRounds.add(roundId);
 
     // Clear any pending flush timeout for this round
     if (this.flushTimers.has(roundId)) {
@@ -190,6 +200,12 @@ export class MeasurementEngine {
     });
 
     measurementStore.addSamples(entries);
+
+    // Response-gated: schedule next round only AFTER this round is fully flushed.
+    // This prevents round overlap and self-inflicted network contention.
+    if (get(measurementStore).lifecycle === 'running') {
+      this._scheduleNextRound();
+    }
   }
 
   // ── Private helpers ───────────────────────────────────────────────────────
@@ -208,8 +224,17 @@ export class MeasurementEngine {
     });
   }
 
+  /**
+   * Two-phase cadence: burst (0ms delay) for the first N rounds, then
+   * monitor (configurable delay) for all subsequent rounds.
+   */
   private _scheduleNextRound(): void {
-    const { delay } = get(settingsStore);
+    const { burstRounds, monitorDelay } = get(settingsStore);
+    const { roundCounter } = get(measurementStore);
+
+    const isBurst = roundCounter < burstRounds;
+    const delay = isBurst ? 0 : monitorDelay;
+
     this.roundTimer = setTimeout(() => this._dispatchRound(), delay);
   }
 
@@ -251,12 +276,14 @@ export class MeasurementEngine {
       }
     }
 
-    // Flush timeout for stragglers (200ms)
+    // Flush timeout for stragglers — ensures the round doesn't hang forever
+    // if a worker dies or takes excessively long
     this.flushTimers.set(roundCounter, setTimeout(() => {
       this._flushRound(roundCounter);
     }, 200));
 
     measurementStore.incrementRound();
-    this._scheduleNextRound();
+    // NOTE: _scheduleNextRound() is NOT called here — it's called from
+    // _flushRound() after all responses arrive (response-gated dispatch).
   }
 }

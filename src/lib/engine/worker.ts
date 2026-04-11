@@ -44,6 +44,8 @@ export function extractTimingPayload(entry: PerformanceResourceTiming): TimingPa
       tlsHandshake: 0,
       ttfb: 0,
       contentTransfer: 0,
+      connectionReused: undefined,
+      protocol: (entry as PerformanceResourceTiming).nextHopProtocol || undefined,
     };
   }
 
@@ -61,6 +63,8 @@ export function extractTimingPayload(entry: PerformanceResourceTiming): TimingPa
     tlsHandshake,
     ttfb,
     contentTransfer,
+    connectionReused: connectStart === connectEnd,
+    protocol: (entry as PerformanceResourceTiming).nextHopProtocol || undefined,
   };
 }
 
@@ -72,6 +76,76 @@ export function classifyLatencyTier(
   if (latency < 50) return 'fast';
   if (latency < 200) return 'medium';
   return 'slow';
+}
+
+// ── Resource Timing extraction helpers ─────────────────────────────────────
+
+const hasPerformanceObserver = typeof PerformanceObserver !== 'undefined';
+
+/**
+ * Wait for a Resource Timing entry matching `url` using PerformanceObserver.
+ * Races against the AbortController signal — if aborted, returns null.
+ */
+function waitForResourceEntry(
+  url: string,
+  signal: AbortSignal,
+): Promise<PerformanceResourceTiming | null> {
+  if (!hasPerformanceObserver) {
+    // Fallback: poll once after a microtask yield
+    return new Promise(resolve => {
+      setTimeout(() => {
+        const entries = performance.getEntriesByType('resource') as PerformanceResourceTiming[];
+        const filtered = entries.filter(e => e.name === url);
+        const entry = filtered.length > 0 ? (filtered[filtered.length - 1] ?? null) : null;
+        performance.clearResourceTimings();
+        resolve(entry);
+      }, 0);
+    });
+  }
+
+  return new Promise(resolve => {
+    if (signal.aborted) {
+      resolve(null);
+      return;
+    }
+
+    let settled = false;
+
+    const cleanup = () => {
+      if (settled) return;
+      settled = true;
+      observer.disconnect();
+      signal.removeEventListener('abort', abortHandler);
+      performance.clearResourceTimings();
+    };
+
+    const observer = new PerformanceObserver((list) => {
+      const match = list.getEntries().find(e => e.name === url) as PerformanceResourceTiming | undefined;
+      if (match && !settled) {
+        cleanup();
+        resolve(match);
+      }
+    });
+
+    const abortHandler = () => {
+      cleanup();
+      resolve(null);
+    };
+
+    signal.addEventListener('abort', abortHandler, { once: true });
+    observer.observe({ type: 'resource', buffered: true });
+
+    // Safety timeout: if observer never fires (e.g. no-cors opaque response
+    // that doesn't create a Resource Timing entry), resolve after 100ms
+    setTimeout(() => {
+      if (settled) return;
+      // Check entries one last time before giving up
+      const entries = performance.getEntriesByType('resource') as PerformanceResourceTiming[];
+      const fallback = entries.filter(e => e.name === url);
+      cleanup();
+      resolve(fallback.length > 0 ? (fallback[fallback.length - 1] ?? null) : null);
+    }, 100);
+  });
 }
 
 // ── Worker event loop ───────────────────────────────────────────────────────
@@ -112,16 +186,8 @@ if (typeof (globalThis as any).WorkerGlobalScope !== 'undefined' && self instanc
 
         clearTimeout(timeoutId);
 
-        // Wait a tick for the Resource Timing entry to be committed.
-        await new Promise<void>(resolve => setTimeout(resolve, 0));
-
-        const entries = performance.getEntriesByType(
-          'resource'
-        ) as PerformanceResourceTiming[];
-
-        // Find the most recent entry for this URL.
-        const filtered = entries.filter(e => e.name === url);
-        const entry = filtered[filtered.length - 1];
+        // Use PerformanceObserver to get the Resource Timing entry (push-based).
+        const entry = await waitForResourceEntry(url, signal);
 
         const timing: TimingPayload = entry
           ? extractTimingPayload(entry)
@@ -145,6 +211,7 @@ if (typeof (globalThis as any).WorkerGlobalScope !== 'undefined' && self instanc
         (self as unknown as Worker).postMessage(reply);
       } catch (err: unknown) {
         clearTimeout(timeoutId);
+        performance.clearResourceTimings();
 
         if (signal.aborted) {
           const timeoutReply: WorkerToMainMessage = {

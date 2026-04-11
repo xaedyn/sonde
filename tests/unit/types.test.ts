@@ -80,7 +80,9 @@ describe('types', () => {
 
   it('DEFAULT_SETTINGS has correct values', () => {
     expect(DEFAULT_SETTINGS.timeout).toBe(5000);
-    expect(DEFAULT_SETTINGS.delay).toBe(1000);
+    expect(DEFAULT_SETTINGS.delay).toBe(0);
+    expect(DEFAULT_SETTINGS.burstRounds).toBe(50);
+    expect(DEFAULT_SETTINGS.monitorDelay).toBe(3000);
     expect(DEFAULT_SETTINGS.cap).toBe(0);
     expect(DEFAULT_SETTINGS.corsMode).toBe('no-cors');
   });
