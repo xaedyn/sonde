@@ -108,6 +108,95 @@
 
   let lanesEl: HTMLDivElement;
 
+  // ── Drag-to-reorder state ──────────────────────────────────────────────────
+  interface DragState {
+    pointerId: number;
+    fromIndex: number;
+    startY: number;
+    cardHeight: number;
+    toIndex: number;
+  }
+
+  let dragState = $state<DragState | null>(null);
+  let dragOffsets = $state<Record<number, number>>({});
+
+  function indexOfEndpoint(id: string): number {
+    return endpoints.findIndex(ep => ep.id === id);
+  }
+
+  function handleGripPointerDown(e: PointerEvent): void {
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
+
+    const grip = e.currentTarget as HTMLElement;
+    const endpointId = grip.dataset['endpointId'];
+    if (!endpointId) return;
+
+    const fromIndex = indexOfEndpoint(endpointId);
+    if (fromIndex === -1) return;
+
+    const article = lanesEl.querySelector(`#lane-${endpointId}`) as HTMLElement | null;
+    if (!article) return;
+    const cardHeight = article.getBoundingClientRect().height + tokens.lane.gapPx;
+
+    grip.setPointerCapture(e.pointerId);
+    e.preventDefault();
+
+    dragState = {
+      pointerId: e.pointerId,
+      fromIndex,
+      startY: e.clientY,
+      cardHeight,
+      toIndex: fromIndex,
+    };
+    dragOffsets = {};
+  }
+
+  function handleGripPointerMove(e: PointerEvent): void {
+    if (!dragState || e.pointerId !== dragState.pointerId) return;
+    e.preventDefault();
+
+    const deltaY = e.clientY - dragState.startY;
+    const count = endpoints.length;
+
+    const maxUp = -(dragState.fromIndex * dragState.cardHeight);
+    const maxDown = (count - 1 - dragState.fromIndex) * dragState.cardHeight;
+    const clampedDelta = Math.max(maxUp, Math.min(maxDown, deltaY));
+
+    const sign = clampedDelta >= 0 ? 1 : -1;
+    const newToIndex = Math.max(
+      0,
+      Math.min(count - 1, dragState.fromIndex + Math.round(clampedDelta / dragState.cardHeight)),
+    );
+
+    const offsets: Record<number, number> = {};
+    for (let i = 0; i < count; i++) {
+      if (i === dragState.fromIndex) continue;
+      const isInRange =
+        sign > 0
+          ? i > dragState.fromIndex && i <= newToIndex
+          : i < dragState.fromIndex && i >= newToIndex;
+      if (isInRange) {
+        offsets[i] = -sign * dragState.cardHeight;
+      }
+    }
+    offsets[dragState.fromIndex] = clampedDelta;
+
+    dragOffsets = offsets;
+    dragState = { ...dragState, toIndex: newToIndex };
+  }
+
+  function handleGripPointerUp(e: PointerEvent): void {
+    if (!dragState || e.pointerId !== dragState.pointerId) return;
+
+    const { fromIndex, toIndex } = dragState;
+    dragState = null;
+    dragOffsets = {};
+
+    if (fromIndex !== toIndex) {
+      endpointStore.reorderEndpoint(fromIndex, toIndex);
+    }
+  }
+
   function handleMouseMove(e: MouseEvent): void {
     const lane = (e.target as HTMLElement).closest('.lane');
     const chartEl = lane?.querySelector('.lane-chart') as HTMLElement | null;
@@ -161,6 +250,8 @@
   class:grid-2col={layoutMode === 'compact-2col'}
   onmousemove={handleMouseMove}
   onmouseleave={handleMouseLeave}
+  onpointermove={handleGripPointerMove}
+  onpointerup={handleGripPointerUp}
   style:--lanes-gap="{tokens.lane.gapPx}px"
   style:--lanes-pad-x="{tokens.lane.paddingX}px"
   style:--lanes-pad-y="{tokens.lane.paddingY}px"
@@ -170,9 +261,11 @@
       <span>Add an endpoint to begin</span>
     </div>
   {:else}
-    {#each endpoints as ep (ep.id)}
+    {#each endpoints as ep, i (ep.id)}
       {@const laneProps = getLaneProps(ep.id)}
       {@const lastLatency = $measurementStore.endpoints[ep.id]?.lastLatency ?? null}
+      {@const isDragging = dragState?.fromIndex === i}
+      {@const offset = dragOffsets[i] ?? 0}
       <Lane
         endpointId={ep.id}
         color={ep.color}
@@ -185,6 +278,10 @@
         ready={laneProps.ready}
         {lastLatency}
         compact={isCompact}
+        showGrip={endpoints.length > 1}
+        dragging={isDragging}
+        translateY={offset}
+        onGripPointerDown={handleGripPointerDown}
       >
           {@const allPoints = frameData.pointsByEndpoint.get(ep.id) ?? []}
           {@const windowedPoints = allPoints.filter(p => p.round >= visibleStart && p.round <= visibleEnd)}
