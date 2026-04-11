@@ -158,8 +158,12 @@ export class MeasurementEngine {
     if (!messages || messages.length === 0) return;
     this.roundBuffer.delete(roundId);
 
+    // Filter out busy replies — worker was still processing the previous round.
+    const actionable = messages.filter(msg => msg.type !== 'busy');
+    if (actionable.length === 0) return;
+
     const timestamp = Date.now();
-    const entries = messages.map(msg => {
+    const entries = actionable.map(msg => {
       switch (msg.type) {
         case 'result':
           return {

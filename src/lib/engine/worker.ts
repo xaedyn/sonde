@@ -80,6 +80,7 @@ export function classifyLatencyTier(
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 if (typeof (globalThis as any).WorkerGlobalScope !== 'undefined' && self instanceof (globalThis as any).WorkerGlobalScope) {
   let abortController: AbortController | null = null;
+  let measuring = false;
 
   self.addEventListener('message', async (event: MessageEvent<MainToWorkerMessage>) => {
     const msg = event.data;
@@ -87,14 +88,26 @@ if (typeof (globalThis as any).WorkerGlobalScope !== 'undefined' && self instanc
     if (msg.type === 'stop') {
       abortController?.abort();
       abortController = null;
+      measuring = false;
       return;
     }
 
     if (msg.type === 'measure') {
       const { url, timeout, corsMode, epoch, roundId } = msg;
 
-      // Each measurement gets its own AbortController so a stop() mid-flight aborts cleanly.
-      abortController?.abort();
+      // If already measuring, reply busy — don't abort the in-flight request.
+      if (measuring) {
+        const busyReply: WorkerToMainMessage = {
+          type: 'busy',
+          endpointId: url,
+          epoch,
+          roundId,
+        };
+        (self as unknown as Worker).postMessage(busyReply);
+        return;
+      }
+
+      measuring = true;
       abortController = new AbortController();
       const signal = abortController.signal;
 
@@ -116,7 +129,10 @@ if (typeof (globalThis as any).WorkerGlobalScope !== 'undefined' && self instanc
         await new Promise<void>(resolve => setTimeout(resolve, 0));
 
         // A stop or new measure may have aborted us during the yield.
-        if (signal.aborted) return;
+        if (signal.aborted) {
+          measuring = false;
+          return;
+        }
 
         const entries = performance.getEntriesByType(
           'resource'
@@ -145,9 +161,11 @@ if (typeof (globalThis as any).WorkerGlobalScope !== 'undefined' && self instanc
           timing,
         };
 
+        measuring = false;
         (self as unknown as Worker).postMessage(reply);
       } catch (err: unknown) {
         clearTimeout(timeoutId);
+        measuring = false;
 
         if (signal.aborted) {
           const timeoutReply: WorkerToMainMessage = {

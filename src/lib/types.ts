@@ -63,6 +63,12 @@ export type WorkerToMainMessage =
       roundId: number;
       errorType: string;
       message: string;
+    }
+  | {
+      type: 'busy';
+      endpointId: string;
+      epoch: number;
+      roundId: number;
     };
 
 // ── Measurement store ──────────────────────────────────────────────────────
