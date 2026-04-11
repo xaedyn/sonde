@@ -76,8 +76,9 @@ function createEndpointStore() {
           return endpoints;
         }
         const next = [...endpoints];
-        const [moved] = next.splice(fromIndex, 1);
-        next.splice(toIndex, 0, moved!);
+        const moved = next.splice(fromIndex, 1)[0];
+        if (moved === undefined) return endpoints;
+        next.splice(toIndex, 0, moved);
         return next;
       });
     },

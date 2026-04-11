@@ -86,7 +86,7 @@
         onpointerdown={onGripPointerDown}
       >
         <svg width="10" height="14" viewBox="0 0 10 14" aria-hidden="true">
-          {#each GRIP_DOTS as [cx, cy]}
+          {#each GRIP_DOTS as [cx, cy], i (i)}
             <circle {cx} {cy} r="1.5" fill="currentColor" />
           {/each}
         </svg>
@@ -120,7 +120,7 @@
           onpointerdown={onGripPointerDown}
         >
           <svg width="10" height="14" viewBox="0 0 10 14" aria-hidden="true">
-            {#each GRIP_DOTS as [cx, cy]}
+            {#each GRIP_DOTS as [cx, cy], i (i)}
               <circle {cx} {cy} r="1.5" fill="currentColor" />
             {/each}
           </svg>
