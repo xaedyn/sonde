@@ -155,17 +155,24 @@ export class MeasurementEngine {
   }
 
   private _flushRound(roundId: number): void {
-    const messages = this.roundBuffer.get(roundId);
-    if (!messages || messages.length === 0) return;
+    const messages = this.roundBuffer.get(roundId) ?? [];
     this.roundBuffer.delete(roundId);
 
     // Mark this round as flushed to discard late-arriving orphaned responses
-    this.lastFlushedRound = roundId;
+    this.lastFlushedRound = Math.max(this.lastFlushedRound, roundId);
 
     // Clear any pending flush timeout for this round
     if (this.flushTimers.has(roundId)) {
       clearTimeout(this.flushTimers.get(roundId)!);
       this.flushTimers.delete(roundId);
+    }
+
+    // Still advance cadence even if no responses arrived for this round
+    if (messages.length === 0) {
+      if (get(measurementStore).lifecycle === 'running') {
+        this._scheduleNextRound();
+      }
+      return;
     }
 
     const timestamp = Date.now();
