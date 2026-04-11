@@ -12,17 +12,7 @@
   let monitorDelay = $derived($settingsStore.monitorDelay);
   let timeout = $derived($settingsStore.timeout);
 
-  let errorCount = $derived.by(() => {
-    let errors = 0;
-    let timeouts = 0;
-    for (const ep of Object.values($measurementStore.endpoints)) {
-      for (const s of ep.samples) {
-        if (s.status === 'error') errors++;
-        if (s.status === 'timeout') timeouts++;
-      }
-    }
-    return { errors, timeouts };
-  });
+  let errorCount = $derived({ errors: $measurementStore.errorCount, timeouts: $measurementStore.timeoutCount });
 
   let progressLabel = $derived.by(() => {
     const total = cap > 0 ? cap : '∞';
