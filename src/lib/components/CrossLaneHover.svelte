@@ -94,14 +94,14 @@
 
 <div
   class="hover-line"
-  class:active={isActive}
+  class:active={isActive && !$uiStore.heatmapTooltip}
   style:left="{hoverX}px"
   style:--t3={tokens.color.text.t3}
   style:--glass-highlight={tokens.color.glass.highlight}
   aria-hidden="true"
 ></div>
 
-{#if isActive && hoverRound !== null && hoverX !== null}
+{#if isActive && hoverRound !== null && hoverX !== null && !$uiStore.heatmapTooltip}
   <div
     class="hover-tip"
     class:active={isActive}
@@ -136,10 +136,14 @@
 {/if}
 
 {#if $uiStore.heatmapTooltip}
+  {@const hx = $uiStore.heatmapTooltip.x}
+  {@const hy = $uiStore.heatmapTooltip.y}
+  {@const hTipW = 280}
+  {@const clampedLeft = Math.max(hTipW / 2 + 8, Math.min(hx, (typeof window !== 'undefined' ? window.innerWidth : 1920) - hTipW / 2 - 8))}
   <div
     class="heatmap-tip"
-    style:left="{$uiStore.heatmapTooltip.x}px"
-    style:top="{$uiStore.heatmapTooltip.y}px"
+    style:left="{clampedLeft}px"
+    style:top="{hy}px"
     style:--tooltip-bg={tokens.color.tooltip.bg}
     style:--glass-border={tokens.color.glass.border}
     style:--mono={tokens.typography.mono.fontFamily}
@@ -185,7 +189,7 @@
   }
   .heatmap-tip {
     position: fixed; z-index: 20; pointer-events: none;
-    transform: translate(-50%, -100%) translateY(-10px);
+    transform: translate(-50%, 0) translateY(8px);
     background: var(--tooltip-bg);
     border: 1px solid var(--glass-border);
     border-radius: 6px; padding: 5px 10px;
