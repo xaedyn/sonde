@@ -1,5 +1,5 @@
 {
-  "name": "sonde",
+  "name": "chronoscope",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:visual": "playwright test"
+    "test:visual": "playwright test",
+    "deploy": "npm run build && wrangler pages deploy dist --project-name chronoscope"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.1",

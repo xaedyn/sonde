@@ -1,4 +1,4 @@
-# Sonde Product Vision — Network Diagnostic Platform
+# Chronoscope Product Vision — Network Diagnostic Platform
 
 **Date:** 2026-04-11
 **Status:** Research complete, ready for prioritization
@@ -7,7 +7,7 @@
 
 ## Executive Summary
 
-Sonde is currently a browser-based HTTP latency diagnostic tool. This document outlines the path to becoming a comprehensive, free network diagnostic platform that fills gaps no existing tool addresses — combining capabilities that today require $50k+/year enterprise tools or cobbling together 5-8 separate CLI utilities.
+Chronoscope is currently a browser-based HTTP latency diagnostic tool. This document outlines the path to becoming a comprehensive, free network diagnostic platform that fills gaps no existing tool addresses — combining capabilities that today require $50k+/year enterprise tools or cobbling together 5-8 separate CLI utilities.
 
 The core insight: **network engineers need one tool that does speed + latency + path + DNS + bufferbloat + loss analysis, produces a shareable interactive report, and looks like it was designed in Cupertino.** Nothing like this exists at any price point. The closest (ThousandEyes) costs $50-200k/year and has a dense enterprise UI.
 
@@ -15,11 +15,11 @@ The core insight: **network engineers need one tool that does speed + latency + 
 
 ## Architecture: Progressive Enhancement Tiers
 
-Everything flows through the Sonde browser UI. The browser is always the front door — this ensures every user touches sonde.dev regardless of which tier they're on.
+Everything flows through the Chronoscope browser UI. The browser is always the front door — this ensures every user touches chronoscope.dev regardless of which tier they're on.
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                   sonde.dev (Browser UI)                │
+│                   chronoscope.dev (Browser UI)                │
 │                                                         │
 │  Tier 0: Browser-only (current + enhancements)          │
 │  ┌───────────────────────────────────────────────────┐  │
@@ -42,10 +42,10 @@ Everything flows through the Sonde browser UI. The browser is always the front d
 │  └───────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────┘
          │                              │
-    fetch localhost:19100          fetch sonde.dev/api
+    fetch localhost:19100          fetch chronoscope.dev/api
          │                              │
     ┌────▼─────┐                 ┌──────▼──────┐
-    │  sonde   │                 │  Probe      │
+    │  chronoscope   │                 │  Probe      │
     │  agent   │                 │  Registry   │
     │ (Go bin) │                 │ (CF Worker) │
     └──────────┘                 └─────────────┘
@@ -152,15 +152,15 @@ GET  /wifi/scan                      → Nearby networks + channels
 GET  /probes?target=8.8.8.8         → Multi-protocol probe results
 ```
 
-CORS: `Access-Control-Allow-Origin: https://sonde.dev, http://localhost:5173`
+CORS: `Access-Control-Allow-Origin: https://chronoscope.dev, http://localhost:5173`
 
 ### Shareable reports: Cloudflare Workers KV
 
 - Free tier: 100k reads/day, 1k writes/day (more than enough)
 - Reports stored with 30-day TTL
-- URL: `sonde.dev/r/{id}` — opens the browser UI with the report data loaded
+- URL: `chronoscope.dev/r/{id}` — opens the browser UI with the report data loaded
 - Privacy: reports are unlisted (random ID), not indexed, auto-expire
-- Keeps all traffic flowing through sonde.dev
+- Keeps all traffic flowing through chronoscope.dev
 
 ### Bufferbloat saturation endpoint
 
@@ -175,7 +175,7 @@ CORS: `Access-Control-Allow-Origin: https://sonde.dev, http://localhost:5173`
 ## Build Phases
 
 ### Phase 1 — Browser enhancements (3-4 weeks)
-Pure client-side, no new infrastructure. Ships as updates to sonde.dev.
+Pure client-side, no new infrastructure. Ships as updates to chronoscope.dev.
 
 1. **Network Quality Score** — 2-3 days
    - Composite of latency, jitter, loss, DNS speed
@@ -218,7 +218,7 @@ Adds new measurement capabilities and the report service.
 
 8. **Enhanced Shareable Reports** — 1 week
    - Cloudflare Workers KV paste service
-   - `sonde.dev/r/{id}` permalink
+   - `chronoscope.dev/r/{id}` permalink
    - Include: quality score, diagnosis, timeline, raw data
    - 30-day retention
 
@@ -278,7 +278,7 @@ Go binary, cross-platform, single install.
                     Kentik ●  │
                    ($24k+)    │
                               │        ┌──────────────┐
-                              │        │  Sonde       │
+                              │        │  Chronoscope       │
                               │        │  (free)      │
                     Catchpoint●        └──────────────┘
                      ($30k+)  │
@@ -295,14 +295,14 @@ Go binary, cross-platform, single install.
               (CLI/config)                     (browser)
 ```
 
-Sonde occupies the upper-right quadrant that is currently empty:
+Chronoscope occupies the upper-right quadrant that is currently empty:
 **deep analysis + easy to use + free.**
 
 ---
 
 ## Success Metrics
 
-- **Users:** Track via page loads on sonde.dev (all tiers flow through the browser)
+- **Users:** Track via page loads on chronoscope.dev (all tiers flow through the browser)
 - **Agent adoption:** Health check success rate (anonymized count of agent-detected sessions)
 - **Report sharing:** Number of reports created via paste service
 - **Community probes:** Number of active probes in registry
@@ -327,6 +327,6 @@ This is a **diagnostic tool**, not a monitoring platform. It answers "why is my 
 1. **Free forever** — no freemium bait-and-switch
 2. **Beautiful UI** — Apple-quality design in a space full of ugly tools
 3. **Browser-first** — zero install for 80% of value
-4. **Shareable reports** — every diagnosis drives organic traffic to sonde.dev
+4. **Shareable reports** — every diagnosis drives organic traffic to chronoscope.dev
 5. **Open source** — trust, community contributions, no vendor lock-in
 6. **Progressive enhancement** — agent adds power without requiring it

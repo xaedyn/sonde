@@ -20,7 +20,7 @@ uPlot [VERIFIED] — Canvas 2D library for 60fps streaming — supports fill-bet
 
 ### Sonar/Radar Animation
 
-The canonical sonar pattern [VERIFIED — GitHub arduino-radar, dev.to CSS implementations]: rotating sweep line + data points with phosphor persistence (fade via low-opacity black overlay instead of clearRect per frame). Medical ECG displays use the same trailing-fade model. For Sonde: partial-clear creates the "living instrument" feel without storing point history.
+The canonical sonar pattern [VERIFIED — GitHub arduino-radar, dev.to CSS implementations]: rotating sweep line + data points with phosphor persistence (fade via low-opacity black overlay instead of clearRect per frame). Medical ECG displays use the same trailing-fade model. For Chronoscope: partial-clear creates the "living instrument" feel without storing point history.
 
 ### Empty State Design
 

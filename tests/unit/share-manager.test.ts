@@ -12,9 +12,9 @@ import type { SharePayload } from '../../src/lib/types';
 Object.defineProperty(global, 'window', {
   value: {
     location: {
-      origin: 'https://sonde.example.com',
+      origin: 'https://chronoscope.example.com',
       pathname: '/',
-      href: 'https://sonde.example.com/',
+      href: 'https://chronoscope.example.com/',
     },
   },
   writable: true,
@@ -121,7 +121,7 @@ describe('share-manager', () => {
 
   it('buildShareURL starts with origin', () => {
     const url = buildShareURL(configPayload);
-    expect(url.startsWith('https://sonde.example.com')).toBe(true);
+    expect(url.startsWith('https://chronoscope.example.com')).toBe(true);
     expect(url).toContain('#s=');
   });
 

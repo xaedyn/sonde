@@ -1,6 +1,6 @@
 # S80 Feature Parity — Design Spec
 
-> **Goal:** Incorporate s80's four strongest diagnostic features into Sonde's Glass Lanes UI, executed better than the original.
+> **Goal:** Incorporate s80's four strongest diagnostic features into Chronoscope's Glass Lanes UI, executed better than the original.
 
 **Date:** 2026-04-10
 **Status:** Draft
@@ -9,7 +9,7 @@
 
 ## Context
 
-Sonde is a ground-up rebuild of s80 with a Glass Lanes visual language. The Glass Lanes redesign (PR #4, #5) replaced the old sidebar+chart layout with per-endpoint lane cards, SVG scatter charts, and a frosted glass aesthetic. Four features from s80 are missing that provide genuine diagnostic value:
+Chronoscope is a ground-up rebuild of s80 with a Glass Lanes visual language. The Glass Lanes redesign (PR #4, #5) replaced the old sidebar+chart layout with per-endpoint lane cards, SVG scatter charts, and a frosted glass aesthetic. Four features from s80 are missing that provide genuine diagnostic value:
 
 1. **Full-history heatmap** — s80's per-endpoint character grid showing every measurement color-coded
 2. **Timeout threshold line** — red dashed line at the timeout value on the chart
@@ -240,7 +240,7 @@ heatmap: {
 
 ## What This Does NOT Include
 
-- Logarithmic y-axis toggle (s80 uses log by default; Sonde's per-lane linear scaling handles this better)
+- Logarithmic y-axis toggle (s80 uses log by default; Chronoscope's per-lane linear scaling handles this better)
 - Per-endpoint request count display (round counter in footer is sufficient)
 - Auto-stop at N measurements (round cap already handles this)
 - Freeze detection auto-abort (existing freeze event tracking is sufficient; auto-abort is disruptive)

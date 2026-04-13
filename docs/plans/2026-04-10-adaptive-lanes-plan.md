@@ -99,7 +99,7 @@ describe('adaptive lanes tokens', () => {
 #### Step 2 — Run test to verify it fails
 
 ```bash
-cd /Users/shane/claude/sonde && npm test -- --reporter=verbose 2>&1 | grep -A 5 'adaptive lanes tokens'
+cd /Users/shane/claude/chronoscope && npm test -- --reporter=verbose 2>&1 | grep -A 5 'adaptive lanes tokens'
 ```
 
 Expected: 4 failing tests referencing `tokens.lane.minHeight` (undefined).
@@ -160,7 +160,7 @@ Replace with:
 #### Step 4 — Run test to verify it passes
 
 ```bash
-cd /Users/shane/claude/sonde && npm test -- --reporter=verbose 2>&1 | grep -A 5 'adaptive lanes tokens'
+cd /Users/shane/claude/chronoscope && npm test -- --reporter=verbose 2>&1 | grep -A 5 'adaptive lanes tokens'
 ```
 
 Expected: 4 passing tests in `adaptive lanes tokens` describe block.
@@ -168,7 +168,7 @@ Expected: 4 passing tests in `adaptive lanes tokens` describe block.
 #### Step 5 — Run full test suite and typecheck
 
 ```bash
-cd /Users/shane/claude/sonde && npm test && npm run typecheck
+cd /Users/shane/claude/chronoscope && npm test && npm run typecheck
 ```
 
 Expected: all existing tests still pass, zero TypeScript errors.
@@ -176,7 +176,7 @@ Expected: all existing tests still pass, zero TypeScript errors.
 #### Step 6 — Commit
 
 ```bash
-cd /Users/shane/claude/sonde && git add src/lib/tokens.ts tests/unit/tokens.test.ts && git commit -m "feat: add adaptive lanes tokens (minHeight, compactHeaderHeight, compactThreshold, maxEndpoints)"
+cd /Users/shane/claude/chronoscope && git add src/lib/tokens.ts tests/unit/tokens.test.ts && git commit -m "feat: add adaptive lanes tokens (minHeight, compactHeaderHeight, compactThreshold, maxEndpoints)"
 ```
 
 ---
@@ -250,7 +250,7 @@ describe('endpointStore — cap enforcement (AC4)', () => {
 #### Step 2 — Run test to verify it fails
 
 ```bash
-cd /Users/shane/claude/sonde && npm test -- --reporter=verbose 2>&1 | grep -A 8 'cap enforcement'
+cd /Users/shane/claude/chronoscope && npm test -- --reporter=verbose 2>&1 | grep -A 8 'cap enforcement'
 ```
 
 Expected: fails on `MAX_ENDPOINTS` not exported and cap not enforced.
@@ -295,7 +295,7 @@ synchronous, so `newId` is either set or stays `''`.
 #### Step 4 — Run test to verify it passes
 
 ```bash
-cd /Users/shane/claude/sonde && npm test -- --reporter=verbose 2>&1 | grep -A 8 'cap enforcement'
+cd /Users/shane/claude/chronoscope && npm test -- --reporter=verbose 2>&1 | grep -A 8 'cap enforcement'
 ```
 
 Expected: 4 passing tests in `cap enforcement` describe block.
@@ -303,7 +303,7 @@ Expected: 4 passing tests in `cap enforcement` describe block.
 #### Step 5 — Run full test suite and typecheck
 
 ```bash
-cd /Users/shane/claude/sonde && npm test && npm run typecheck
+cd /Users/shane/claude/chronoscope && npm test && npm run typecheck
 ```
 
 Expected: all tests pass, zero TypeScript errors.
@@ -311,7 +311,7 @@ Expected: all tests pass, zero TypeScript errors.
 #### Step 6 — Commit
 
 ```bash
-cd /Users/shane/claude/sonde && git add src/lib/stores/endpoints.ts tests/unit/endpoints-cap.test.ts && git commit -m "feat: enforce MAX_ENDPOINTS=10 cap in addEndpoint store method"
+cd /Users/shane/claude/chronoscope && git add src/lib/stores/endpoints.ts tests/unit/endpoints-cap.test.ts && git commit -m "feat: enforce MAX_ENDPOINTS=10 cap in addEndpoint store method"
 ```
 
 ---
@@ -391,7 +391,7 @@ Add tests to `tests/unit/components/lane.test.ts` (append after the last `it` bl
 #### Step 2 — Run test to verify it fails
 
 ```bash
-cd /Users/shane/claude/sonde && npm test -- --reporter=verbose 2>&1 | grep -E '(✓|✗|FAIL|PASS)' | grep -i 'lane'
+cd /Users/shane/claude/chronoscope && npm test -- --reporter=verbose 2>&1 | grep -E '(✓|✗|FAIL|PASS)' | grep -i 'lane'
 ```
 
 Expected: new compact-mode tests fail (`.lane-compact-header` is null, sr-only class absent).
@@ -692,7 +692,7 @@ Replace the entire `src/lib/components/Lane.svelte` with the following:
 #### Step 4 — Run test to verify it passes
 
 ```bash
-cd /Users/shane/claude/sonde && npm test -- --reporter=verbose 2>&1 | grep -A 20 'Lane'
+cd /Users/shane/claude/chronoscope && npm test -- --reporter=verbose 2>&1 | grep -A 20 'Lane'
 ```
 
 Expected: all Lane tests pass including the 7 new compact-mode tests.
@@ -700,7 +700,7 @@ Expected: all Lane tests pass including the 7 new compact-mode tests.
 #### Step 5 — Run full test suite and typecheck
 
 ```bash
-cd /Users/shane/claude/sonde && npm test && npm run typecheck
+cd /Users/shane/claude/chronoscope && npm test && npm run typecheck
 ```
 
 Expected: all tests pass, zero TypeScript errors.
@@ -708,7 +708,7 @@ Expected: all tests pass, zero TypeScript errors.
 #### Step 6 — Commit
 
 ```bash
-cd /Users/shane/claude/sonde && git add src/lib/components/Lane.svelte tests/unit/components/lane.test.ts && git commit -m "feat: add compact prop and glass overlay header to Lane.svelte (AC1, AC2)"
+cd /Users/shane/claude/chronoscope && git add src/lib/components/Lane.svelte tests/unit/components/lane.test.ts && git commit -m "feat: add compact prop and glass overlay header to Lane.svelte (AC1, AC2)"
 ```
 
 ---
@@ -812,7 +812,7 @@ describe('deriveLayoutMode (AC1, AC2, AC3)', () => {
 #### Step 2 — Run test to verify it fails
 
 ```bash
-cd /Users/shane/claude/sonde && npm test -- --reporter=verbose 2>&1 | grep -A 15 'deriveLayoutMode'
+cd /Users/shane/claude/chronoscope && npm test -- --reporter=verbose 2>&1 | grep -A 15 'deriveLayoutMode'
 ```
 
 Expected: fails because `deriveLayoutMode` is not yet exported from `LanesView.svelte`.
@@ -1101,7 +1101,7 @@ Then replace `src/lib/components/LanesView.svelte` with:
 #### Step 4 — Run test to verify it passes
 
 ```bash
-cd /Users/shane/claude/sonde && npm test -- --reporter=verbose 2>&1 | grep -A 20 'deriveLayoutMode'
+cd /Users/shane/claude/chronoscope && npm test -- --reporter=verbose 2>&1 | grep -A 20 'deriveLayoutMode'
 ```
 
 Expected: all `deriveLayoutMode` tests pass.
@@ -1109,7 +1109,7 @@ Expected: all `deriveLayoutMode` tests pass.
 #### Step 5 — Run full test suite and typecheck
 
 ```bash
-cd /Users/shane/claude/sonde && npm test && npm run typecheck
+cd /Users/shane/claude/chronoscope && npm test && npm run typecheck
 ```
 
 Expected: all tests pass, zero TypeScript errors.
@@ -1117,14 +1117,14 @@ Expected: all tests pass, zero TypeScript errors.
 #### Step 6 — Commit
 
 ```bash
-cd /Users/shane/claude/sonde && git add src/lib/layout.ts src/lib/components/LanesView.svelte tests/unit/components/lanes-view.test.ts && git commit -m "feat: add layout mode derivation, ResizeObserver, and 2-col CSS grid to LanesView (AC1-AC3, AC5)"
+cd /Users/shane/claude/chronoscope && git add src/lib/layout.ts src/lib/components/LanesView.svelte tests/unit/components/lanes-view.test.ts && git commit -m "feat: add layout mode derivation, ResizeObserver, and 2-col CSS grid to LanesView (AC1-AC3, AC5)"
 ```
 
 ---
 
 ### Phase 1 Artifact
 
-Write `/Users/shane/claude/sonde/docs/superpowers/progress/2026-04-10-adaptive-lanes-phase1.md`:
+Write `/Users/shane/claude/chronoscope/docs/superpowers/progress/2026-04-10-adaptive-lanes-phase1.md`:
 
 ```markdown
 # Adaptive Lanes — Phase 1 Complete
@@ -1224,7 +1224,7 @@ describe('EndpointPanel cap integration (AC4)', () => {
 #### Step 2 — Run test to verify it fails
 
 ```bash
-cd /Users/shane/claude/sonde && npm test -- --reporter=verbose 2>&1 | grep -A 5 'cap'
+cd /Users/shane/claude/chronoscope && npm test -- --reporter=verbose 2>&1 | grep -A 5 'cap'
 ```
 
 Expected: `endpoints-cap-ui` imports pass (MAX_ENDPOINTS already exported), topbar cap tests
@@ -1292,7 +1292,7 @@ Replace with:
 #### Step 4 — Run test to verify it passes
 
 ```bash
-cd /Users/shane/claude/sonde && npm test -- --reporter=verbose 2>&1 | grep -A 5 'cap'
+cd /Users/shane/claude/chronoscope && npm test -- --reporter=verbose 2>&1 | grep -A 5 'cap'
 ```
 
 Expected: all cap tests pass.
@@ -1300,7 +1300,7 @@ Expected: all cap tests pass.
 #### Step 5 — Run full test suite and typecheck
 
 ```bash
-cd /Users/shane/claude/sonde && npm test && npm run typecheck
+cd /Users/shane/claude/chronoscope && npm test && npm run typecheck
 ```
 
 Expected: all tests pass, zero TypeScript errors.
@@ -1308,7 +1308,7 @@ Expected: all tests pass, zero TypeScript errors.
 #### Step 6 — Commit
 
 ```bash
-cd /Users/shane/claude/sonde && git add src/lib/components/Topbar.svelte src/lib/components/EndpointPanel.svelte tests/unit/components/topbar.test.ts tests/unit/endpoints-cap-ui.test.ts && git commit -m "feat: disable add-endpoint button at MAX_ENDPOINTS cap in Topbar and EndpointPanel (AC4)"
+cd /Users/shane/claude/chronoscope && git add src/lib/components/Topbar.svelte src/lib/components/EndpointPanel.svelte tests/unit/components/topbar.test.ts tests/unit/endpoints-cap-ui.test.ts && git commit -m "feat: disable add-endpoint button at MAX_ENDPOINTS cap in Topbar and EndpointPanel (AC4)"
 ```
 
 ---
@@ -1353,7 +1353,7 @@ Append to `tests/unit/components/cross-lane-hover.test.ts`:
 #### Step 2 — Run test to verify it fails
 
 ```bash
-cd /Users/shane/claude/sonde && npm test -- --reporter=verbose 2>&1 | grep -A 10 'hover accuracy'
+cd /Users/shane/claude/chronoscope && npm test -- --reporter=verbose 2>&1 | grep -A 10 'hover accuracy'
 ```
 
 Expected: tests fail because uiStore reactivity is async and Svelte hasn't committed the DOM
@@ -1375,7 +1375,7 @@ when Svelte's `$derived` computation runs.
 #### Step 4 — Run test to verify it passes
 
 ```bash
-cd /Users/shane/claude/sonde && npm test -- --reporter=verbose 2>&1 | grep -A 10 'CrossLaneHover'
+cd /Users/shane/claude/chronoscope && npm test -- --reporter=verbose 2>&1 | grep -A 10 'CrossLaneHover'
 ```
 
 Expected: all CrossLaneHover tests pass including the 2 new AC5 tests.
@@ -1383,7 +1383,7 @@ Expected: all CrossLaneHover tests pass including the 2 new AC5 tests.
 #### Step 5 — Run full test suite
 
 ```bash
-cd /Users/shane/claude/sonde && npm test
+cd /Users/shane/claude/chronoscope && npm test
 ```
 
 Expected: all tests pass.
@@ -1391,7 +1391,7 @@ Expected: all tests pass.
 #### Step 6 — Commit
 
 ```bash
-cd /Users/shane/claude/sonde && git add tests/unit/components/cross-lane-hover.test.ts && git commit -m "test: add AC5 hover accuracy coverage for CrossLaneHover"
+cd /Users/shane/claude/chronoscope && git add tests/unit/components/cross-lane-hover.test.ts && git commit -m "test: add AC5 hover accuracy coverage for CrossLaneHover"
 ```
 
 ---
@@ -1406,7 +1406,7 @@ Pre-task reads: none (reading gate outputs only).
 #### Step 1 — Run full test suite
 
 ```bash
-cd /Users/shane/claude/sonde && npm test 2>&1 | tail -20
+cd /Users/shane/claude/chronoscope && npm test 2>&1 | tail -20
 ```
 
 Expected output: something like `Tests X passed | Y skipped`. Zero failures. If any test
@@ -1415,7 +1415,7 @@ fails, investigate and fix before continuing.
 #### Step 2 — TypeScript typecheck
 
 ```bash
-cd /Users/shane/claude/sonde && npm run typecheck 2>&1
+cd /Users/shane/claude/chronoscope && npm run typecheck 2>&1
 ```
 
 Expected: `Found 0 errors.` or equivalent. Any errors are blockers — fix before continuing.
@@ -1429,7 +1429,7 @@ Common issues to expect:
 #### Step 3 — Lint
 
 ```bash
-cd /Users/shane/claude/sonde && npm run lint 2>&1
+cd /Users/shane/claude/chronoscope && npm run lint 2>&1
 ```
 
 Expected: zero errors. The `no-raw-visual-values` rule applies to `src/**/*.ts` files; the
@@ -1457,14 +1457,14 @@ If any row is missing a test, add it before the final commit.
 #### Step 5 — Final commit
 
 ```bash
-cd /Users/shane/claude/sonde && git add -p && git commit -m "chore: verification pass — all ACs covered, typecheck and lint clean"
+cd /Users/shane/claude/chronoscope && git add -p && git commit -m "chore: verification pass — all ACs covered, typecheck and lint clean"
 ```
 
 If there are no unstaged changes (all work committed incrementally), skip this step.
 
 #### Step 6 — Write Phase 2 artifact
 
-Write `/Users/shane/claude/sonde/docs/superpowers/progress/2026-04-10-adaptive-lanes-phase2.md`:
+Write `/Users/shane/claude/chronoscope/docs/superpowers/progress/2026-04-10-adaptive-lanes-phase2.md`:
 
 ```markdown
 # Adaptive Lanes — Phase 2 Complete

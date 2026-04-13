@@ -4,7 +4,7 @@ import AxeBuilder from '@axe-core/playwright';
 test.describe('Accessibility', () => {
   test('no axe violations on empty state', async ({ page }) => {
     await page.goto('/');
-    await page.waitForSelector('#sonde-root');
+    await page.waitForSelector('#chronoscope-root');
 
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa'])
@@ -22,7 +22,7 @@ test.describe('Accessibility', () => {
 
   test('all canvas elements have ARIA attributes', async ({ page }) => {
     await page.goto('/');
-    await page.waitForSelector('#sonde-root');
+    await page.waitForSelector('#chronoscope-root');
 
     const canvases = page.locator('canvas[tabindex="0"]');
     const count = await canvases.count();

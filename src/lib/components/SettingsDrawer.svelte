@@ -2,7 +2,7 @@
 <!-- Slide-in settings drawer. Uses <dialog> for a11y. Closes on Escape or      -->
 <!-- backdrop click. All values bound to settingsStore.                          -->
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { get } from 'svelte/store';
   import { uiStore } from '$lib/stores/ui';
   import { settingsStore } from '$lib/stores/settings';
@@ -43,19 +43,27 @@
     }
   });
 
+  function handleDialogClose(): void {
+    if ($uiStore.showSettings) uiStore.toggleSettings();
+  }
+
+  function handleWheel(e: WheelEvent): void {
+    e.preventDefault();
+    if (drawerContentEl) drawerContentEl.scrollTop += e.deltaY;
+  }
+
   onMount(() => {
     // Since this component only mounts when showSettings is true, open immediately.
     if (!dialogEl.open) {
       dialogEl.showModal();
     }
-    dialogEl.addEventListener('close', () => {
-      if ($uiStore.showSettings) uiStore.toggleSettings();
-    });
-    // Wheel handler must be non-passive to allow preventDefault
-    dialogEl.addEventListener('wheel', (e: WheelEvent) => {
-      e.preventDefault();
-      if (drawerContentEl) drawerContentEl.scrollTop += e.deltaY;
-    }, { passive: false });
+    dialogEl.addEventListener('close', handleDialogClose);
+    dialogEl.addEventListener('wheel', handleWheel, { passive: false });
+  });
+
+  onDestroy(() => {
+    dialogEl?.removeEventListener('close', handleDialogClose);
+    dialogEl?.removeEventListener('wheel', handleWheel);
   });
 
   function close(): void {

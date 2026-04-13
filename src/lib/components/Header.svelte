@@ -15,7 +15,7 @@
   style:--spacing-lg="{tokens.spacing.lg}px"
 >
   <div class="branding">
-    <h1 class="title">Sonde</h1>
+    <h1 class="title">Chronoscope</h1>
     <span class="subtitle" aria-label="HTTP Latency Diagnostic">HTTP Latency Diagnostic</span>
   </div>
 </header>

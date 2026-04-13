@@ -4,7 +4,7 @@
 > (recommended) or superpowers:executing-plans to implement this plan task-by-task.
 > Steps use checkbox syntax for tracking.
 
-**Goal:** Add s80's four strongest diagnostic features — heatmap history strip, timeout threshold line, live latency now-dot label, and elapsed-time x-axis — to Sonde's Glass Lanes UI.
+**Goal:** Add s80's four strongest diagnostic features — heatmap history strip, timeout threshold line, live latency now-dot label, and elapsed-time x-axis — to Chronoscope's Glass Lanes UI.
 
 **Architecture:** Each feature is additive and layered onto existing components. `computeHeatmapCells()` is a pure function added to `timeline-data-pipeline.ts` and called in `LanesView`; its output flows as a prop to `LaneSvgChart`. Elapsed-time formatting replaces round-number labels in `XAxisBar` by receiving `startedAt` and sample timestamps from `Layout`. The now-dot label is an absolutely-positioned HTML `<span>` overlaid on the SVG by `Lane.svelte`, receiving position data from `LaneSvgChart` via a `nowDotPercent` derived value.
 
@@ -120,7 +120,7 @@ describe('HeatmapCellData type', () => {
 #### Step 2 — Run to confirm failure
 
 ```bash
-cd /Users/shane/claude/sonde && npx vitest run tests/unit/tokens.test.ts tests/unit/types.test.ts
+cd /Users/shane/claude/chronoscope && npx vitest run tests/unit/tokens.test.ts tests/unit/types.test.ts
 # Expected: 2 new describe blocks fail — "color.heatmap" property not found, "HeatmapCellData" import error
 ```
 
@@ -185,19 +185,19 @@ export interface HeatmapCellData {
 #### Step 4 — Run to confirm pass
 
 ```bash
-cd /Users/shane/claude/sonde && npx vitest run tests/unit/tokens.test.ts tests/unit/types.test.ts
+cd /Users/shane/claude/chronoscope && npx vitest run tests/unit/tokens.test.ts tests/unit/types.test.ts
 # Expected: all pass, including 2 new describe blocks
 ```
 
 #### Step 5 — Typecheck and commit
 
 ```bash
-cd /Users/shane/claude/sonde && npm run typecheck
+cd /Users/shane/claude/chronoscope && npm run typecheck
 # Expected: no errors
 ```
 
 ```bash
-cd /Users/shane/claude/sonde && git add src/lib/tokens.ts src/lib/types.ts tests/unit/tokens.test.ts tests/unit/types.test.ts && git commit -m "feat: add color.heatmap tokens and HeatmapCellData type"
+cd /Users/shane/claude/chronoscope && git add src/lib/tokens.ts src/lib/types.ts tests/unit/tokens.test.ts tests/unit/types.test.ts && git commit -m "feat: add color.heatmap tokens and HeatmapCellData type"
 ```
 
 ---
@@ -250,7 +250,7 @@ describe('formatElapsed (AC7)', () => {
 #### Step 2 — Run to confirm failure
 
 ```bash
-cd /Users/shane/claude/sonde && npx vitest run tests/unit/elapsed-time.test.ts
+cd /Users/shane/claude/chronoscope && npx vitest run tests/unit/elapsed-time.test.ts
 # Expected: import error — formatElapsed not exported from timeline-data-pipeline.ts
 ```
 
@@ -290,14 +290,14 @@ export function formatElapsed(ms: number): string {
 #### Step 4 — Run to confirm pass
 
 ```bash
-cd /Users/shane/claude/sonde && npx vitest run tests/unit/elapsed-time.test.ts
+cd /Users/shane/claude/chronoscope && npx vitest run tests/unit/elapsed-time.test.ts
 # Expected: all 6 tests pass
 ```
 
 #### Step 5 — Typecheck and commit
 
 ```bash
-cd /Users/shane/claude/sonde && npm run typecheck && git add src/lib/renderers/timeline-data-pipeline.ts tests/unit/elapsed-time.test.ts && git commit -m "feat: add formatElapsed() pure function for elapsed time display"
+cd /Users/shane/claude/chronoscope && npm run typecheck && git add src/lib/renderers/timeline-data-pipeline.ts tests/unit/elapsed-time.test.ts && git commit -m "feat: add formatElapsed() pure function for elapsed time display"
 ```
 
 ---
@@ -447,7 +447,7 @@ describe('computeHeatmapCells (AC2, AC4)', () => {
 #### Step 2 — Run to confirm failure
 
 ```bash
-cd /Users/shane/claude/sonde && npx vitest run tests/unit/heatmap-cells.test.ts
+cd /Users/shane/claude/chronoscope && npx vitest run tests/unit/heatmap-cells.test.ts
 # Expected: import error — computeHeatmapCells not exported
 ```
 
@@ -590,14 +590,14 @@ const cell: HeatmapCellData = {
 #### Step 4 — Run to confirm pass
 
 ```bash
-cd /Users/shane/claude/sonde && npx vitest run tests/unit/heatmap-cells.test.ts tests/unit/types.test.ts
+cd /Users/shane/claude/chronoscope && npx vitest run tests/unit/heatmap-cells.test.ts tests/unit/types.test.ts
 # Expected: all pass
 ```
 
 #### Step 5 — Typecheck and commit
 
 ```bash
-cd /Users/shane/claude/sonde && npm run typecheck && git add src/lib/renderers/timeline-data-pipeline.ts src/lib/types.ts tests/unit/heatmap-cells.test.ts tests/unit/types.test.ts && git commit -m "feat: add computeHeatmapCells() pure function with 200-cell adaptive aggregation"
+cd /Users/shane/claude/chronoscope && npm run typecheck && git add src/lib/renderers/timeline-data-pipeline.ts src/lib/types.ts tests/unit/heatmap-cells.test.ts tests/unit/types.test.ts && git commit -m "feat: add computeHeatmapCells() pure function with 200-cell adaptive aggregation"
 ```
 
 ---
@@ -698,7 +698,7 @@ const baseProps = {
 #### Step 2 — Run to confirm failure
 
 ```bash
-cd /Users/shane/claude/sonde && npx vitest run tests/unit/lane-svg-chart.test.ts
+cd /Users/shane/claude/chronoscope && npx vitest run tests/unit/lane-svg-chart.test.ts
 # Expected: new tests fail — unknown props heatmapCells and timeoutMs
 ```
 
@@ -1185,14 +1185,14 @@ Replace the existing `LanesView.svelte` content:
 #### Step 4 — Run to confirm pass
 
 ```bash
-cd /Users/shane/claude/sonde && npx vitest run tests/unit/lane-svg-chart.test.ts tests/unit/components/lanes-view.test.ts
+cd /Users/shane/claude/chronoscope && npx vitest run tests/unit/lane-svg-chart.test.ts tests/unit/components/lanes-view.test.ts
 # Expected: all pass including the 4 new tests
 ```
 
 #### Step 5 — Typecheck and commit
 
 ```bash
-cd /Users/shane/claude/sonde && npm run typecheck && git add src/lib/components/LaneSvgChart.svelte src/lib/components/LanesView.svelte tests/unit/lane-svg-chart.test.ts && git commit -m "feat: add heatmap strip and timeout threshold line to LaneSvgChart"
+cd /Users/shane/claude/chronoscope && npm run typecheck && git add src/lib/components/LaneSvgChart.svelte src/lib/components/LanesView.svelte tests/unit/lane-svg-chart.test.ts && git commit -m "feat: add heatmap strip and timeout threshold line to LaneSvgChart"
 ```
 
 ---
@@ -1261,7 +1261,7 @@ Add to **`tests/unit/components/lane.test.ts`** (append to existing `describe` b
 #### Step 2 — Run to confirm failure
 
 ```bash
-cd /Users/shane/claude/sonde && npx vitest run tests/unit/components/lane.test.ts
+cd /Users/shane/claude/chronoscope && npx vitest run tests/unit/components/lane.test.ts
 # Expected: new tests fail — unknown props lastLatency and isRunning, label not found
 ```
 
@@ -1468,14 +1468,14 @@ Replace `src/lib/components/Lane.svelte` content:
 #### Step 4 — Run to confirm pass
 
 ```bash
-cd /Users/shane/claude/sonde && npx vitest run tests/unit/components/lane.test.ts
+cd /Users/shane/claude/chronoscope && npx vitest run tests/unit/components/lane.test.ts
 # Expected: all pass including 3 new tests
 ```
 
 #### Step 5 — Typecheck and commit
 
 ```bash
-cd /Users/shane/claude/sonde && npm run typecheck && git add src/lib/components/Lane.svelte tests/unit/components/lane.test.ts && git commit -m "feat: add live latency label to lane chart overlay (AC6)"
+cd /Users/shane/claude/chronoscope && npm run typecheck && git add src/lib/components/Lane.svelte tests/unit/components/lane.test.ts && git commit -m "feat: add live latency label to lane chart overlay (AC6)"
 ```
 
 ---
@@ -1556,7 +1556,7 @@ describe('XAxisBar', () => {
 #### Step 2 — Run to confirm failure
 
 ```bash
-cd /Users/shane/claude/sonde && npx vitest run tests/unit/components/x-axis-bar.test.ts
+cd /Users/shane/claude/chronoscope && npx vitest run tests/unit/components/x-axis-bar.test.ts
 # Expected: existing tests break (wrong props), new tests fail
 ```
 
@@ -1694,14 +1694,14 @@ Update the `XAxisBar` usage in the template:
 #### Step 4 — Run to confirm pass
 
 ```bash
-cd /Users/shane/claude/sonde && npx vitest run tests/unit/components/x-axis-bar.test.ts
+cd /Users/shane/claude/chronoscope && npx vitest run tests/unit/components/x-axis-bar.test.ts
 # Expected: all 5 tests pass
 ```
 
 #### Step 5 — Typecheck and commit
 
 ```bash
-cd /Users/shane/claude/sonde && npm run typecheck && git add src/lib/components/XAxisBar.svelte src/lib/components/Layout.svelte tests/unit/components/x-axis-bar.test.ts && git commit -m "feat: replace round-number x-axis with elapsed time labels (AC7, AC8)"
+cd /Users/shane/claude/chronoscope && npm run typecheck && git add src/lib/components/XAxisBar.svelte src/lib/components/Layout.svelte tests/unit/components/x-axis-bar.test.ts && git commit -m "feat: replace round-number x-axis with elapsed time labels (AC7, AC8)"
 ```
 
 ---
@@ -1730,7 +1730,7 @@ Add to **`tests/unit/components/footer-bar.test.ts`** (append):
 #### Step 2 — Run to confirm failure
 
 ```bash
-cd /Users/shane/claude/sonde && npx vitest run tests/unit/components/footer-bar.test.ts
+cd /Users/shane/claude/chronoscope && npx vitest run tests/unit/components/footer-bar.test.ts
 # Expected: new test passes trivially (no crash), but confirms structure
 ```
 
@@ -1841,14 +1841,14 @@ Replace **`src/lib/components/FooterBar.svelte`**:
 #### Step 4 — Run to confirm pass
 
 ```bash
-cd /Users/shane/claude/sonde && npx vitest run tests/unit/components/footer-bar.test.ts
+cd /Users/shane/claude/chronoscope && npx vitest run tests/unit/components/footer-bar.test.ts
 # Expected: all 4 tests pass
 ```
 
 #### Step 5 — Typecheck and commit
 
 ```bash
-cd /Users/shane/claude/sonde && npm run typecheck && git add src/lib/components/FooterBar.svelte tests/unit/components/footer-bar.test.ts && git commit -m "feat: add elapsed time to footer progress label (AC9)"
+cd /Users/shane/claude/chronoscope && npm run typecheck && git add src/lib/components/FooterBar.svelte tests/unit/components/footer-bar.test.ts && git commit -m "feat: add elapsed time to footer progress label (AC9)"
 ```
 
 ---
@@ -1862,21 +1862,21 @@ cd /Users/shane/claude/sonde && npm run typecheck && git add src/lib/components/
 #### Step 1 — Run the full test suite
 
 ```bash
-cd /Users/shane/claude/sonde && npx vitest run
+cd /Users/shane/claude/chronoscope && npx vitest run
 # Expected: all existing tests pass, all new tests pass, zero failures
 ```
 
 #### Step 2 — Run typecheck
 
 ```bash
-cd /Users/shane/claude/sonde && npm run typecheck
+cd /Users/shane/claude/chronoscope && npm run typecheck
 # Expected: exit code 0, no errors
 ```
 
 #### Step 3 — Run lint (if configured)
 
 ```bash
-cd /Users/shane/claude/sonde && npm run lint 2>/dev/null || echo "no lint script"
+cd /Users/shane/claude/chronoscope && npm run lint 2>/dev/null || echo "no lint script"
 # Expected: pass or no-op
 ```
 
@@ -1900,7 +1900,7 @@ cd /Users/shane/claude/sonde && npm run lint 2>/dev/null || echo "no lint script
 #### Step 5 — Final commit
 
 ```bash
-cd /Users/shane/claude/sonde && git add -p  # stage any remaining unstaged changes
+cd /Users/shane/claude/chronoscope && git add -p  # stage any remaining unstaged changes
 git commit -m "chore: s80 feature parity — all 4 features implemented and verified"
 ```
 

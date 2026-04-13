@@ -12,6 +12,11 @@ import type { WorkerFactory } from './worker-factory';
 import type { Endpoint } from '../types';
 import type { MainToWorkerMessage, WorkerToMainMessage } from '../types';
 
+function isHttpUrl(url: string): boolean {
+  const trimmed = url.trim();
+  return trimmed.startsWith('http://') || trimmed.startsWith('https://');
+}
+
 interface ManagedWorker {
   worker: Worker;
   endpointId: string;
@@ -53,7 +58,7 @@ export class MeasurementEngine {
       measurementStore.setStartedAt(Date.now());
     }
 
-    const endpoints = get(endpointStore).filter(ep => ep.enabled && ep.url.trim().length > 0);
+    const endpoints = get(endpointStore).filter(ep => ep.enabled && isHttpUrl(ep.url));
 
     // Only initialize endpoints that don't already have data — preserves
     // samples across stop/start cycles.
@@ -63,16 +68,16 @@ export class MeasurementEngine {
       }
     }
 
-    // Step 2: attempt Worker creation — may fail in jsdom.
+    // Step 2: attempt Worker creation — may fail in restricted environments.
     try {
       this._spawnWorkers(endpoints);
       measurementStore.setLifecycle('running');
       this.freezeDetector.start();
       // Dispatch the first round immediately (no delay for the very first round).
       this._dispatchRound();
-    } catch {
-      // Worker creation failed (e.g., jsdom environment).
-      // Stay in 'starting' — tests that only check epoch / lifecycle transition still pass.
+    } catch (err: unknown) {
+      console.error('[Chronoscope] Failed to start measurement workers:', err);
+      measurementStore.setLifecycle('stopped');
     }
   }
 
@@ -265,7 +270,7 @@ export class MeasurementEngine {
       return;
     }
 
-    const endpoints = get(endpointStore).filter(ep => ep.enabled && ep.url.trim().length > 0);
+    const endpoints = get(endpointStore).filter(ep => ep.enabled && isHttpUrl(ep.url));
 
     // Count active workers for this round to know when the batch is complete
     const activeWorkers = this.workers.filter(m => endpoints.some(e => e.id === m.endpointId));
@@ -293,8 +298,9 @@ export class MeasurementEngine {
 
       try {
         managed.worker.postMessage(msg);
-      } catch {
-        // Worker died unexpectedly — skip this round for that endpoint.
+      } catch (err: unknown) {
+        console.error(`[Chronoscope] Worker for ${ep.url} failed:`, err);
+        this.expectedResponses--;
       }
     }
 

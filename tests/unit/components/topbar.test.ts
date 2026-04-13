@@ -36,10 +36,10 @@ describe('Topbar', () => {
 
   // ── Logo ────────────────────────────────────────────────────────────────────
 
-  it('renders Sonde logo text', () => {
-    // Logo is always "Sonde" — static text, no derivation needed
-    const logoText = 'Sonde';
-    expect(logoText).toBe('Sonde');
+  it('renders Chronoscope logo text', () => {
+    // Logo is always "Chronoscope" — static text, no derivation needed
+    const logoText = 'Chronoscope';
+    expect(logoText).toBe('Chronoscope');
   });
 
   // ── Start/Stop button label ─────────────────────────────────────────────────

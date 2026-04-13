@@ -50,7 +50,7 @@ These ACs drive the test suite written in Phase 4.
 |------|-----------|---------|
 | AC-1 | Background is deep purple-navy `#0c0a14` with animated gradient and 3 floating blurred orbs | Task 2 |
 | AC-2 | Fonts are Sora (display) and Martian Mono (data); no Inter or JetBrains Mono remain in the Glass UI | Task 1 |
-| AC-3 | Topbar is 54 px tall, frosted glass, shows "Sonde" with cyan→pink gradient text, a green pulse dot, round counter, and frosted-glass buttons | Task 4 |
+| AC-3 | Topbar is 54 px tall, frosted glass, shows "Chronoscope" with cyan→pink gradient text, a green pulse dot, round counter, and frosted-glass buttons | Task 4 |
 | AC-4 | Each enabled endpoint renders exactly one full-width lane card, border-radius 18 px, glass background, top-edge highlight | Task 5 |
 | AC-5 | Lane left panel is 250 px wide, shows URL in mono 11 px, hero P50 in 54 px weight-200 in the endpoint color, "P50 Median Latency" label, and a 4-column stats grid (P95, P99, Jitter, Loss) | Task 5 |
 | AC-6 | SVG chart area renders horizontal gridlines, scatter dots at radius 3 px, P25–P75 ribbon fill, dashed P50 median line, trace line, "now" pulse with expanding ring | Task 6 |
@@ -216,7 +216,7 @@ describe('Glass token additions', () => {
 
 Run — confirm it fails:
 ```bash
-cd /Users/shane/claude/sonde && npx vitest run tests/unit/tokens.test.ts
+cd /Users/shane/claude/chronoscope && npx vitest run tests/unit/tokens.test.ts
 ```
 Expected: `tokens.color.glass is not defined`.
 
@@ -584,7 +584,7 @@ export type Tokens = typeof tokens;
 ### Step 1.3 — Verify tests pass
 
 ```bash
-cd /Users/shane/claude/sonde && npx vitest run tests/unit/tokens.test.ts
+cd /Users/shane/claude/chronoscope && npx vitest run tests/unit/tokens.test.ts
 ```
 Expected: all tests green (including the new Glass additions AND all pre-existing token tests — nothing removed means no regressions). Also verify the full unit suite:
 ```bash
@@ -732,7 +732,7 @@ describe('uiStore lane hover', () => {
 
 Run — confirm fails:
 ```bash
-cd /Users/shane/claude/sonde && npx vitest run tests/unit/ui-lane-hover.test.ts
+cd /Users/shane/claude/chronoscope && npx vitest run tests/unit/ui-lane-hover.test.ts
 ```
 
 ### Step 3.2 — Add types to src/lib/types.ts
@@ -776,7 +776,7 @@ Add to `createUiStore()` return object:
 ### Step 3.4 — Verify
 
 ```bash
-cd /Users/shane/claude/sonde && npx vitest run tests/unit/ui-lane-hover.test.ts
+cd /Users/shane/claude/chronoscope && npx vitest run tests/unit/ui-lane-hover.test.ts
 ```
 Expected: all 3 tests green.
 
@@ -802,9 +802,9 @@ import { render } from '@testing-library/svelte';
 import Topbar from '../../../src/lib/components/Topbar.svelte';
 
 describe('Topbar', () => {
-  it('renders Sonde logo text', () => {
+  it('renders Chronoscope logo text', () => {
     const { getByText } = render(Topbar, { props: {} });
-    expect(getByText('Sonde')).toBeTruthy();
+    expect(getByText('Chronoscope')).toBeTruthy();
   });
 
   it('renders Start Test button when lifecycle is idle', () => {
@@ -896,8 +896,8 @@ Run — confirm fails (component does not exist yet).
   style:--timing-btn="{tokens.timing.btnHover}ms"
 >
   <!-- Logo -->
-  <div class="logo" aria-label="Sonde">
-    <span class="logo-text">Sonde</span>
+  <div class="logo" aria-label="Chronoscope">
+    <span class="logo-text">Chronoscope</span>
   </div>
 
   <div class="sep" aria-hidden="true"></div>
@@ -1107,7 +1107,7 @@ Run — confirm fails (component does not exist yet).
 ### Step 4.3 — Verify test
 
 ```bash
-cd /Users/shane/claude/sonde && npx vitest run tests/unit/components/topbar.test.ts
+cd /Users/shane/claude/chronoscope && npx vitest run tests/unit/components/topbar.test.ts
 ```
 Expected: both tests green.
 
@@ -1432,7 +1432,7 @@ Run — confirm fails.
 ### Step 5.3 — Verify test
 
 ```bash
-cd /Users/shane/claude/sonde && npx vitest run tests/unit/components/lane.test.ts
+cd /Users/shane/claude/chronoscope && npx vitest run tests/unit/components/lane.test.ts
 ```
 Expected: all 3 tests green.
 
@@ -1810,7 +1810,7 @@ Run — confirm fails.
 ### Step 6.3 — Verify test
 
 ```bash
-cd /Users/shane/claude/sonde && npx vitest run tests/unit/lane-svg-chart.test.ts
+cd /Users/shane/claude/chronoscope && npx vitest run tests/unit/lane-svg-chart.test.ts
 ```
 Expected: both tests green.
 
@@ -2048,7 +2048,7 @@ Run — confirm fails.
 ### Step 7.3 — Verify
 
 ```bash
-cd /Users/shane/claude/sonde && npx vitest run tests/unit/cross-lane-hover.test.ts
+cd /Users/shane/claude/chronoscope && npx vitest run tests/unit/cross-lane-hover.test.ts
 ```
 Expected: both tests green.
 
@@ -2194,7 +2194,7 @@ Run — confirm fails, then create component.
 ### Step 8.3 — Verify XAxisBar tests
 
 ```bash
-cd /Users/shane/claude/sonde && npx vitest run tests/unit/components/x-axis-bar.test.ts
+cd /Users/shane/claude/chronoscope && npx vitest run tests/unit/components/x-axis-bar.test.ts
 ```
 Expected: both tests green.
 
@@ -2329,7 +2329,7 @@ Run — confirm fails, then create component.
 ### Step 9.3 — Verify FooterBar tests (Block #9 fix)
 
 ```bash
-cd /Users/shane/claude/sonde && npx vitest run tests/unit/components/footer-bar.test.ts
+cd /Users/shane/claude/chronoscope && npx vitest run tests/unit/components/footer-bar.test.ts
 ```
 Expected: all 3 tests green.
 
@@ -2553,7 +2553,7 @@ describe('LanesView', () => {
 Run — confirm fails, then proceed with the full LanesView implementation above.
 
 ```bash
-cd /Users/shane/claude/sonde && npx vitest run tests/unit/components/lanes-view.test.ts
+cd /Users/shane/claude/chronoscope && npx vitest run tests/unit/components/lanes-view.test.ts
 ```
 Expected: both tests green after implementation.
 
@@ -2643,7 +2643,7 @@ Expected: both tests green after implementation.
 <!-- ARIA live region -->
 <div
   bind:this={announcer}
-  id="sonde-announcer"
+  id="chronoscope-announcer"
   role="status"
   aria-live="polite"
   aria-atomic="true"
@@ -2823,7 +2823,7 @@ function bridgeTokensToCss(): void {
 ### Step 10.4 — Run full verification
 
 ```bash
-cd /Users/shane/claude/sonde && npm run typecheck && npm run build
+cd /Users/shane/claude/chronoscope && npm run typecheck && npm run build
 ```
 Expected: no type errors, build succeeds. Check for any import that still references the removed components.
 
@@ -2857,14 +2857,14 @@ it('renders "Waiting for data" when no measurements exist', () => {
 ```
 
 ```bash
-cd /Users/shane/claude/sonde && npx vitest run tests/unit/lane-svg-chart.test.ts
+cd /Users/shane/claude/chronoscope && npx vitest run tests/unit/lane-svg-chart.test.ts
 ```
 Expected: 3 tests green.
 
 ### Step 11.2 — Verify no-raw-visual-values ESLint rule
 
 ```bash
-cd /Users/shane/claude/sonde && npx eslint src/lib/tokens.ts src/lib/components/Lane.svelte src/lib/components/LaneSvgChart.svelte
+cd /Users/shane/claude/chronoscope && npx eslint src/lib/tokens.ts src/lib/components/Lane.svelte src/lib/components/LaneSvgChart.svelte
 ```
 Expected: 0 errors. If any hex/rgba appear outside `tokens.ts`, move them to the token file.
 
@@ -2896,14 +2896,14 @@ No test deletions; just the comment block.
 ### Step 12.2 — Run full suite
 
 ```bash
-cd /Users/shane/claude/sonde && npx vitest run
+cd /Users/shane/claude/chronoscope && npx vitest run
 ```
 Expected: all tests green.
 
 ### Step 12.3 — Typecheck and lint
 
 ```bash
-cd /Users/shane/claude/sonde && npm run typecheck && npm run lint
+cd /Users/shane/claude/chronoscope && npm run typecheck && npm run lint
 ```
 Expected: 0 errors, 0 warnings on new files.
 
@@ -2914,7 +2914,7 @@ Expected: 0 errors, 0 warnings on new files.
 Run all of the following before marking this plan complete. Non-zero exit codes = task NOT done.
 
 ```bash
-cd /Users/shane/claude/sonde
+cd /Users/shane/claude/chronoscope
 
 # 1. Typecheck
 npm run typecheck

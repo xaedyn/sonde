@@ -18,7 +18,7 @@ test.describe('CVD Color Simulation', () => {
     test(`${name} simulation screenshot`, async ({ page }) => {
       await page.setViewportSize({ width: 1280, height: 800 });
       await page.goto('/');
-      await page.waitForSelector('#sonde-root');
+      await page.waitForSelector('#chronoscope-root');
 
       // Inject SVG filter and apply to body
       // Safety: all values are hardcoded constants, no user input is involved

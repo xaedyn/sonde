@@ -4,7 +4,7 @@
 import { DEFAULT_SETTINGS } from '../types';
 import type { PersistedSettings, ActiveView } from '../types';
 
-const STORAGE_KEY = 'sonde_v2_settings';
+const STORAGE_KEY = 'chronoscope_v2_settings';
 const CURRENT_VERSION = 3;
 
 export function loadPersistedSettings(): PersistedSettings | null {
@@ -13,13 +13,18 @@ export function loadPersistedSettings(): PersistedSettings | null {
     if (raw === null) return null;
     const parsed: unknown = JSON.parse(raw);
     return migrateSettings(parsed);
-  } catch {
+  } catch (err: unknown) {
+    console.warn('[Chronoscope] Failed to load saved settings — using defaults:', err);
     return null;
   }
 }
 
 export function saveSettings(settings: PersistedSettings): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  } catch (err: unknown) {
+    console.warn('[Chronoscope] Failed to save settings (storage full?):', err);
+  }
 }
 
 export function clearPersistedSettings(): void {

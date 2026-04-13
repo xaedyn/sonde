@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Acceptance Criteria Verification', () => {
   test('AC1: data visible within 5 seconds of starting test', async ({ page }) => {
     await page.goto('/');
-    await page.waitForSelector('#sonde-root');
+    await page.waitForSelector('#chronoscope-root');
     // Click start
     const startBtn = page.getByRole('button', { name: /start/i });
     await startBtn.click();
@@ -13,7 +13,7 @@ test.describe('Acceptance Criteria Verification', () => {
 
   test('AC3: collecting state before 30 rounds, stats after', async ({ page }) => {
     await page.goto('/');
-    await page.waitForSelector('#sonde-root');
+    await page.waitForSelector('#chronoscope-root');
     // Start test
     const startBtn = page.getByRole('button', { name: /start/i });
     await startBtn.click();
@@ -25,7 +25,7 @@ test.describe('Acceptance Criteria Verification', () => {
 
   test('keyboard shortcut ? opens overlay', async ({ page }) => {
     await page.goto('/');
-    await page.waitForSelector('#sonde-root');
+    await page.waitForSelector('#chronoscope-root');
     await page.keyboard.press('?');
     await expect(page.getByRole('dialog', { name: /keyboard shortcuts/i })).toBeVisible({
       timeout: 2000,
@@ -34,7 +34,7 @@ test.describe('Acceptance Criteria Verification', () => {
 
   test('keyboard shortcut Escape closes overlay', async ({ page }) => {
     await page.goto('/');
-    await page.waitForSelector('#sonde-root');
+    await page.waitForSelector('#chronoscope-root');
     await page.keyboard.press('?');
     const dialog = page.getByRole('dialog', { name: /keyboard shortcuts/i });
     await expect(dialog).toBeVisible({ timeout: 2000 });
@@ -44,7 +44,7 @@ test.describe('Acceptance Criteria Verification', () => {
 
   test('legend renders endpoint items', async ({ page }) => {
     await page.goto('/');
-    await page.waitForSelector('#sonde-root');
+    await page.waitForSelector('#chronoscope-root');
     const legend = page.getByRole('list', { name: /endpoint legend/i });
     await expect(legend).toBeVisible({ timeout: 2000 });
     const items = legend.getByRole('listitem');
@@ -53,7 +53,7 @@ test.describe('Acceptance Criteria Verification', () => {
 
   test('idle state shows loading animation message', async ({ page }) => {
     await page.goto('/');
-    await page.waitForSelector('#sonde-root');
+    await page.waitForSelector('#chronoscope-root');
     // In idle state with default endpoints configured, should show "Ready"
     await expect(page.getByText(/ready|configure endpoints/i)).toBeVisible({ timeout: 2000 });
   });

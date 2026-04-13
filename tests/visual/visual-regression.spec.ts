@@ -12,7 +12,7 @@ for (const bp of BREAKPOINTS) {
     test.beforeEach(async ({ page }) => {
       await page.setViewportSize({ width: bp.width, height: bp.height });
       await page.goto('/');
-      await page.waitForSelector('#sonde-root');
+      await page.waitForSelector('#chronoscope-root');
     });
 
     test(`empty state`, async ({ page }) => {

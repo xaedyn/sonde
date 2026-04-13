@@ -4,7 +4,7 @@
 > (recommended) or superpowers:executing-plans to implement this plan task-by-task.
 > Steps use checkbox syntax for tracking.
 
-**Goal:** Establish CI quality gates, branch protection, repo metadata, and first release for Sonde.
+**Goal:** Establish CI quality gates, branch protection, repo metadata, and first release for Chronoscope.
 **Tech Stack:** Svelte 5, TypeScript 6, Vite 8, Vitest 4, ESLint 10, GitHub Actions
 
 ---
@@ -576,7 +576,7 @@ Replace each `!` assertion with proper null narrowing. The non-null assertions a
   ```diff
     <div
   -   bind:this={announcer}
-      id="sonde-announcer"
+      id="chronoscope-announcer"
       role="status"
       aria-live="polite"
       aria-atomic="true"
@@ -609,7 +609,7 @@ Replace each `!` assertion with proper null narrowing. The non-null assertions a
 ### Step 1.9 — Verify lint is clean
 
 ```bash
-cd /Users/shane/claude/sonde
+cd /Users/shane/claude/chronoscope
 npm run lint
 ```
 
@@ -657,12 +657,12 @@ git commit -m "fix: resolve all 55 ESLint errors for CI gate
 ### Step 2.1 — Add `.node-version` file
 
 ```bash
-echo "22" > /Users/shane/claude/sonde/.node-version
+echo "22" > /Users/shane/claude/chronoscope/.node-version
 ```
 
 Verify:
 ```bash
-cat /Users/shane/claude/sonde/.node-version
+cat /Users/shane/claude/chronoscope/.node-version
 # Expected: 22
 ```
 
@@ -670,7 +670,7 @@ cat /Users/shane/claude/sonde/.node-version
 
 ### Step 2.2 — Add CI workflow
 
-Create `/Users/shane/claude/sonde/.github/workflows/ci.yml`:
+Create `/Users/shane/claude/chronoscope/.github/workflows/ci.yml`:
 
 ```yaml
 name: CI
@@ -744,7 +744,7 @@ jobs:
 
 ### Step 2.3 — Bump package.json version
 
-Edit `/Users/shane/claude/sonde/package.json` line 4:
+Edit `/Users/shane/claude/chronoscope/package.json` line 4:
 
 ```diff
 - "version": "0.0.0",
@@ -829,7 +829,7 @@ gh pr merge --squash --delete-branch
 Apply after the CI run names are registered (GitHub requires at least one run before a check name can be required):
 
 ```bash
-gh api --method PUT repos/xaedyn/sonde/branches/main/protection \
+gh api --method PUT repos/xaedyn/chronoscope/branches/main/protection \
   --input - <<'EOF'
 {
   "required_status_checks": {"strict": true, "contexts": ["Type check", "Lint", "Unit tests", "Build"]},
@@ -844,7 +844,7 @@ EOF
 
 Verify:
 ```bash
-gh api repos/xaedyn/sonde/branches/main/protection | jq '.required_status_checks.contexts'
+gh api repos/xaedyn/chronoscope/branches/main/protection | jq '.required_status_checks.contexts'
 # Expected: ["Type check","Lint","Unit tests","Build"]
 ```
 
@@ -855,7 +855,7 @@ gh api repos/xaedyn/sonde/branches/main/protection | jq '.required_status_checks
 ### Step 3.5 — Set repo metadata
 
 ```bash
-gh repo edit xaedyn/sonde \
+gh repo edit xaedyn/chronoscope \
   --description "Browser-based HTTP latency diagnostic with visual lane-based analysis" \
   --add-topic latency \
   --add-topic speedtest \
@@ -872,7 +872,7 @@ gh repo edit xaedyn/sonde \
 
 Verify:
 ```bash
-gh repo view xaedyn/sonde --json description,repositoryTopics
+gh repo view xaedyn/chronoscope --json description,repositoryTopics
 ```
 
 ---
@@ -906,7 +906,7 @@ Before claiming this plan is complete, confirm all of the following:
 - [ ] `npm run build` → exits 0, `dist/` non-empty
 - [ ] PR #N shows 4/4 CI checks green in GitHub Actions
 - [ ] Branch protection active on `main` (force pushes blocked, 4 required checks)
-- [ ] Repo description and 11 topics set on xaedyn/sonde
+- [ ] Repo description and 11 topics set on xaedyn/chronoscope
 - [ ] GitHub Release `v0.1.0` exists, targeting `main`, with auto-generated notes
 - [ ] `package.json` version is `0.1.0`
 - [ ] `.node-version` contains `22`

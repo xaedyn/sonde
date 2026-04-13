@@ -89,12 +89,12 @@
     setTimeout(() => { copiedResults = false; }, 2000);
   }
 
-  async function copyToClipboard(url: string): Promise<void> {
+  async function copyToClipboard(url: string): Promise<boolean> {
     fallbackUrl = null;
     if (navigator.clipboard) {
       try {
         await navigator.clipboard.writeText(url);
-        return;
+        return true;
       } catch {
         // fall through to fallback
       }
@@ -107,6 +107,7 @@
         fallbackInputEl.select();
       }
     }, 50);
+    return true;
   }
 
   function close(): void {
@@ -117,6 +118,22 @@
   function handleKeydown(e: KeyboardEvent): void {
     if (e.key === 'Escape') {
       close();
+      return;
+    }
+    if (e.key === 'Tab' && popoverEl) {
+      const focusable = popoverEl.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0] as HTMLElement;
+      const last = focusable[focusable.length - 1] as HTMLElement;
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     }
   }
 
@@ -171,7 +188,7 @@
     class="share-popover"
     role="dialog"
     aria-modal="true"
-    aria-label="Share Sonde"
+    aria-label="Share Chronoscope"
   >
     <!-- Header -->
     <div class="share-header">

@@ -1,10 +1,10 @@
 # CI, Branch Protection, Repo Metadata & Release — Design Spec
 
-> **Goal:** Establish CI quality gates, branch protection, public repo metadata, and a first release tag for Sonde.
+> **Goal:** Establish CI quality gates, branch protection, public repo metadata, and a first release tag for Chronoscope.
 
 ## 1. Context
 
-Sonde is a browser-based HTTP latency diagnostic tool (Svelte 5, TypeScript, Vite, Vitest). Public repo at `xaedyn/sonde`, MIT licensed. Solo-dev project with 9 merged PRs, 329 passing unit tests, and no existing CI, branch protection, or releases. Currently local-only (no deployment).
+Chronoscope is a browser-based HTTP latency diagnostic tool (Svelte 5, TypeScript, Vite, Vitest). Public repo at `xaedyn/chronoscope`, MIT licensed. Solo-dev project with 9 merged PRs, 329 passing unit tests, and no existing CI, branch protection, or releases. Currently local-only (no deployment).
 
 The codebase has 55 ESLint errors that must be fixed before CI can gate on lint.
 
@@ -48,7 +48,7 @@ The `build` job uploads `dist/` as a GitHub Actions artifact with 7-day retentio
 ### Not Included
 
 - **Playwright visual/a11y tests:** Added later as a separate optional workflow. Unit tests are the CI gate for now.
-- **Deploy step:** Sonde is local-only. No deployment target exists.
+- **Deploy step:** Chronoscope is local-only. No deployment target exists.
 - **Lighthouse:** Removed from the project (dead config).
 
 ## 3. Branch Protection

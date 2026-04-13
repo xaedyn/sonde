@@ -15,10 +15,18 @@ export function decodeSharePayload(encoded: string): SharePayload | null {
   if (!encoded) return null;
   try {
     const json = LZString.decompressFromEncodedURIComponent(encoded);
-    if (!json) return null;
+    if (!json) {
+      console.warn('[Chronoscope] Share URL decompression failed — link may be corrupted');
+      return null;
+    }
     const parsed: unknown = JSON.parse(json);
-    return validateSharePayload(parsed);
-  } catch {
+    const validated = validateSharePayload(parsed);
+    if (!validated) {
+      console.warn('[Chronoscope] Share URL validation failed — schema mismatch or out-of-range values');
+    }
+    return validated;
+  } catch (err: unknown) {
+    console.warn('[Chronoscope] Share URL decode error:', err);
     return null;
   }
 }
@@ -57,11 +65,11 @@ function validateSharePayload(data: unknown): SharePayload | null {
   const settings = obj['settings'];
   if (settings === null || typeof settings !== 'object') return null;
   const s = settings as Record<string, unknown>;
-  if (!isNonNegativeFiniteNumber(s['timeout'])) return null;
+  if (!isNonNegativeFiniteNumber(s['timeout']) || (s['timeout'] as number) > 15000) return null;
   if (!isNonNegativeFiniteNumber(s['delay'])) return null;
-  if (!isNonNegativeFiniteNumber(s['cap'])) return null;
-  if (s['burstRounds'] !== undefined && !isNonNegativeFiniteNumber(s['burstRounds'])) return null;
-  if (s['monitorDelay'] !== undefined && !isNonNegativeFiniteNumber(s['monitorDelay'])) return null;
+  if (!isNonNegativeFiniteNumber(s['cap']) || (s['cap'] as number) > 10000) return null;
+  if (s['burstRounds'] !== undefined && (!isNonNegativeFiniteNumber(s['burstRounds']) || (s['burstRounds'] as number) > 500)) return null;
+  if (s['monitorDelay'] !== undefined && (!isNonNegativeFiniteNumber(s['monitorDelay']) || (s['monitorDelay'] as number) > 60000)) return null;
   if (s['corsMode'] !== 'no-cors' && s['corsMode'] !== 'cors') return null;
 
   if (obj['results'] !== undefined) {

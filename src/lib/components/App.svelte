@@ -136,7 +136,7 @@
       const endpoints = get(endpointStore);
 
       const payload: PersistedSettings = {
-        version: 2,
+        version: 3,
         endpoints: endpoints.map(ep => ({ url: ep.url, enabled: ep.enabled })),
         settings,
         ui: {
@@ -211,7 +211,7 @@
   });
 </script>
 
-<div id="sonde-root">
+<div id="chronoscope-root">
   {#if $uiStore.isSharedView}
     <SharedResultsBanner />
   {/if}
@@ -231,7 +231,7 @@
 </div>
 
 <style>
-  #sonde-root {
+  #chronoscope-root {
     height: 100%;
     display: flex;
     flex-direction: column;

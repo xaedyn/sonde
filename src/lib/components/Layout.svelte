@@ -99,7 +99,7 @@
 <CrossLaneHover {visibleStart} {visibleEnd} />
 
 <div
-  id="sonde-announcer"
+  id="chronoscope-announcer"
   role="status"
   aria-live="polite"
   aria-atomic="true"

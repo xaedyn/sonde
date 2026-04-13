@@ -198,7 +198,7 @@ Artifact: `docs/superpowers/progress/2026-04-08-viz-overhaul-phaseB.md`
 - [ ] **Step 2: Run tests to verify they fail**
 
   ```bash
-  cd /Users/shane/claude/sonde && npx vitest run tests/unit/timeline-renderer.test.ts tests/unit/effects-renderer.test.ts tests/unit/types.test.ts tests/unit/tokens.test.ts 2>&1 | tail -30
+  cd /Users/shane/claude/chronoscope && npx vitest run tests/unit/timeline-renderer.test.ts tests/unit/effects-renderer.test.ts tests/unit/types.test.ts tests/unit/tokens.test.ts 2>&1 | tail -30
   ```
 
   Expected: failures referencing missing types (`FrameData`, `YRange`, etc.), missing token blocks, and potentially the DPR assertion (depending on current behavior).
@@ -416,7 +416,7 @@ Artifact: `docs/superpowers/progress/2026-04-08-viz-overhaul-phaseB.md`
 - [ ] **Step 9: Run tests to verify they pass**
 
   ```bash
-  cd /Users/shane/claude/sonde && npx vitest run tests/unit/timeline-renderer.test.ts tests/unit/effects-renderer.test.ts tests/unit/types.test.ts tests/unit/tokens.test.ts tests/unit/statistics.test.ts 2>&1 | tail -30
+  cd /Users/shane/claude/chronoscope && npx vitest run tests/unit/timeline-renderer.test.ts tests/unit/effects-renderer.test.ts tests/unit/types.test.ts tests/unit/tokens.test.ts tests/unit/statistics.test.ts 2>&1 | tail -30
   ```
 
   Expected: all tests pass. Look for `✓` on all DPR tests, pipeline type tests, and percentileSorted tests.
@@ -424,7 +424,7 @@ Artifact: `docs/superpowers/progress/2026-04-08-viz-overhaul-phaseB.md`
 - [ ] **Step 10: Run full test suite to verify no regressions**
 
   ```bash
-  cd /Users/shane/claude/sonde && npx vitest run 2>&1 | tail -20
+  cd /Users/shane/claude/chronoscope && npx vitest run 2>&1 | tail -20
   ```
 
   Expected: all 185+ tests pass.
@@ -432,7 +432,7 @@ Artifact: `docs/superpowers/progress/2026-04-08-viz-overhaul-phaseB.md`
 - [ ] **Step 11: Commit**
 
   ```bash
-  cd /Users/shane/claude/sonde && git add src/lib/types.ts src/lib/tokens.ts src/lib/utils/statistics.ts src/lib/renderers/timeline-renderer.ts src/lib/renderers/effects-renderer.ts src/lib/renderers/interaction-renderer.ts tests/unit/timeline-renderer.test.ts tests/unit/effects-renderer.test.ts tests/unit/types.test.ts tests/unit/tokens.test.ts tests/unit/statistics.test.ts && git commit -m "fix: DPR coordinate bug in all renderers; add pipeline types, tokens, and percentileSorted"
+  cd /Users/shane/claude/chronoscope && git add src/lib/types.ts src/lib/tokens.ts src/lib/utils/statistics.ts src/lib/renderers/timeline-renderer.ts src/lib/renderers/effects-renderer.ts src/lib/renderers/interaction-renderer.ts tests/unit/timeline-renderer.test.ts tests/unit/effects-renderer.test.ts tests/unit/types.test.ts tests/unit/tokens.test.ts tests/unit/statistics.test.ts && git commit -m "fix: DPR coordinate bug in all renderers; add pipeline types, tokens, and percentileSorted"
   ```
 
 ---
@@ -755,7 +755,7 @@ Artifact: `docs/superpowers/progress/2026-04-08-viz-overhaul-phaseB.md`
 - [ ] **Step 2: Run tests to verify they fail**
 
   ```bash
-  cd /Users/shane/claude/sonde && npx vitest run tests/unit/timeline-data-pipeline.test.ts 2>&1 | tail -20
+  cd /Users/shane/claude/chronoscope && npx vitest run tests/unit/timeline-data-pipeline.test.ts 2>&1 | tail -20
   ```
 
   Expected: module not found error — `timeline-data-pipeline.ts` does not exist yet.
@@ -1063,7 +1063,7 @@ Artifact: `docs/superpowers/progress/2026-04-08-viz-overhaul-phaseB.md`
 - [ ] **Step 4: Run tests to verify they pass**
 
   ```bash
-  cd /Users/shane/claude/sonde && npx vitest run tests/unit/timeline-data-pipeline.test.ts 2>&1 | tail -30
+  cd /Users/shane/claude/chronoscope && npx vitest run tests/unit/timeline-data-pipeline.test.ts 2>&1 | tail -30
   ```
 
   Expected: all tests pass. Pay attention to the benchmark test — if it fails on slow CI, investigate before assuming the bet is wrong.
@@ -1071,7 +1071,7 @@ Artifact: `docs/superpowers/progress/2026-04-08-viz-overhaul-phaseB.md`
 - [ ] **Step 5: Run full test suite**
 
   ```bash
-  cd /Users/shane/claude/sonde && npx vitest run 2>&1 | tail -20
+  cd /Users/shane/claude/chronoscope && npx vitest run 2>&1 | tail -20
   ```
 
   Expected: all tests pass.
@@ -1079,7 +1079,7 @@ Artifact: `docs/superpowers/progress/2026-04-08-viz-overhaul-phaseB.md`
 - [ ] **Step 6: Commit**
 
   ```bash
-  cd /Users/shane/claude/sonde && git add src/lib/renderers/timeline-data-pipeline.ts tests/unit/timeline-data-pipeline.test.ts && git commit -m "feat: add TimelineDataPipeline with adaptive Y-axis, X-ticks, ribbon paths"
+  cd /Users/shane/claude/chronoscope && git add src/lib/renderers/timeline-data-pipeline.ts tests/unit/timeline-data-pipeline.test.ts && git commit -m "feat: add TimelineDataPipeline with adaptive Y-axis, X-ticks, ribbon paths"
   ```
 
 ---
@@ -1187,7 +1187,7 @@ This task adds ribbon-specific tests that verify the `computeRibbons` behavior t
 - [ ] **Step 2: Run tests to verify they fail**
 
   ```bash
-  cd /Users/shane/claude/sonde && npx vitest run tests/unit/timeline-data-pipeline.test.ts 2>&1 | grep -E "FAIL|PASS|ribbon" | head -20
+  cd /Users/shane/claude/chronoscope && npx vitest run tests/unit/timeline-data-pipeline.test.ts 2>&1 | grep -E "FAIL|PASS|ribbon" | head -20
   ```
 
   Expected: ribbon tests fail because `prepareFrame()` doesn't exist yet (or if Task 2 is done, all ribbon tests pass — in which case this task is verification-only, no implementation needed).
@@ -1197,7 +1197,7 @@ This task adds ribbon-specific tests that verify the `computeRibbons` behavior t
 - [ ] **Step 3: Run tests to verify they pass**
 
   ```bash
-  cd /Users/shane/claude/sonde && npx vitest run tests/unit/timeline-data-pipeline.test.ts 2>&1 | tail -20
+  cd /Users/shane/claude/chronoscope && npx vitest run tests/unit/timeline-data-pipeline.test.ts 2>&1 | tail -20
   ```
 
   Expected: all ribbon tests pass.
@@ -1205,7 +1205,7 @@ This task adds ribbon-specific tests that verify the `computeRibbons` behavior t
 - [ ] **Step 4: Commit**
 
   ```bash
-  cd /Users/shane/claude/sonde && git add tests/unit/timeline-data-pipeline.test.ts && git commit -m "test: add ribbon AC3 coverage to pipeline test suite"
+  cd /Users/shane/claude/chronoscope && git add tests/unit/timeline-data-pipeline.test.ts && git commit -m "test: add ribbon AC3 coverage to pipeline test suite"
   ```
 
 ---
@@ -1215,7 +1215,7 @@ This task adds ribbon-specific tests that verify the `computeRibbons` behavior t
 After Task 3, write:
 
 ```bash
-cat > /Users/shane/claude/sonde/docs/superpowers/progress/2026-04-08-viz-overhaul-phaseA.md << 'EOF'
+cat > /Users/shane/claude/chronoscope/docs/superpowers/progress/2026-04-08-viz-overhaul-phaseA.md << 'EOF'
 # Phase A Complete — Foundation
 
 Date: $(date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -1363,7 +1363,7 @@ EOF
 - [ ] **Step 2: Run tests to verify they fail**
 
   ```bash
-  cd /Users/shane/claude/sonde && npx vitest run tests/unit/timeline-renderer.test.ts 2>&1 | grep -E "FAIL|FrameData" | head -10
+  cd /Users/shane/claude/chronoscope && npx vitest run tests/unit/timeline-renderer.test.ts 2>&1 | grep -E "FAIL|FrameData" | head -10
   ```
 
   Expected: failures because `TimelineRenderer.draw()` does not accept `FrameData` yet.
@@ -1983,7 +1983,7 @@ EOF
 - [ ] **Step 5: Run tests to verify they pass**
 
   ```bash
-  cd /Users/shane/claude/sonde && npx vitest run tests/unit/timeline-renderer.test.ts 2>&1 | tail -30
+  cd /Users/shane/claude/chronoscope && npx vitest run tests/unit/timeline-renderer.test.ts 2>&1 | tail -30
   ```
 
   Expected: all tests pass.
@@ -1991,7 +1991,7 @@ EOF
 - [ ] **Step 6: Run full test suite**
 
   ```bash
-  cd /Users/shane/claude/sonde && npx vitest run 2>&1 | tail -20
+  cd /Users/shane/claude/chronoscope && npx vitest run 2>&1 | tail -20
   ```
 
   Expected: all tests pass.
@@ -1999,7 +1999,7 @@ EOF
 - [ ] **Step 7: Commit**
 
   ```bash
-  cd /Users/shane/claude/sonde && git add src/lib/renderers/timeline-renderer.ts tests/unit/timeline-renderer.test.ts && git commit -m "feat: TimelineRenderer accepts FrameData, draws ribbons, dynamic gridlines, X-axis"
+  cd /Users/shane/claude/chronoscope && git add src/lib/renderers/timeline-renderer.ts tests/unit/timeline-renderer.test.ts && git commit -m "feat: TimelineRenderer accepts FrameData, draws ribbons, dynamic gridlines, X-axis"
   ```
 
 ---
@@ -2061,7 +2061,7 @@ EOF
 - [ ] **Step 2: Run tests to verify they fail**
 
   ```bash
-  cd /Users/shane/claude/sonde && npx vitest run tests/unit/effects-renderer.test.ts 2>&1 | grep -E "FAIL|drawEmptyState" | head -10
+  cd /Users/shane/claude/chronoscope && npx vitest run tests/unit/effects-renderer.test.ts 2>&1 | grep -E "FAIL|drawEmptyState" | head -10
   ```
 
   Expected: `drawEmptyState` tests fail because the stub doesn't implement the full sweep.
@@ -2160,7 +2160,7 @@ EOF
 - [ ] **Step 4: Run tests to verify they pass**
 
   ```bash
-  cd /Users/shane/claude/sonde && npx vitest run tests/unit/effects-renderer.test.ts 2>&1 | tail -20
+  cd /Users/shane/claude/chronoscope && npx vitest run tests/unit/effects-renderer.test.ts 2>&1 | tail -20
   ```
 
   Expected: all tests pass including all `drawEmptyState` tests.
@@ -2168,7 +2168,7 @@ EOF
 - [ ] **Step 5: Run full test suite**
 
   ```bash
-  cd /Users/shane/claude/sonde && npx vitest run 2>&1 | tail -20
+  cd /Users/shane/claude/chronoscope && npx vitest run 2>&1 | tail -20
   ```
 
   Expected: all tests pass.
@@ -2176,7 +2176,7 @@ EOF
 - [ ] **Step 6: Commit**
 
   ```bash
-  cd /Users/shane/claude/sonde && git add src/lib/renderers/effects-renderer.ts tests/unit/effects-renderer.test.ts && git commit -m "feat: implement EffectsRenderer.drawEmptyState() radar sweep animation"
+  cd /Users/shane/claude/chronoscope && git add src/lib/renderers/effects-renderer.ts tests/unit/effects-renderer.test.ts && git commit -m "feat: implement EffectsRenderer.drawEmptyState() radar sweep animation"
   ```
 
 ---
@@ -2599,7 +2599,7 @@ This is the wiring task. No new test file is needed — the Playwright e2e smoke
 - [ ] **Step 2: Run typecheck**
 
   ```bash
-  cd /Users/shane/claude/sonde && npx tsc --noEmit 2>&1 | head -40
+  cd /Users/shane/claude/chronoscope && npx tsc --noEmit 2>&1 | head -40
   ```
 
   Expected: zero errors. If errors appear, they are likely import paths or type mismatches — fix before proceeding.
@@ -2607,7 +2607,7 @@ This is the wiring task. No new test file is needed — the Playwright e2e smoke
 - [ ] **Step 3: Run full test suite**
 
   ```bash
-  cd /Users/shane/claude/sonde && npx vitest run 2>&1 | tail -20
+  cd /Users/shane/claude/chronoscope && npx vitest run 2>&1 | tail -20
   ```
 
   Expected: all tests pass.
@@ -2615,7 +2615,7 @@ This is the wiring task. No new test file is needed — the Playwright e2e smoke
 - [ ] **Step 4: Commit**
 
   ```bash
-  cd /Users/shane/claude/sonde && git add src/lib/components/TimelineCanvas.svelte && git commit -m "feat: wire TimelineCanvas to FrameData pipeline, fix findNearest coords, route empty state"
+  cd /Users/shane/claude/chronoscope && git add src/lib/components/TimelineCanvas.svelte && git commit -m "feat: wire TimelineCanvas to FrameData pipeline, fix findNearest coords, route empty state"
   ```
 
 ---
@@ -2632,7 +2632,7 @@ This is the wiring task. No new test file is needed — the Playwright e2e smoke
 - [ ] **Step 1: Check e2e test structure**
 
   ```bash
-  ls /Users/shane/claude/sonde/tests/ && cat /Users/shane/claude/sonde/playwright.config.ts 2>/dev/null || echo "No playwright config"
+  ls /Users/shane/claude/chronoscope/tests/ && cat /Users/shane/claude/chronoscope/playwright.config.ts 2>/dev/null || echo "No playwright config"
   ```
 
 - [ ] **Step 2: Add empty state unit smoke test**
@@ -2642,7 +2642,7 @@ This is the wiring task. No new test file is needed — the Playwright e2e smoke
   This was already covered by `drawEmptyState` tests in Task 5. Verify AC5 coverage is present:
 
   ```bash
-  cd /Users/shane/claude/sonde && npx vitest run tests/unit/effects-renderer.test.ts --reporter=verbose 2>&1 | grep -i "empty\|AC5\|sweep"
+  cd /Users/shane/claude/chronoscope && npx vitest run tests/unit/effects-renderer.test.ts --reporter=verbose 2>&1 | grep -i "empty\|AC5\|sweep"
   ```
 
   If Playwright is configured, create `tests/e2e/empty-state.spec.ts`:
@@ -2665,7 +2665,7 @@ This is the wiring task. No new test file is needed — the Playwright e2e smoke
 - [ ] **Step 3: Run lint**
 
   ```bash
-  cd /Users/shane/claude/sonde && npx eslint src/lib/renderers/timeline-data-pipeline.ts src/lib/renderers/timeline-renderer.ts src/lib/renderers/effects-renderer.ts src/lib/components/TimelineCanvas.svelte 2>&1 | head -40
+  cd /Users/shane/claude/chronoscope && npx eslint src/lib/renderers/timeline-data-pipeline.ts src/lib/renderers/timeline-renderer.ts src/lib/renderers/effects-renderer.ts src/lib/components/TimelineCanvas.svelte 2>&1 | head -40
   ```
 
   Expected: zero lint errors. If `no-raw-visual-values` ESLint rule fires, check that all hex/numeric values in new code reference `tokens.*` — they should, since the pipeline and renderer use only token references.
@@ -2673,7 +2673,7 @@ This is the wiring task. No new test file is needed — the Playwright e2e smoke
 - [ ] **Step 4: Run full typecheck + tests**
 
   ```bash
-  cd /Users/shane/claude/sonde && npx tsc --noEmit && npx vitest run 2>&1 | tail -30
+  cd /Users/shane/claude/chronoscope && npx tsc --noEmit && npx vitest run 2>&1 | tail -30
   ```
 
   Expected: zero TS errors, all tests pass (185+ tests).
@@ -2681,7 +2681,7 @@ This is the wiring task. No new test file is needed — the Playwright e2e smoke
 - [ ] **Step 5: Commit**
 
   ```bash
-  cd /Users/shane/claude/sonde && git add tests/ && git commit -m "test: add empty state AC5 coverage; verify lint and typecheck clean"
+  cd /Users/shane/claude/chronoscope && git add tests/ && git commit -m "test: add empty state AC5 coverage; verify lint and typecheck clean"
   ```
 
 ---
@@ -2691,7 +2691,7 @@ This is the wiring task. No new test file is needed — the Playwright e2e smoke
 After Task 7, write:
 
 ```bash
-cat > /Users/shane/claude/sonde/docs/superpowers/progress/2026-04-08-viz-overhaul-phaseB.md << 'EOF'
+cat > /Users/shane/claude/chronoscope/docs/superpowers/progress/2026-04-08-viz-overhaul-phaseB.md << 'EOF'
 # Phase B Complete — Renderer Wiring
 
 Date: $(date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -2730,13 +2730,13 @@ After all tasks complete:
 
 ```bash
 # Full test suite
-cd /Users/shane/claude/sonde && npx vitest run 2>&1 | tail -10
+cd /Users/shane/claude/chronoscope && npx vitest run 2>&1 | tail -10
 
 # Typecheck
-cd /Users/shane/claude/sonde && npx tsc --noEmit 2>&1 | head -20
+cd /Users/shane/claude/chronoscope && npx tsc --noEmit 2>&1 | head -20
 
 # Lint on all modified files
-cd /Users/shane/claude/sonde && npx eslint src/lib/types.ts src/lib/tokens.ts src/lib/renderers/ src/lib/components/TimelineCanvas.svelte 2>&1 | head -20
+cd /Users/shane/claude/chronoscope && npx eslint src/lib/types.ts src/lib/tokens.ts src/lib/renderers/ src/lib/components/TimelineCanvas.svelte 2>&1 | head -20
 ```
 
 All three commands must exit 0 before this feature branch is considered done.

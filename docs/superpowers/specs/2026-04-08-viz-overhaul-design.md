@@ -4,14 +4,14 @@ feature: viz-overhaul
 type: design-specification
 status: APPROVED
 approach: Layered Data Pipeline
-parent-spec: 2026-04-07-sonde-v2-design.md
+parent-spec: 2026-04-07-chronoscope-v2-design.md
 ---
 
 # Design Specification -- Phase 1 Visualization Overhaul
 
 ## 1. Problem
 
-When a user runs Sonde against endpoints with typical web latencies (20--150ms), the timeline scatter plot is nearly useless. Data points cluster into a thin band at the bottom of a fixed log-scale axis (1ms--10s), wasting 80%+ of the vertical canvas. Users cannot visually distinguish latency differences between endpoints, detect trends, or identify variance -- the exact insights the tool exists to provide. They fall back to reading raw numbers on summary cards, defeating the purpose of a real-time visualization.
+When a user runs Chronoscope against endpoints with typical web latencies (20--150ms), the timeline scatter plot is nearly useless. Data points cluster into a thin band at the bottom of a fixed log-scale axis (1ms--10s), wasting 80%+ of the vertical canvas. Users cannot visually distinguish latency differences between endpoints, detect trends, or identify variance -- the exact insights the tool exists to provide. They fall back to reading raw numbers on summary cards, defeating the purpose of a real-time visualization.
 
 Additionally:
 - Sonar ping animations render at incorrect positions on HiDPI displays due to a DPR coordinate bug, making the signature animation invisible or misplaced.

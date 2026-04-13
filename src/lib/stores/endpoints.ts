@@ -95,8 +95,13 @@ function createEndpointStore() {
 
 export const endpointStore = createEndpointStore();
 
-/** Only enabled endpoints with a non-empty URL. */
+function isHttpUrl(url: string): boolean {
+  const trimmed = url.trim();
+  return trimmed.startsWith('http://') || trimmed.startsWith('https://');
+}
+
+/** Only enabled endpoints with a valid HTTP(S) URL. */
 export const validEndpoints = derived(
   endpointStore,
-  $endpoints => $endpoints.filter(ep => ep.enabled && ep.url.trim().length > 0)
+  $endpoints => $endpoints.filter(ep => ep.enabled && isHttpUrl(ep.url))
 );

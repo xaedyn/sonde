@@ -36,7 +36,7 @@ describe('persistence', () => {
   });
 
   it('returns null for corrupt data', () => {
-    localStorageMock.setItem('sonde_v2_settings', 'not-json{{{}}}');
+    localStorageMock.setItem('chronoscope_v2_settings', 'not-json{{{}}}');
     expect(() => loadPersistedSettings()).not.toThrow();
     expect(loadPersistedSettings()).toBeNull();
   });

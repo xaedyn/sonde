@@ -63,8 +63,8 @@
   style:--btn-radius="{tokens.radius.btn}px"
   style:--timing-btn="{tokens.timing.btnHover}ms"
 >
-  <div class="logo" aria-label="Sonde">
-    <span class="logo-text">Sonde</span>
+  <div class="logo" aria-label="Chronoscope">
+    <span class="logo-text">Chronoscope</span>
   </div>
 
   <div class="sep" aria-hidden="true"></div>

@@ -3,7 +3,7 @@
 // Called once from App.svelte before any persistence restore.
 
 import { parseShareURL } from './share-manager';
-import { endpointStore } from '../stores/endpoints';
+import { endpointStore, MAX_ENDPOINTS } from '../stores/endpoints';
 import { settingsStore } from '../stores/settings';
 import { measurementStore } from '../stores/measurements';
 import { uiStore } from '../stores/ui';
@@ -21,8 +21,9 @@ function pickColor(index: number): string {
  * Returns the ordered list of endpoint IDs created.
  */
 export function applySharePayload(payload: SharePayload): string[] {
-  // Build Endpoint objects from the stripped share format
-  const endpoints: Endpoint[] = payload.endpoints.map((ep, i) => ({
+  // Build Endpoint objects from the stripped share format, capped to MAX_ENDPOINTS
+  const capped = payload.endpoints.slice(0, MAX_ENDPOINTS);
+  const endpoints: Endpoint[] = capped.map((ep, i) => ({
     id: `shared-ep-${i}-${Date.now()}`,
     url: ep.url,
     enabled: ep.enabled,
@@ -43,7 +44,7 @@ export function applySharePayload(payload: SharePayload): string[] {
   const ids = endpoints.map((ep) => ep.id);
 
   if (payload.mode === 'results' && payload.results) {
-    const results = payload.results;
+    const results = payload.results.slice(0, MAX_ENDPOINTS);
     // Build a MeasurementState snapshot from the payload results
     const endpointsRecord: MeasurementState['endpoints'] = {};
 
@@ -107,5 +108,10 @@ export function initHashRouter(): boolean {
   if (!payload) return false;
 
   applySharePayload(payload);
+
+  // Clear the hash fragment to prevent re-processing on refresh
+  // and avoid overwriting persisted settings with shared config.
+  history.replaceState(null, '', window.location.pathname + window.location.search);
+
   return true;
 }

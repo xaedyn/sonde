@@ -8,7 +8,7 @@ type: spec
 
 ## Problem
 
-Sonde's measurement engine produces significantly higher variance and less stable readings than comparable tools (S80). Root causes: time-gated round dispatch creates overlapping rounds with self-inflicted network contention, Resource Timing buffer grows unbounded causing O(n) scans, and a fixed delay provides no distinction between baseline establishment and ongoing monitoring. Users see noisy charts and unreliable statistics that don't reflect true connection quality.
+Chronoscope's measurement engine produces significantly higher variance and less stable readings than comparable tools (S80). Root causes: time-gated round dispatch creates overlapping rounds with self-inflicted network contention, Resource Timing buffer grows unbounded causing O(n) scans, and a fixed delay provides no distinction between baseline establishment and ongoing monitoring. Users see noisy charts and unreliable statistics that don't reflect true connection quality.
 
 ## Success Metrics
 

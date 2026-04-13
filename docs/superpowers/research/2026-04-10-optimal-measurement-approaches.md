@@ -45,7 +45,7 @@ Default endpoints are reduced from 10 to 3 (Google, Cloudflare 1.1.1.1, GitHub) 
 
 ### THE BET
 
-Response-gated dispatch with burst phase will produce measurably lower jitter and more stable baseline readings than the current time-gated approach, making Sonde's output comparable to or better than S80's stability.
+Response-gated dispatch with burst phase will produce measurably lower jitter and more stable baseline readings than the current time-gated approach, making Chronoscope's output comparable to or better than S80's stability.
 
 ### REVERSAL COST
 

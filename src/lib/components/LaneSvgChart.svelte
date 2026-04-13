@@ -161,7 +161,8 @@
   class="lane-svg"
   viewBox="0 0 {VB_W} {VB_H}"
   preserveAspectRatio="none"
-  aria-hidden="true"
+  role="img"
+  aria-label="Latency scatter chart"
   style:--ep-color={color}
   style:--ribbon-fill={colorRgba06}
   style:--grid-line={tokens.color.svg.gridLine}
