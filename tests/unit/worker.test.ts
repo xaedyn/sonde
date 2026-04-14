@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { extractTimingPayload, classifyLatencyTier } from '../../src/lib/engine/worker';
+import { extractTimingPayload, classifyLatencyTier, resolveProbeUrl } from '../../src/lib/engine/worker';
 
 describe('worker — extractTimingPayload', () => {
   it('returns tier 1 data (zeros) when TAO is absent', () => {
@@ -29,6 +29,40 @@ describe('worker — extractTimingPayload', () => {
     expect(result.tlsHandshake).toBe(13);
     expect(result.ttfb).toBe(85);
     expect(result.contentTransfer).toBe(30);
+  });
+});
+
+describe('worker — resolveProbeUrl', () => {
+  it('appends /favicon.ico to bare origin', () => {
+    expect(resolveProbeUrl('https://www.google.com')).toBe('https://www.google.com/favicon.ico');
+  });
+
+  it('appends /favicon.ico when path is just /', () => {
+    expect(resolveProbeUrl('https://www.google.com/')).toBe('https://www.google.com/favicon.ico');
+  });
+
+  it('preserves explicit path (user intent)', () => {
+    expect(resolveProbeUrl('https://api.example.com/health')).toBe('https://api.example.com/health');
+  });
+
+  it('preserves path with trailing slash', () => {
+    expect(resolveProbeUrl('https://example.com/api/')).toBe('https://example.com/api/');
+  });
+
+  it('handles IP addresses', () => {
+    expect(resolveProbeUrl('https://1.1.1.1')).toBe('https://1.1.1.1/favicon.ico');
+  });
+
+  it('handles ports', () => {
+    expect(resolveProbeUrl('https://example.com:8080')).toBe('https://example.com:8080/favicon.ico');
+  });
+
+  it('handles port with explicit path', () => {
+    expect(resolveProbeUrl('https://example.com:8080/status')).toBe('https://example.com:8080/status');
+  });
+
+  it('returns original URL for invalid input', () => {
+    expect(resolveProbeUrl('not-a-url')).toBe('not-a-url');
   });
 });
 
