@@ -11,6 +11,24 @@ interface RingBufferOptions {
 
 type EvictionCallback<T> = (evicted: T) => void;
 
+/**
+ * Wraps a RingBuffer in a Proxy so numeric bracket access (buf[i]) delegates to at(i).
+ * Returns a SampleBuffer-compatible object.
+ */
+export function proxyRingBuffer<T>(rb: RingBuffer<T>): RingBuffer<T> {
+  return new Proxy(rb, {
+    get(target, prop, receiver) {
+      if (typeof prop === 'string') {
+        const n = Number(prop);
+        if (Number.isInteger(n) && n >= 0) {
+          return target.at(n);
+        }
+      }
+      return Reflect.get(target, prop, receiver);
+    },
+  });
+}
+
 export class RingBuffer<T> {
   private readonly _items: (T | undefined)[];
   private readonly _capacity: number;
@@ -170,6 +188,56 @@ export class RingBuffer<T> {
       result[i] = this._items[(this._head + i) % this._capacity] as T;
     }
     return result;
+  }
+
+  filter(predicate: (value: T, index: number) => boolean): T[] {
+    const result: T[] = [];
+    for (let i = 0; i < this._length; i++) {
+      const item = this._items[(this._head + i) % this._capacity] as T;
+      if (predicate(item, i)) result.push(item);
+    }
+    return result;
+  }
+
+  map<U>(callbackfn: (value: T, index: number) => U): U[] {
+    const result: U[] = new Array<U>(this._length);
+    for (let i = 0; i < this._length; i++) {
+      result[i] = callbackfn(this._items[(this._head + i) % this._capacity] as T, i);
+    }
+    return result;
+  }
+
+  find(predicate: (value: T, index: number) => boolean): T | undefined {
+    for (let i = 0; i < this._length; i++) {
+      const item = this._items[(this._head + i) % this._capacity] as T;
+      if (predicate(item, i)) return item;
+    }
+    return undefined;
+  }
+
+  reduce<U>(callbackfn: (accumulator: U, value: T, index: number) => U, initialValue: U): U {
+    let acc = initialValue;
+    for (let i = 0; i < this._length; i++) {
+      acc = callbackfn(acc, this._items[(this._head + i) % this._capacity] as T, i);
+    }
+    return acc;
+  }
+
+  slice(start?: number, end?: number): T[] {
+    const len = this._length;
+    const s = start === undefined ? 0 : start < 0 ? Math.max(len + start, 0) : Math.min(start, len);
+    const e = end === undefined ? len : end < 0 ? Math.max(len + end, 0) : Math.min(end, len);
+    const result: T[] = [];
+    for (let i = s; i < e; i++) {
+      result.push(this._items[(this._head + i) % this._capacity] as T);
+    }
+    return result;
+  }
+
+  forEach(callbackfn: (value: T, index: number) => void): void {
+    for (let i = 0; i < this._length; i++) {
+      callbackfn(this._items[(this._head + i) % this._capacity] as T, i);
+    }
   }
 
   /**

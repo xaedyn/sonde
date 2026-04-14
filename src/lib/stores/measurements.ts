@@ -11,6 +11,30 @@ import type {
   TimingPayload,
   FreezeEvent,
 } from '../types';
+import { RingBuffer, DEFAULT_RING_CAPACITY, proxyRingBuffer } from '../utils/ring-buffer';
+import { IncrementalLossCounter } from '../utils/incremental-loss-counter';
+import { SortedInsertionBuffer } from '../utils/sorted-insertion-buffer';
+import { IncrementalTimestampTracker } from '../utils/incremental-timestamp-tracker';
+import { sessionHistoryStore } from './session-history';
+
+// ── Module-level singletons ────────────────────────────────────────────────
+export const incrementalLossCounter = new IncrementalLossCounter();
+export const incrementalTimestampTracker = new IncrementalTimestampTracker();
+const sortedBuffers = new Map<string, SortedInsertionBuffer>();
+
+function getSortedBuffer(endpointId: string): SortedInsertionBuffer {
+  let buf = sortedBuffers.get(endpointId);
+  if (!buf) {
+    buf = new SortedInsertionBuffer();
+    sortedBuffers.set(endpointId, buf);
+  }
+  return buf;
+}
+
+/** Public accessor for the sorted buffer of an endpoint. */
+export function getSortedBufferForEndpoint(endpointId: string): SortedInsertionBuffer {
+  return getSortedBuffer(endpointId);
+}
 
 const INITIAL_STATE: MeasurementState = {
   lifecycle: 'idle',
@@ -58,19 +82,28 @@ function createMeasurementStore() {
     },
 
     initEndpoint(endpointId: string): void {
-      update(s => ({
-        ...s,
-        endpoints: {
-          ...s.endpoints,
-          [endpointId]: {
-            endpointId,
-            samples: [],
-            lastLatency: null,
-            lastStatus: null,
-            tierLevel: 1,
+      update(s => {
+        const rawRb = new RingBuffer<MeasurementSample>({ capacity: DEFAULT_RING_CAPACITY });
+        rawRb.onEvict((evicted) => {
+          sessionHistoryStore.accumulate(endpointId, evicted);
+        });
+        const rb = proxyRingBuffer(rawRb);
+
+        return {
+          ...s,
+          endpoints: {
+            ...s.endpoints,
+            [endpointId]: {
+              endpointId,
+              samples: rb as unknown as import('../types').SampleBuffer,
+              lastLatency: null,
+              lastStatus: null,
+              lastErrorMessage: null,
+              tierLevel: 1,
+            },
           },
-        },
-      }));
+        };
+      });
     },
 
     removeEndpoint(endpointId: string): void {
@@ -78,6 +111,8 @@ function createMeasurementStore() {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { [endpointId]: _removed, ...rest } = s.endpoints;
         const { errorCount, timeoutCount } = recomputeCounts(rest);
+        sortedBuffers.delete(endpointId);
+        incrementalLossCounter.removeEndpoint(endpointId);
         return { ...s, endpoints: rest, errorCount, timeoutCount };
       });
     },
@@ -90,43 +125,14 @@ function createMeasurementStore() {
       timestamp: number,
       tier2?: TimingPayload
     ): void {
-      update(s => {
-        const existing = s.endpoints[endpointId];
-        if (!existing) return s;
-
-        const sample: MeasurementSample = {
-          round,
-          latency,
-          status,
-          timestamp,
-          ...(tier2 !== undefined ? { tier2 } : {}),
-        };
-
-        const tierLevel: 1 | 2 =
-          tier2 !== undefined && (tier2.dnsLookup !== 0 || tier2.tcpConnect !== 0 || tier2.ttfb !== 0)
-            ? 2
-            : existing.tierLevel;
-
-        // Mutable push — O(1) amortized instead of O(n) spread
-        existing.samples.push(sample);
-
-        const { errors, timeouts } = countDelta(status);
-
-        return {
-          ...s,
-          errorCount: s.errorCount + errors,
-          timeoutCount: s.timeoutCount + timeouts,
-          endpoints: {
-            ...s.endpoints,
-            [endpointId]: {
-              ...existing,
-              lastLatency: latency,
-              lastStatus: status,
-              tierLevel,
-            },
-          },
-        };
-      });
+      this.addSamples([{
+        endpointId,
+        round,
+        latency,
+        status,
+        timestamp,
+        tier2,
+      }]);
     },
 
     addSamples(entries: Array<{
@@ -136,6 +142,7 @@ function createMeasurementStore() {
       status: SampleStatus;
       timestamp: number;
       tier2?: TimingPayload;
+      errorMessage?: string;
     }>): void {
       update(s => {
         // Clone the top-level endpoints map once to trigger reactivity
@@ -153,6 +160,7 @@ function createMeasurementStore() {
             status: entry.status,
             timestamp: entry.timestamp,
             ...(entry.tier2 !== undefined ? { tier2: entry.tier2 } : {}),
+            ...(entry.errorMessage !== undefined ? { errorMessage: entry.errorMessage } : {}),
           };
 
           const tierLevel: 1 | 2 =
@@ -160,18 +168,27 @@ function createMeasurementStore() {
               ? 2
               : existing.tierLevel;
 
-          // Insert in round order — almost always appends (O(1) typical),
-          // but handles stragglers arriving after the next round flushed.
-          const samples = existing.samples;
-          const lastSample = samples[samples.length - 1];
-          if (samples.length === 0 || sample.round >= (lastSample?.round ?? 0)) {
-            samples.push(sample);
+          // Cast to RingBuffer for push/insertOrdered
+          const rb = existing.samples as unknown as RingBuffer<MeasurementSample>;
+
+          // Detect straggler: if sample round < newest round in buffer
+          const lastRound = rb.back?.round;
+          if (lastRound !== undefined && sample.round < lastRound) {
+            rb.insertOrdered(sample, (existing) => sample.round < existing.round);
           } else {
-            // Walk backward to find insertion point (usually 1-2 steps)
-            let i = samples.length - 1;
-            while (i > 0 && (samples[i - 1]?.round ?? 0) > sample.round) i--;
-            samples.splice(i, 0, sample);
+            rb.push(sample);
           }
+
+          // Update incremental loss counter
+          incrementalLossCounter.addSamples([{ endpointId: entry.endpointId, status: entry.status }]);
+
+          // Update sorted insertion buffer for ok samples
+          if (entry.status === 'ok') {
+            getSortedBuffer(entry.endpointId).insert(entry.latency);
+          }
+
+          // Update timestamp tracker
+          incrementalTimestampTracker.processNewSamples(entry.endpointId, rb, rb.tailIndex);
 
           const { errors, timeouts } = countDelta(entry.status);
           errorDelta += errors;
@@ -182,6 +199,7 @@ function createMeasurementStore() {
             ...existing,
             lastLatency: entry.latency,
             lastStatus: entry.status,
+            lastErrorMessage: entry.status === 'error' ? (entry.errorMessage ?? null) : null,
             tierLevel,
           };
         }
@@ -212,11 +230,59 @@ function createMeasurementStore() {
     },
 
     loadSnapshot(snapshot: MeasurementState): void {
-      const { errorCount, timeoutCount } = recomputeCounts(snapshot.endpoints);
-      set({ ...snapshot, errorCount, timeoutCount });
+      // Reset ALL incremental state first
+      incrementalLossCounter.reset();
+      incrementalTimestampTracker.reset();
+      sortedBuffers.clear();
+      sessionHistoryStore.reset();
+
+      // Rebuild endpoints with RingBuffers and incremental structures
+      const nextEndpoints: MeasurementState['endpoints'] = {};
+
+      for (const [endpointId, epState] of Object.entries(snapshot.endpoints)) {
+        const rawRb = new RingBuffer<MeasurementSample>({ capacity: DEFAULT_RING_CAPACITY });
+        rawRb.onEvict((evicted) => {
+          sessionHistoryStore.accumulate(endpointId, evicted);
+        });
+
+        // Convert samples to array if needed (snapshot may have plain arrays)
+        const samplesArray = Array.isArray(epState.samples)
+          ? epState.samples
+          : (epState.samples as unknown as RingBuffer<MeasurementSample>).toArray();
+
+        // Load samples into ring buffer
+        rawRb.loadFrom(samplesArray);
+        const rb = proxyRingBuffer(rawRb);
+
+        // Rebuild loss counter incrementally per endpoint (NOT loadFrom which clears on each call)
+        incrementalLossCounter.addSamples(
+          samplesArray.map(s => ({ endpointId, status: s.status }))
+        );
+
+        // Rebuild sorted buffer
+        const sortedBuf = getSortedBuffer(endpointId);
+        sortedBuf.loadFrom(
+          samplesArray.filter(s => s.status === 'ok').map(s => s.latency)
+        );
+
+        // Rebuild timestamp tracker
+        incrementalTimestampTracker.processNewSamples(endpointId, rawRb, rawRb.tailIndex);
+
+        nextEndpoints[endpointId] = {
+          ...epState,
+          samples: rb as unknown as import('../types').SampleBuffer,
+        };
+      }
+
+      const { errorCount, timeoutCount } = recomputeCounts(nextEndpoints);
+      set({ ...snapshot, endpoints: nextEndpoints, errorCount, timeoutCount });
     },
 
     reset(): void {
+      incrementalLossCounter.reset();
+      incrementalTimestampTracker.reset();
+      sortedBuffers.clear();
+      sessionHistoryStore.reset();
       set({ ...INITIAL_STATE });
     },
   };
