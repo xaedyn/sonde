@@ -233,7 +233,7 @@ export class MeasurementEngine {
   private _spawnWorkers(endpoints: Endpoint[]): void {
     this.workers = endpoints.map(ep => {
       // Uses the injected factory — allows test environments to substitute mock workers.
-      const worker = this.workerFactory.create(new URL('./worker.ts', import.meta.url));
+      const worker = this.workerFactory.create();
       worker.addEventListener('message', (event: MessageEvent<WorkerToMainMessage>) => {
         // Inject the correct endpointId — the worker doesn't know its own ID,
         // it only sets endpointId to the URL as a placeholder.
