@@ -8,7 +8,7 @@ import { settingsStore } from '../stores/settings';
 import { measurementStore } from '../stores/measurements';
 import { uiStore } from '../stores/ui';
 import { DEFAULT_SETTINGS } from '../types';
-import type { SharePayload, MeasurementState, Endpoint } from '../types';
+import type { SharePayload, MeasurementSample, SampleStatus, Endpoint } from '../types';
 import { tokens } from '../tokens';
 
 function pickColor(index: number): string {
@@ -45,8 +45,16 @@ export function applySharePayload(payload: SharePayload): string[] {
 
   if (payload.mode === 'results' && payload.results) {
     const results = payload.results.slice(0, MAX_ENDPOINTS);
-    // Build a MeasurementState snapshot from the payload results
-    const endpointsRecord: MeasurementState['endpoints'] = {};
+    // Build a snapshot from the payload results — uses plain arrays, not SampleBuffer.
+    // measurementStore.loadSnapshot() converts these to RingBuffers internally.
+    const endpointsRecord: Record<string, {
+      endpointId: string;
+      samples: MeasurementSample[];
+      lastLatency: number | null;
+      lastStatus: SampleStatus | null;
+      lastErrorMessage: string | null;
+      tierLevel: 1 | 2;
+    }> = {};
 
     ids.forEach((id, i) => {
       const epResults = results[i];
@@ -62,8 +70,9 @@ export function applySharePayload(payload: SharePayload): string[] {
 
       endpointsRecord[id] = {
         endpointId: id,
-        // Plain array is converted to RingBuffer by loadSnapshot()
-        samples: samples as unknown as MeasurementState['endpoints'][string]['samples'],
+        // Plain array — loadSnapshot() converts to RingBuffer internally
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        samples: samples as any,
         lastLatency: lastSample?.latency ?? null,
         lastStatus: lastSample?.status ?? null,
         lastErrorMessage: null,
@@ -71,8 +80,8 @@ export function applySharePayload(payload: SharePayload): string[] {
       };
     });
 
-    const snapshot: MeasurementState = {
-      lifecycle: 'completed',
+    const snapshot = {
+      lifecycle: 'completed' as const,
       epoch: 1,
       roundCounter: Math.max(
         ...payload.results.map((r) =>
