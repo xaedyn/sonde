@@ -82,13 +82,31 @@ export interface MeasurementSample {
   readonly status: SampleStatus;
   readonly timestamp: number;
   readonly tier2?: TimingPayload;
+  readonly errorMessage?: string;
+}
+
+/** Array-like interface backed by RingBuffer. Consumers read through this. */
+export interface SampleBuffer {
+  readonly length: number;
+  readonly tailIndex: number;
+  at(index: number): MeasurementSample | undefined;
+  [index: number]: MeasurementSample | undefined;
+  [Symbol.iterator](): Iterator<MeasurementSample>;
+  filter(predicate: (value: MeasurementSample, index: number) => boolean): MeasurementSample[];
+  map<U>(callbackfn: (value: MeasurementSample, index: number) => U): U[];
+  find(predicate: (value: MeasurementSample, index: number) => boolean): MeasurementSample | undefined;
+  reduce<U>(callbackfn: (accumulator: U, value: MeasurementSample, index: number) => U, initialValue: U): U;
+  slice(start?: number, end?: number): MeasurementSample[];
+  forEach(callbackfn: (value: MeasurementSample, index: number) => void): void;
+  toArray(): MeasurementSample[];
 }
 
 export interface EndpointMeasurementState {
   readonly endpointId: string;
-  samples: MeasurementSample[];
+  samples: SampleBuffer;
   lastLatency: number | null;
   lastStatus: SampleStatus | null;
+  lastErrorMessage: string | null;
   tierLevel: 1 | 2;
 }
 
@@ -257,6 +275,7 @@ export interface ScatterPoint {
   readonly endpointId: string;
   readonly round: number;
   readonly color: string;
+  readonly errorMessage?: string;
 }
 
 export interface HeatmapCell {
