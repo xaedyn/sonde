@@ -40,6 +40,11 @@ export class IncrementalTimestampTracker {
     return this._timestamps;
   }
 
+  /** Removes the tail-tracking state for a single endpoint. */
+  removeEndpoint(endpointId: string): void {
+    this._lastProcessedTail.delete(endpointId);
+  }
+
   /** Clears all timestamp data and per-endpoint tail positions. */
   reset(): void {
     this._timestamps.length = 0;

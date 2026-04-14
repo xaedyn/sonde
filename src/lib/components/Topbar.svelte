@@ -115,9 +115,12 @@
 
   {#if showRunStatus}
     <div class="run-status">
-      {#if isRunning}
-        <div class="pulse-dot" class:dot-enter={isRunning} aria-hidden="true"></div>
-      {/if}
+      <div
+        class="pulse-dot"
+        class:dot-enter={isRunning}
+        class:dot-exit={!isRunning}
+        aria-hidden="true"
+      ></div>
       <span class="run-label" aria-hidden="true">{runLabel}</span>
     </div>
   {/if}
@@ -231,9 +234,16 @@
   .dot-enter {
     animation: dot-entrance var(--timing-dot-enter) var(--easing-spring) forwards, pulse 2s ease-in-out infinite var(--timing-dot-enter);
   }
+  .dot-exit {
+    animation: dot-exit-anim var(--timing-dot-exit) ease-out forwards;
+  }
   @keyframes dot-entrance {
     from { transform: scale(0); }
     to { transform: scale(1); }
+  }
+  @keyframes dot-exit-anim {
+    from { transform: scale(1); opacity: 1; }
+    to { transform: scale(0); opacity: 0; }
   }
   @keyframes pulse {
     0%, 100% { opacity: 1; transform: scale(1); }

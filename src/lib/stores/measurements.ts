@@ -114,6 +114,7 @@ function createMeasurementStore() {
         const { errorCount, timeoutCount } = recomputeCounts(rest);
         sortedBuffers.delete(endpointId);
         incrementalLossCounter.removeEndpoint(endpointId);
+        incrementalTimestampTracker.removeEndpoint(endpointId);
         return { ...s, endpoints: rest, errorCount, timeoutCount };
       });
     },

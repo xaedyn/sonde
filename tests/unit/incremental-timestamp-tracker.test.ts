@@ -112,4 +112,31 @@ describe('IncrementalTimestampTracker', () => {
     expect(() => tracker.processNewSamples('ep1', rb, 0)).not.toThrow();
     expect(tracker.timestamps).toEqual([]);
   });
+
+  it('removeEndpoint clears tail tracking for that endpoint only', () => {
+    const tracker = new IncrementalTimestampTracker();
+    const rb1 = new RingBuffer<MeasurementSample>({ capacity: 10 });
+    const rb2 = new RingBuffer<MeasurementSample>({ capacity: 10 });
+
+    rb1.push(makeSample(0, 1000));
+    rb2.push(makeSample(0, 2000));
+    tracker.processNewSamples('ep1', rb1, 0);
+    tracker.processNewSamples('ep2', rb2, 0);
+
+    tracker.removeEndpoint('ep1');
+
+    // ep1 re-processes from scratch (tail reset), ep2 still has its tail
+    rb1.push(makeSample(1, 3000));
+    rb2.push(makeSample(1, 4000));
+    const tail2 = rb2.tailIndex;
+    tracker.processNewSamples('ep1', rb1, 0);
+    tracker.processNewSamples('ep2', rb2, tail2);
+
+    expect(tracker.timestamps[1]).toBe(3000);
+  });
+
+  it('removeEndpoint on unknown id does not throw', () => {
+    const tracker = new IncrementalTimestampTracker();
+    expect(() => tracker.removeEndpoint('nonexistent')).not.toThrow();
+  });
 });
