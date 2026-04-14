@@ -17,4 +17,11 @@ describe('FooterBar', () => {
     const { container } = render(FooterBar, { props: {} });
     expect(container.querySelector('.config')).not.toBeNull();
   });
+
+  it('highlight element has class "highlight" for CSS-based responsive hiding (AC-5)', () => {
+    const { container } = render(FooterBar, { props: {} });
+    const highlight = container.querySelector('.highlight');
+    expect(highlight).not.toBeNull();
+    expect(highlight?.textContent).toContain('Measuring from your browser');
+  });
 });

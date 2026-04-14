@@ -233,6 +233,8 @@ export class MeasurementEngine {
             timestamp,
             errorMessage: msg.message || msg.errorType,
           };
+        // No default needed — 'busy' is filtered before this map.
+        // TypeScript narrows msg to 'never' here, confirming exhaustiveness.
       }
     });
 

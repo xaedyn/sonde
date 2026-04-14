@@ -146,3 +146,38 @@ describe('new pipeline tokens', () => {
     expect(tokens.canvas.yAxis.logScaleThreshold).toBe(50);
   });
 });
+
+describe('ux-polish tokens', () => {
+  it('exports cyan15 and cyan25 primitive-backed accent tokens (AC-1)', () => {
+    expect(tokens.color.accent.cyanBgSubtle).toBe('rgba(103,232,249,.15)');
+    expect(tokens.color.accent.cyanBorderSubtle).toBe('rgba(103,232,249,.25)');
+  });
+
+  it('exports pink15 and pink25 primitive-backed accent tokens (AC-1)', () => {
+    expect(tokens.color.accent.pinkBgSubtle).toBe('rgba(249,168,212,.15)');
+    expect(tokens.color.accent.pinkBorderSubtle).toBe('rgba(249,168,212,.25)');
+  });
+
+  it('exports glow tokens for box-shadow', () => {
+    expect(tokens.color.glow.cyan).toBe('rgba(103,232,249,.2)');
+    expect(tokens.color.glow.pink).toBe('rgba(249,168,212,.2)');
+  });
+
+  it('exports breakpoints.small as 480 (AC-5)', () => {
+    expect(tokens.breakpoints.small).toBe(480);
+  });
+
+  it('exports statTransition, dotEntrance, dotExit timing tokens (AC-4)', () => {
+    expect(tokens.timing.statTransition).toBe(200);
+    expect(tokens.timing.dotEntrance).toBe(200);
+    expect(tokens.timing.dotExit).toBe(150);
+  });
+
+  it('exports glass.statsBorder token', () => {
+    expect(tokens.color.glass.statsBorder).toBe('rgba(255,255,255,.04)');
+  });
+
+  it('exports text.emptyFill token', () => {
+    expect(tokens.color.text.emptyFill).toBe('rgba(255,255,255,.1)');
+  });
+});

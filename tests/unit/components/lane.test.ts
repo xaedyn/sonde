@@ -25,9 +25,18 @@ describe('Lane', () => {
     expect(getByText('38')).toBeTruthy();
   });
 
-  it('renders P50 Median Latency label', () => {
-    const { getByText } = render(Lane, { props });
-    expect(getByText(/P50 Median Latency/i)).toBeTruthy();
+  it('renders "Median" label without "P50 Median Latency"', () => {
+    const { container } = render(Lane, { props });
+    const label = container.querySelector('.lane-label');
+    expect(label?.textContent).toBe('Median');
+    expect(label?.textContent).not.toContain('P50 Median Latency');
+  });
+
+  it('renders .lane-url element with endpoint content', () => {
+    const { container } = render(Lane, { props });
+    const urlEl = container.querySelector('.lane-url');
+    expect(urlEl).not.toBeNull();
+    expect(urlEl?.textContent).toBe('www.google.com');
   });
 
   it('renders latency label when lastLatency is set', () => {

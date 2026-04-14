@@ -160,6 +160,16 @@
   function handleSvgMouseLeave() {
     uiStore.clearHeatmapTooltip();
   }
+
+  // ── Reduced-motion preference ──────────────────────────────────────────────
+  let reducedMotion = $state(false);
+  $effect(() => {
+    const mql = window.matchMedia('(prefers-reduced-motion: reduce)');
+    reducedMotion = mql.matches;
+    const handler = (e: MediaQueryListEvent) => { reducedMotion = e.matches; };
+    mql.addEventListener('change', handler);
+    return () => mql.removeEventListener('change', handler);
+  });
 </script>
 
 <div class="lane-svg-wrap" onmousemove={handleSvgMouseMove} onmouseleave={handleSvgMouseLeave}>
@@ -172,6 +182,7 @@
   aria-label="Latency scatter chart"
   style:--ep-color={color}
   style:--ribbon-fill={colorRgba06}
+  style:--empty-fill={tokens.color.text.emptyFill}
   style:--grid-line={tokens.color.svg.gridLine}
   style:--future-zone={tokens.color.svg.futureZone}
   style:--timeout-stroke={tokens.color.svg.thresholdStroke}
@@ -241,13 +252,30 @@
     {/if}
     </g>
   {:else}
-    <text
-      class="empty-text"
-      x={VB_W / 2}
-      y={(PLOT_H + PAD_Y_TOP) / 2}
-      text-anchor="middle"
-      dominant-baseline="middle"
-    >Waiting for data</text>
+    <g class="empty-state">
+      <circle
+        class="empty-ring"
+        cx={VB_W / 2}
+        cy={(PLOT_H + PAD_Y_TOP) / 2}
+        r="40"
+        stroke="var(--ep-color)"
+        fill="none"
+        opacity="0.06"
+        stroke-width="0.5"
+      >
+        {#if !reducedMotion}
+          <animate attributeName="r" values="38;42" dur="3s" repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0.04;0.08" dur="3s" repeatCount="indefinite" />
+        {/if}
+      </circle>
+      <text
+        class="empty-text"
+        x={VB_W / 2}
+        y={(PLOT_H + PAD_Y_TOP) / 2 + 56}
+        text-anchor="middle"
+        dominant-baseline="middle"
+      >Waiting for data</text>
+    </g>
   {/if}
 
   <!-- Heatmap strip -->
@@ -282,7 +310,7 @@
   .dot { fill: var(--ep-color); opacity: 0.85; cursor: pointer; transition: r 0.1s ease, opacity 0.1s ease; }
   .dot:hover { r: 5.5; opacity: 1; filter: drop-shadow(0 0 8px var(--ep-color)); }
   .now-dot { fill: var(--ep-color); filter: drop-shadow(0 0 10px var(--ribbon-fill)) drop-shadow(0 0 3px var(--ep-color)); }
-  .empty-text { font-family: var(--mono, 'Martian Mono', monospace); font-size: 14px; font-weight: 300; fill: rgba(255,255,255,.14); }
+  .empty-text { font-family: var(--mono, 'Martian Mono', monospace); font-size: 10px; font-weight: 300; fill: var(--empty-fill); }
   /* Timeout line */
   .timeout-line { stroke: var(--timeout-stroke); stroke-width: 0.8; stroke-dasharray: 6 4; opacity: 0.4; }
   .timeout-label { font-family: 'Martian Mono', monospace; font-size: 5px; font-weight: 400; fill: var(--timeout-stroke); opacity: 0.5; }

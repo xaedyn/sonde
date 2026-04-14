@@ -112,6 +112,10 @@ function waitForResourceEntry(
     }
 
     let settled = false;
+    // eslint-disable-next-line prefer-const -- forward-referenced in cleanup before assignment
+    let observer: PerformanceObserver;
+    // eslint-disable-next-line prefer-const -- forward-referenced in cleanup before assignment
+    let abortHandler: () => void;
 
     const cleanup = () => {
       if (settled) return;
@@ -121,7 +125,7 @@ function waitForResourceEntry(
       performance.clearResourceTimings();
     };
 
-    const observer = new PerformanceObserver((list) => {
+    observer = new PerformanceObserver((list) => {
       const match = list.getEntries().find(e => e.name === url) as PerformanceResourceTiming | undefined;
       if (match && !settled) {
         cleanup();
@@ -129,7 +133,7 @@ function waitForResourceEntry(
       }
     });
 
-    const abortHandler = () => {
+    abortHandler = () => {
       cleanup();
       resolve(null);
     };

@@ -77,4 +77,7 @@
     .foot { padding: 0 12px; gap: 8px; }
     .config { display: none; }
   }
+  @media (max-width: 479px) {
+    .highlight { display: none; }
+  }
 </style>

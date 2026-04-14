@@ -33,6 +33,10 @@ const primitive = {
   pink12:     'rgba(249,168,212,.12)',
   pink06:     'rgba(249,168,212,.06)',
   pink70:     'rgba(249,168,212,.7)',
+  cyan15:     'rgba(103,232,249,.15)',
+  cyan25:     'rgba(103,232,249,.25)',
+  pink15:     'rgba(249,168,212,.15)',
+  pink25:     'rgba(249,168,212,.25)',
   amber:      '#fbbf24',
 
   green:     '#86efac',
@@ -97,6 +101,7 @@ export const tokens = {
       t3: primitive.t3,
       t4: primitive.t4,
       t5: primitive.t5,
+      emptyFill: 'rgba(255,255,255,.1)',
       // Legacy aliases used by non-Glass components (persistence layer, share, engine)
       primary:   primitive.t1,
       secondary: primitive.t2,
@@ -116,8 +121,19 @@ export const tokens = {
       pink20:     primitive.pink20,
       pink12:     primitive.pink12,
       pink06:     primitive.pink06,
+      cyan25:           primitive.cyan25,
+      cyanBgSubtle:     primitive.cyan15,
+      cyanBorderSubtle: primitive.cyan25,
+      pink25:           primitive.pink25,
+      pinkBgSubtle:     primitive.pink15,
+      pinkBorderSubtle: primitive.pink25,
       green:      primitive.green,
       greenGlow:  primitive.greenGlow,
+    },
+
+    glow: {
+      cyan: 'rgba(103,232,249,.2)',
+      pink: 'rgba(249,168,212,.2)',
     },
 
     glass: {
@@ -130,6 +146,7 @@ export const tokens = {
       highlightStrong: 'rgba(255,255,255,.9)',
       shadow:         'rgba(0,0,0,.15)',
       shadowStrong: 'rgba(0,0,0,.5)',
+      statsBorder:  'rgba(255,255,255,.04)',
     },
 
     lane: {
@@ -248,6 +265,9 @@ export const tokens = {
     sonarPingMedium: 500,
     sonarPingSlow: 800,
     sonarPingTimeout: 1200,
+    statTransition:  200,
+    dotEntrance:     200,
+    dotExit:         150,
   },
 
   easing: {
@@ -342,7 +362,7 @@ export const tokens = {
     },
   },
 
-  breakpoints: { mobile: 375, tablet: 768, desktop: 1024, wide: 1440 },
+  breakpoints: { small: 480, mobile: 375, tablet: 768, desktop: 1024, wide: 1440 },
 } as const;
 
 export type Tokens = typeof tokens;
