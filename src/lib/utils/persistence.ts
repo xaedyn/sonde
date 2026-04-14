@@ -4,8 +4,8 @@
 import { DEFAULT_SETTINGS } from '../types';
 import type { PersistedSettings, ActiveView } from '../types';
 
-const STORAGE_KEY = 'chronoscope_settings';
-const LEGACY_STORAGE_KEY = 'chronoscope_v2_settings';
+const STORAGE_KEY = 'chronoscope_settings'; // skipcq: JS-0860 — localStorage key, not a credential
+const LEGACY_STORAGE_KEY = 'chronoscope_v2_settings'; // skipcq: JS-0860 — localStorage key, not a credential
 const CURRENT_VERSION = 3;
 
 export function loadPersistedSettings(): PersistedSettings | null {
