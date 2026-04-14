@@ -11,6 +11,7 @@ export class SortedInsertionBuffer {
    * where sorted access is frequent.
    */
   insert(value: number): void {
+    if (!Number.isFinite(value)) return; // silently skip NaN/Infinity — don't corrupt sort order
     let lo = 0;
     let hi = this._data.length;
 

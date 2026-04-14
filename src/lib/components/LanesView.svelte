@@ -89,7 +89,7 @@
     let keyParts = `${epoch}`;
     for (const ep of endpoints) {
       const epState = $measurementStore.endpoints[ep.id];
-      keyParts += `:${epState?.samples.tailIndex ?? 0}`;
+      keyParts += `|${ep.id}:${epState?.samples.tailIndex ?? 0}`;
     }
     if (keyParts === heatmapCacheKey) return cachedHeatmapCells;
 

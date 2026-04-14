@@ -38,7 +38,7 @@ export const statisticsStore = derived<typeof measurementStore, StatisticsState>
             endpointId,
             sortedBuffer,
             lossCounts,
-            endpointState.samples.length,
+            lossCounts.totalSamples,
             endpointState.samples,
           );
         } else {
