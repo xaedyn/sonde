@@ -6,6 +6,7 @@ import { writable } from 'svelte/store';
 import type {
   MeasurementState,
   MeasurementSample,
+  SampleBuffer,
   TestLifecycleState,
   SampleStatus,
   TimingPayload,
@@ -229,7 +230,16 @@ function createMeasurementStore() {
       update(s => ({ ...s, freezeEvents: [...s.freezeEvents, event] }));
     },
 
-    loadSnapshot(snapshot: MeasurementState): void {
+    loadSnapshot(snapshot: Omit<MeasurementState, 'endpoints'> & {
+      endpoints: Record<string, {
+        endpointId: string;
+        tierLevel: 1 | 2;
+        lastLatency: number | null;
+        lastStatus: SampleStatus | null;
+        lastErrorMessage?: string | null;
+        samples: MeasurementSample[] | SampleBuffer;
+      }>;
+    }): void {
       // Reset ALL incremental state first
       incrementalLossCounter.reset();
       incrementalTimestampTracker.reset();
@@ -270,6 +280,7 @@ function createMeasurementStore() {
 
         nextEndpoints[endpointId] = {
           ...epState,
+          lastErrorMessage: epState.lastErrorMessage ?? null,
           samples: rb as unknown as import('../types').SampleBuffer,
         };
       }
