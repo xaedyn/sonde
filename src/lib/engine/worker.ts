@@ -80,6 +80,27 @@ export function classifyLatencyTier(
   return 'slow';
 }
 
+// ── Probe URL resolution ──────────────────────────────────────────────────
+
+/**
+ * Resolve the actual probe URL from the user-configured endpoint URL.
+ * - Bare origins (no path or just "/") → append /favicon.ico for stable,
+ *   CDN-edge-cached measurement with minimal server processing.
+ * - URLs with an explicit path → respect the user's intent, fetch as-is.
+ */
+export function resolveProbeUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    if (parsed.pathname === '/' || parsed.pathname === '') {
+      parsed.pathname = '/favicon.ico';
+      return parsed.href;
+    }
+    return url;
+  } catch {
+    return url;
+  }
+}
+
 // ── Resource Timing extraction helpers ─────────────────────────────────────
 
 const hasPerformanceObserver = typeof PerformanceObserver !== 'undefined';
@@ -196,13 +217,15 @@ if (typeof (globalThis as any).WorkerGlobalScope !== 'undefined' && self instanc
 
       const timeoutId = setTimeout(() => abortController?.abort(), timeout);
 
+      const probeUrl = resolveProbeUrl(url);
       const startMark = performance.now();
 
       try {
-        await fetch(url, {
-          method: 'HEAD',
+        await fetch(probeUrl, {
+          method: 'GET',
           mode: corsMode,
           cache: 'no-store',
+          credentials: 'omit',
           signal,
         });
 
@@ -214,7 +237,7 @@ if (typeof (globalThis as any).WorkerGlobalScope !== 'undefined' && self instanc
         clearTimeout(timeoutId);
 
         // Use PerformanceObserver to get the Resource Timing entry (push-based).
-        const entry = await waitForResourceEntry(url, signal);
+        const entry = await waitForResourceEntry(probeUrl, signal);
 
         const timing: TimingPayload = entry
           ? extractTimingPayload(entry)
