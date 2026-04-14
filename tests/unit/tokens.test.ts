@@ -181,3 +181,22 @@ describe('ux-polish tokens', () => {
     expect(tokens.color.text.emptyFill).toBe('rgba(255,255,255,.1)');
   });
 });
+
+describe('tier2 visualization tokens', () => {
+  it('exports tokens.color.tier2 group with all 5 phase colors (AC-6)', () => {
+    expect(tokens.color.tier2).toBeDefined();
+    expect(tokens.color.tier2.dns).toBe('rgba(134,239,172,.7)');
+    expect(tokens.color.tier2.tcp).toBe('rgba(103,232,249,.7)');
+    expect(tokens.color.tier2.tls).toBe('rgba(196,181,253,.7)');
+    expect(tokens.color.tier2.ttfb).toBe('rgba(251,191,36,.7)');
+    expect(tokens.color.tier2.transfer).toBe('rgba(249,168,212,.7)');
+  });
+
+  it('exports tokens.timing.tooltipDelay as 50 (faster than hoverTip at 100)', () => {
+    expect(tokens.timing.tooltipDelay).toBe(50);
+  });
+
+  it('exports tokens.color.tier2.labelText at opacity .40 for WCAG AA (AC-6)', () => {
+    expect(tokens.color.tier2.labelText).toBe('rgba(255,255,255,.40)');
+  });
+});

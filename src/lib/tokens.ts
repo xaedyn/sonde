@@ -42,6 +42,14 @@ const primitive = {
   green:     '#86efac',
   greenGlow: 'rgba(134,239,172,.5)',
 
+  // Tier2 phase palette (opacity-attenuated primitives for waterfall segments)
+  tier2Dns:      'rgba(134,239,172,.7)',   // green   — DNS resolution
+  tier2Tcp:      'rgba(103,232,249,.7)',   // cyan    — TCP connect
+  tier2Tls:      'rgba(196,181,253,.7)',   // violet  — TLS handshake
+  tier2Ttfb:     'rgba(251,191,36,.7)',    // amber   — server processing (TTFB)
+  tier2Transfer: 'rgba(249,168,212,.7)',   // pink    — content transfer
+  tier2LabelText: 'rgba(255,255,255,.40)', // bumped from t4 (.32) to .40 for WCAG AA
+
   // Glass surfaces
   glassBg:        'rgba(255,255,255,.03)',
   glassBorder:    'rgba(255,255,255,.07)',
@@ -189,6 +197,15 @@ export const tokens = {
       violet: primitive.orbViolet,
     },
 
+    tier2: {
+      dns:       primitive.tier2Dns,
+      tcp:       primitive.tier2Tcp,
+      tls:       primitive.tier2Tls,
+      ttfb:      primitive.tier2Ttfb,
+      transfer:  primitive.tier2Transfer,
+      labelText: primitive.tier2LabelText,
+    },
+
     endpoint: [
       primitive.ep0, primitive.ep1, primitive.ep2, primitive.ep3, primitive.ep4,
       primitive.ep5, primitive.ep6, primitive.ep7, primitive.ep8, primitive.ep9,
@@ -254,6 +271,7 @@ export const tokens = {
     nowRing:        2000,
     hoverLine:        80,
     hoverTip:        100,
+    tooltipDelay:     50,    // faster than hoverTip — tier2 tooltip needs snappier response
     // Generic
     fadeIn:          200,
     btnHover:        200,
