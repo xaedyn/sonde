@@ -4,6 +4,7 @@
 <!--                running → Stop        | stopping → Stopping…              -->
 <script lang="ts">
   import { measurementStore } from '$lib/stores/measurements';
+  import { endpointStore } from '$lib/stores/endpoints';
   import { uiStore } from '$lib/stores/ui';
   import { tokens } from '$lib/tokens';
 
@@ -24,7 +25,12 @@
     }
   });
 
-  let startStopDisabled = $derived(lifecycle === 'starting' || lifecycle === 'stopping');
+  let hasEnabledEndpoints = $derived($endpointStore.some(ep => ep.enabled));
+
+  let startStopDisabled = $derived(
+    lifecycle === 'starting' || lifecycle === 'stopping' ||
+    (lifecycle !== 'running' && !hasEnabledEndpoints)
+  );
 
   let startStopVariant = $derived(lifecycle === 'running' ? 'stop' : 'start');
 

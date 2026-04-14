@@ -10,11 +10,11 @@ function makeCanvas(): HTMLCanvasElement {
 }
 
 const SAMPLE_CELLS: HeatmapCell[] = [
-  { col: 0, row: 0, color: '#00b4d8', latency: 20,   status: 'ok',      endpointId: 'ep1', round: 1 },
-  { col: 1, row: 0, color: '#f9c74f', latency: 200,  status: 'ok',      endpointId: 'ep1', round: 2 },
+  { col: 0, row: 0, color: '#22c55e', latency: 20,   status: 'ok',      endpointId: 'ep1', round: 1 },
+  { col: 1, row: 0, color: '#ef4444', latency: 200,  status: 'ok',      endpointId: 'ep1', round: 2 },
   { col: 2, row: 0, color: '#9b5de5', latency: 5000, status: 'timeout', endpointId: 'ep1', round: 3 },
   { col: 3, row: 0, color: '#c77dff', latency: 0,    status: 'error',   endpointId: 'ep1', round: 4 },
-  { col: 0, row: 1, color: '#00b4d8', latency: 15,   status: 'ok',      endpointId: 'ep2', round: 1 },
+  { col: 0, row: 1, color: '#2dd4bf', latency: 15,   status: 'ok',      endpointId: 'ep2', round: 1 },
 ];
 
 describe('HeatmapRenderer', () => {

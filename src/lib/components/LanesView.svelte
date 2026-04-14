@@ -2,7 +2,7 @@
 <script lang="ts">
   import { SvelteMap } from 'svelte/reactivity';
   import { endpointStore } from '$lib/stores/endpoints';
-  import { measurementStore } from '$lib/stores/measurements';
+  import { measurementStore, incrementalLossCounter } from '$lib/stores/measurements';
   import { statisticsStore } from '$lib/stores/statistics';
   import { settingsStore } from '$lib/stores/settings';
   import { uiStore } from '$lib/stores/ui';
@@ -63,9 +63,9 @@
     const base = baseFrame;
     if (!base.hasData) return { ...base, ribbonsByEndpoint: new Map() as ReadonlyMap<string, RibbonData> };
 
-    // Count total samples across all endpoints
+    // Count total samples via tailIndex (monotonic, avoids length ambiguity with RingBuffer)
     const totalSamples = Object.values($measurementStore.endpoints)
-      .reduce((sum, ep) => sum + ep.samples.length, 0);
+      .reduce((sum, ep) => sum + ep.samples.tailIndex, 0);
 
     // Recompute ribbons every other round (≈ endpoints.length * 2 new samples)
     // or immediately when not running (final state accuracy)
@@ -79,8 +79,20 @@
     return { ...base, ribbonsByEndpoint: cachedRibbons };
   });
 
-  // Compute heatmap cells per endpoint (all samples, not windowed)
+  // Compute heatmap cells per endpoint with compound epoch:tailIndex cache key
+  let heatmapCacheKey = '';
+  let cachedHeatmapCells: ReadonlyMap<string, readonly HeatmapCellData[]> = new Map();
+
   const heatmapCellsByEndpoint: ReadonlyMap<string, readonly HeatmapCellData[]> = $derived.by(() => {
+    const epoch = $measurementStore.epoch;
+    // Build compound cache key from epoch + tailIndex of each endpoint
+    let keyParts = `${epoch}`;
+    for (const ep of endpoints) {
+      const epState = $measurementStore.endpoints[ep.id];
+      keyParts += `|${ep.id}:${epState?.samples.tailIndex ?? 0}`;
+    }
+    if (keyParts === heatmapCacheKey) return cachedHeatmapCells;
+
     // eslint-disable-next-line svelte/prefer-svelte-reactivity
     const map = new Map<string, readonly HeatmapCellData[]>();
     const startedAt = $measurementStore.startedAt;
@@ -93,6 +105,8 @@
       }
       map.set(ep.id, computeHeatmapCells(epState.samples, stats, startedAt));
     }
+    heatmapCacheKey = keyParts;
+    cachedHeatmapCells = map;
     return map;
   });
 
@@ -311,14 +325,11 @@
   function getLaneProps(endpointId: string) {
     const stats = $statisticsStore[endpointId];
     const epState = $measurementStore.endpoints[endpointId];
-    const samples = epState?.samples ?? [];
     if (!stats || !stats.ready) {
       const lastLatency = epState?.lastLatency ?? 0;
       return { p50: lastLatency, p95: lastLatency, p99: lastLatency, jitter: 0, lossPercent: 0, ready: false };
     }
-    const totalSamples = samples.length;
-    const lossSamples = samples.filter(s => s.status !== 'ok').length;
-    const lossPercent = totalSamples > 0 ? (lossSamples / totalSamples) * 100 : 0;
+    const lossPercent = incrementalLossCounter.getCounts(endpointId).lossPercent;
     return { p50: stats.p50, p95: stats.p95, p99: stats.p99, jitter: stats.stddev, lossPercent, ready: true };
   }
 </script>

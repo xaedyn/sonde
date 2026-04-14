@@ -3,6 +3,7 @@
 // No class, no mutable state. Entry point: prepareFrame().
 
 import { tokens } from '$lib/tokens';
+import { latencyToColor } from './color-map';
 import type {
   Endpoint,
   MeasurementState,
@@ -214,7 +215,7 @@ export function computeRibbons(
       // Fill buffer with ok latencies from the window, count them
       let okCount = 0;
       for (let j = i - WINDOW_SIZE + 1; j <= i; j++) {
-        const s = samples[j];
+        const s = samples.at(j);
         if (s && s.status === 'ok') {
           sortBuf[okCount++] = s.latency;
         }
@@ -238,7 +239,7 @@ export function computeRibbons(
       const i50 = Math.max(0, Math.ceil((50 / 100) * okCount) - 1);
       const i75 = Math.max(0, Math.ceil((75 / 100) * okCount) - 1);
 
-      const sample = samples[i];
+      const sample = samples.at(i);
       if (!sample) continue;
       const x = sample.round;
 
@@ -297,7 +298,7 @@ export function computeRibbonsPerLane(
     for (let i = WINDOW_SIZE - 1; i < samples.length; i++) {
       let okCount = 0;
       for (let j = i - WINDOW_SIZE + 1; j <= i; j++) {
-        const s = samples[j];
+        const s = samples.at(j);
         if (s && s.status === 'ok') {
           sortBuf[okCount++] = s.latency;
         }
@@ -318,7 +319,7 @@ export function computeRibbonsPerLane(
       const i50 = Math.max(0, Math.ceil((50 / 100) * okCount) - 1);
       const i75 = Math.max(0, Math.ceil((75 / 100) * okCount) - 1);
 
-      const sample = samples[i];
+      const sample = samples.at(i);
       if (!sample) continue;
       const x = sample.round;
 
@@ -365,7 +366,7 @@ export function formatElapsed(ms: number): string {
 const HEATMAP_MAX_CELLS = 200;
 
 export function computeHeatmapCells(
-  samples: readonly MeasurementSample[],
+  samples: { readonly length: number; at(index: number): MeasurementSample | undefined },
   stats: EndpointStatistics,
   startedAt: number | null,
 ): readonly HeatmapCellData[] {
@@ -388,21 +389,21 @@ export function computeHeatmapCells(
     let worstStatus: SampleStatus = 'ok';
 
     for (let i = startIdx; i <= endIdx; i++) {
-      const s = samples[i];
+      const s = samples.at(i);
       if (!s) continue;
       if (s.latency > worstLatency) worstLatency = s.latency;
       if (s.status === 'timeout' || s.status === 'error') worstStatus = s.status;
     }
 
-    const startSample = samples[startIdx];
-    const endSample = samples[endIdx];
+    const startSample = samples.at(startIdx);
+    const endSample = samples.at(endIdx);
     const startRound = startSample?.round ?? startIdx + 1;
     const endRound = endSample?.round ?? endIdx + 1;
     const base = startedAt ?? 0;
     const startElapsed = base > 0 ? Math.max(0, (startSample?.timestamp ?? 0) - base) : 0;
     const endElapsed = base > 0 ? Math.max(0, (endSample?.timestamp ?? 0) - base) : 0;
 
-    const color = heatmapColor(worstLatency, worstStatus, stats);
+    const color = heatmapColor(worstLatency, worstStatus);
     result.push({ startRound, endRound, worstLatency, worstStatus, startElapsed, endElapsed, color });
   }
 
@@ -410,13 +411,10 @@ export function computeHeatmapCells(
 }
 
 function heatmapColor(
-  latency: number, status: SampleStatus, stats: EndpointStatistics,
+  latency: number, status: SampleStatus,
 ): string {
   if (status === 'timeout' || status === 'error') return tokens.color.heatmap.timeout;
-  if (latency < stats.p25) return tokens.color.heatmap.fast;
-  if (latency <= stats.p75) return tokens.color.heatmap.normal;
-  if (latency <= stats.p95) return tokens.color.heatmap.elevated;
-  return tokens.color.heatmap.slow;
+  return latencyToColor(latency);
 }
 
 // ── Main entry point ───────────────────────────────────────────────────────
@@ -463,7 +461,7 @@ export function prepareFrame(
     const { samples } = epState;
     const epLatencies = new Float64Array(samples.length);
     for (let i = 0; i < samples.length; i++) {
-      epLatencies[i] = samples[i]?.latency ?? 0;
+      epLatencies[i] = samples.at(i)?.latency ?? 0;
     }
     epLatencies.sort();
     const epYRange = computeYRangeFromSorted(epLatencies);
@@ -480,7 +478,7 @@ export function prepareFrame(
     const epId = ep.id;
     const epColor = ep.color;
     for (let i = 0; i < n; i++) {
-      const s = samples[i];
+      const s = samples.at(i);
       if (!s) continue;
       const round = s.round;
       if (round > maxRound) maxRound = round;
@@ -492,6 +490,7 @@ export function prepareFrame(
         endpointId: epId,
         round,
         color: epColor,
+        ...(s.errorMessage !== undefined ? { errorMessage: s.errorMessage } : {}),
       };
     }
 

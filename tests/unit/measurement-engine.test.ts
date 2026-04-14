@@ -125,6 +125,62 @@ describe('MeasurementEngine', () => {
     unsub();
   });
 
+  // ── Visibility-aware pause/resume ─────────────────────────────────────────
+
+  it('pause is idempotent', () => {
+    endpointStore.addEndpoint('https://example.com');
+    engine.start();
+    engine._pause();
+    expect(engine._paused).toBe(true);
+    engine._pause(); // second call is no-op
+    expect(engine._paused).toBe(true);
+  });
+
+  it('resume is idempotent', () => {
+    endpointStore.addEndpoint('https://example.com');
+    engine.start();
+    engine._pause();
+    engine._resume();
+    expect(engine._paused).toBe(false);
+    engine._resume(); // second call is no-op
+    expect(engine._paused).toBe(false);
+  });
+
+  it('pause+resume leaves no orphan timers', () => {
+    endpointStore.addEndpoint('https://example.com');
+    engine.start();
+    // Pause clears the round timer
+    engine._pause();
+    const timerAfterPause = (engine as unknown as { roundTimer: ReturnType<typeof setTimeout> | null }).roundTimer;
+    expect(timerAfterPause).toBeNull();
+
+    // Resume schedules a new round
+    engine._resume();
+    const timerAfterResume = (engine as unknown as { roundTimer: ReturnType<typeof setTimeout> | null }).roundTimer;
+    expect(timerAfterResume).not.toBeNull();
+  });
+
+  it('_dispatchRound is a no-op while paused', () => {
+    endpointStore.addEndpoint('https://example.com');
+    engine.start();
+
+    const roundBefore = get(measurementStore).roundCounter;
+    engine._pause();
+    engine._dispatchRound();
+    const roundAfter = get(measurementStore).roundCounter;
+    // roundCounter should not have incremented because _dispatchRound bailed
+    expect(roundAfter).toBe(roundBefore);
+  });
+
+  it('resume reschedules next round', () => {
+    endpointStore.addEndpoint('https://example.com');
+    engine.start();
+    engine._pause();
+    expect((engine as unknown as { roundTimer: ReturnType<typeof setTimeout> | null }).roundTimer).toBeNull();
+    engine._resume();
+    expect((engine as unknown as { roundTimer: ReturnType<typeof setTimeout> | null }).roundTimer).not.toBeNull();
+  });
+
   it('flushes partial batch via timeout for stragglers', async () => {
     const testId = endpointStore.addEndpoint('https://a.example.com');
     endpointStore.addEndpoint('https://b.example.com');

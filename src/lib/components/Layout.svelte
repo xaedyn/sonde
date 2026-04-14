@@ -2,7 +2,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { get } from 'svelte/store';
-  import { measurementStore } from '$lib/stores/measurements';
+  import { measurementStore, incrementalTimestampTracker } from '$lib/stores/measurements';
   import { endpointStore } from '$lib/stores/endpoints';
   import { settingsStore } from '$lib/stores/settings';
   import { tokens } from '$lib/tokens';
@@ -35,25 +35,11 @@
   const visibleStart = $derived(Math.max(1, currentRound - visibleSpan + 1));
   const visibleEnd = $derived(Math.max(visibleSpan, currentRound));
 
-  // Earliest timestamp per round across all endpoints (index i = round i)
-  const sampleTimestamps = $derived.by((): readonly number[] => {
-    const endpoints = Object.values($measurementStore.endpoints);
-    // eslint-disable-next-line svelte/prefer-svelte-reactivity
-    const byRound = new Map<number, number>();
-    for (const ep of endpoints) {
-      for (const sample of ep.samples) {
-        const prev = byRound.get(sample.round);
-        if (prev === undefined || sample.timestamp < prev) {
-          byRound.set(sample.round, sample.timestamp);
-        }
-      }
-    }
-    const maxRound = currentRound;
-    const result: number[] = [];
-    for (let r = 0; r <= maxRound; r++) {
-      result.push(byRound.get(r) ?? 0);
-    }
-    return result;
+  // Earliest timestamp per round across all endpoints — O(1) read from incremental tracker.
+  // $measurementStore.roundCounter triggers reactive re-evaluation when new rounds arrive.
+  const sampleTimestamps: readonly number[] = $derived.by(() => {
+    void $measurementStore.roundCounter; // reactive subscription trigger
+    return incrementalTimestampTracker.timestamps;
   });
 
   onMount(() => {

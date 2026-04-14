@@ -20,16 +20,16 @@
   }
 
   /** Find the sample nearest to targetRound via binary search (samples are sorted by round). */
-  function findNearest<T extends { round: number }>(samples: readonly T[], targetRound: number): T | null {
+  function findNearest<T extends { round: number }>(samples: { length: number; at(i: number): T | undefined }, targetRound: number): T | null {
     if (samples.length === 0) return null;
     let lo = 0, hi = samples.length - 1;
     while (lo < hi) {
       const mid = (lo + hi) >> 1;
-      if ((samples[mid]?.round ?? 0) < targetRound) lo = mid + 1;
+      if ((samples.at(mid)?.round ?? 0) < targetRound) lo = mid + 1;
       else hi = mid;
     }
-    const a = samples[lo];
-    const b = lo > 0 ? samples[lo - 1] : undefined;
+    const a = samples.at(lo);
+    const b = lo > 0 ? samples.at(lo - 1) : undefined;
     if (!a) return b ?? null;
     if (!b) return a;
     return Math.abs(a.round - targetRound) <= Math.abs(b.round - targetRound) ? a : b;

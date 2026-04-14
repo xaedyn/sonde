@@ -40,10 +40,17 @@
 
   const hasData: boolean = $derived(points.length > 0);
 
-  function toX(round: number): number {
+  // Fixed per-round width in viewBox units — dots stay in place, the group translates.
+  const roundWidth: number = $derived.by(() => {
     const span = visibleEnd - visibleStart;
-    if (span <= 0) return VB_W;
-    return ((round - visibleStart) / span) * VB_W;
+    return span > 0 ? VB_W / span : VB_W;
+  });
+
+  // Translate offset: slide the content group so visibleStart aligns to x=0.
+  const slideX: number = $derived(-visibleStart * roundWidth);
+
+  function toX(round: number): number {
+    return round * roundWidth;
   }
 
   function toY(normalizedY: number): number {
@@ -175,9 +182,9 @@
     <line class="grid-line" x1="0" y1={gy} x2={VB_W} y2={gy} />
   {/each}
 
-  <!-- Future zone -->
+  <!-- Future zone (translated with data so it tracks the nowDot) -->
   {#if showFutureZone}
-    <rect class="future-zone" x={futureZoneX} y="0" width={VB_W - futureZoneX} height={PLOT_H + PAD_Y_TOP} />
+    <rect class="future-zone slide-group" transform="translate({slideX}, 0)" x={futureZoneX} y="0" width={VB_W * 2} height={PLOT_H + PAD_Y_TOP} />
   {/if}
 
   <!-- Timeout threshold line (between gridlines and data) -->
@@ -196,6 +203,7 @@
   {/if}
 
   {#if hasData}
+    <g class="slide-group" transform="translate({slideX}, 0)">
     {#if ribbonPath}
       <path class="ribbon" d={ribbonPath} />
     {/if}
@@ -231,6 +239,7 @@
         <animate attributeName="opacity" values=".2;0" dur="2s" repeatCount="indefinite"/>
       </circle>
     {/if}
+    </g>
   {:else}
     <text
       class="empty-text"
@@ -262,8 +271,9 @@
 
 
 <style>
-  .lane-svg-wrap { width: 100%; height: 100%; }
-  .lane-svg { width: 100%; height: 100%; display: block; }
+  .lane-svg-wrap { width: 100%; height: 100%; overflow: hidden; }
+  .lane-svg { width: 100%; height: 100%; display: block; overflow: hidden; }
+  .slide-group { transition: transform 300ms cubic-bezier(0.0, 0.0, 0.2, 1); }
   .grid-line { stroke: var(--grid-line); stroke-width: 0.5; }
   .future-zone { fill: var(--future-zone); }
   .ribbon { fill: var(--ribbon-fill); }
@@ -278,4 +288,7 @@
   .timeout-label { font-family: 'Martian Mono', monospace; font-size: 5px; font-weight: 400; fill: var(--timeout-stroke); opacity: 0.5; }
   /* Heatmap */
   .heatmap-cell { cursor: default; }
+  @media (prefers-reduced-motion: reduce) {
+    .slide-group { transition: none; }
+  }
 </style>

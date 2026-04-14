@@ -4,6 +4,7 @@
   import { settingsStore } from '$lib/stores/settings';
   import { tokens } from '$lib/tokens';
   import { formatElapsed } from '$lib/renderers/timeline-data-pipeline';
+  import LatencyLegend from './LatencyLegend.svelte';
 
   let lifecycle = $derived($measurementStore.lifecycle);
   let roundCounter = $derived($measurementStore.roundCounter);
@@ -54,6 +55,7 @@
 >
   <span class="highlight">Measuring from your browser</span>
   <span class="config">{configLabel}</span>
+  <LatencyLegend />
   <div class="spacer"></div>
   <span class="progress">{progressLabel}</span>
 </footer>

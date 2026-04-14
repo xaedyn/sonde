@@ -46,13 +46,16 @@
   <ul class="endpoint-list" aria-label="Endpoint list">
     {#each $endpointStore as endpoint (endpoint.id)}
       {@const epState = $measurementStore.endpoints[endpoint.id]}
+      {@const enabledCount = $endpointStore.filter(e => e.enabled).length}
       <li>
         <EndpointRow
           {endpoint}
           {isRunning}
           isLast={$endpointStore.length === 1}
+          isLastEnabled={endpoint.enabled && enabledCount === 1}
           lastLatency={epState?.lastLatency ?? null}
           lastStatus={epState?.lastStatus ?? null}
+          lastErrorMessage={epState?.lastErrorMessage ?? null}
           onRemove={handleRemove}
           onUpdate={handleUpdate}
         />

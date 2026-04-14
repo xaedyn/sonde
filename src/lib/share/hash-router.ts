@@ -52,6 +52,7 @@ export function applySharePayload(payload: SharePayload): string[] {
       samples: MeasurementSample[];
       lastLatency: number | null;
       lastStatus: SampleStatus | null;
+      lastErrorMessage: string | null;
       tierLevel: 1 | 2;
     }> = {};
 
@@ -69,9 +70,12 @@ export function applySharePayload(payload: SharePayload): string[] {
 
       endpointsRecord[id] = {
         endpointId: id,
-        samples,
+        // Plain array — loadSnapshot() converts to RingBuffer internally
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        samples: samples as any,
         lastLatency: lastSample?.latency ?? null,
         lastStatus: lastSample?.status ?? null,
+        lastErrorMessage: null,
         tierLevel: 1,
       };
     });

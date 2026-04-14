@@ -4,12 +4,23 @@
 import { DEFAULT_SETTINGS } from '../types';
 import type { PersistedSettings, ActiveView } from '../types';
 
-const STORAGE_KEY = 'chronoscope_v2_settings';
+const STORAGE_KEY = 'chronoscope_settings';
+const LEGACY_STORAGE_KEY = 'chronoscope_v2_settings';
 const CURRENT_VERSION = 3;
 
 export function loadPersistedSettings(): PersistedSettings | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    let raw = localStorage.getItem(STORAGE_KEY);
+
+    // Migrate from legacy key name
+    if (raw === null) {
+      raw = localStorage.getItem(LEGACY_STORAGE_KEY);
+      if (raw !== null) {
+        localStorage.setItem(STORAGE_KEY, raw);
+        localStorage.removeItem(LEGACY_STORAGE_KEY);
+      }
+    }
+
     if (raw === null) return null;
     const parsed: unknown = JSON.parse(raw);
     return migrateSettings(parsed);
@@ -29,6 +40,7 @@ export function saveSettings(settings: PersistedSettings): void {
 
 export function clearPersistedSettings(): void {
   localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(LEGACY_STORAGE_KEY);
 }
 
 export function migrateSettings(data: unknown): PersistedSettings | null {

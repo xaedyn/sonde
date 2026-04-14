@@ -36,9 +36,24 @@ describe('persistence', () => {
   });
 
   it('returns null for corrupt data', () => {
-    localStorageMock.setItem('chronoscope_v2_settings', 'not-json{{{}}}');
+    localStorageMock.setItem('chronoscope_settings', 'not-json{{{}}}');
     expect(() => loadPersistedSettings()).not.toThrow();
     expect(loadPersistedSettings()).toBeNull();
+  });
+
+  it('migrates legacy storage key to new key', () => {
+    const settings: PersistedSettings = {
+      version: 3,
+      endpoints: [{ url: 'https://example.com', enabled: true }],
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors' },
+      ui: { expandedCards: [], activeView: 'timeline' },
+    };
+    localStorageMock.setItem('chronoscope_v2_settings', JSON.stringify(settings));
+    const loaded = loadPersistedSettings();
+    expect(loaded?.version).toBe(3);
+    // Legacy key should be removed, new key should exist
+    expect(localStorageMock.getItem('chronoscope_v2_settings')).toBeNull();
+    expect(localStorageMock.getItem('chronoscope_settings')).not.toBeNull();
   });
 
   it('migrates v1 data to v3', () => {

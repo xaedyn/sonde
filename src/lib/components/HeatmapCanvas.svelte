@@ -43,7 +43,7 @@
       if (!epState) continue;
 
       for (let i = 0; i < epState.samples.length; i++) {
-        const sample = epState.samples[i];
+        const sample = epState.samples.at(i);
         const col = sample.round;
         const color = sample.status === 'ok'
           ? latencyToColor(sample.latency)

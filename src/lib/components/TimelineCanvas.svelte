@@ -39,7 +39,7 @@
     const ep = endpoints.find(e => e.id === pt.endpointId);
     const label = ep?.label || ep?.url || pt.endpointId;
     const latencyStr = pt.status === 'timeout' ? 'Timeout'
-      : pt.status === 'error' ? 'Error'
+      : pt.status === 'error' ? (pt.errorMessage ?? 'Error')
       : pt.latency >= 1000 ? `${(pt.latency / 1000).toFixed(2)}s`
       : `${Math.round(pt.latency)}ms`;
     tooltipText = `${label} · Round ${pt.round} · ${latencyStr}`;
@@ -144,10 +144,10 @@
       if (!epState || epState.samples.length === 0) continue;
 
       const prevCount = sampleCounts.get(ep.id) ?? 0;
-      const newCount = epState.samples.length;
+      const newCount = epState.samples.tailIndex;
 
       if (newCount > prevCount) {
-        const latestSample = epState.samples[newCount - 1];
+        const latestSample = epState.samples.at(epState.samples.length - 1);
         const points = currentFrameData.pointsByEndpoint.get(ep.id);
         const latestPoint = points?.[points.length - 1];
         if (latestSample && latestPoint && timelineRenderer) {

@@ -8,6 +8,8 @@
   import { settingsStore } from '$lib/stores/settings';
   import { measurementStore } from '$lib/stores/measurements';
   import { endpointStore } from '$lib/stores/endpoints';
+  import { clearPersistedSettings } from '$lib/utils/persistence';
+  import { DEFAULT_SETTINGS } from '$lib/types';
   import { tokens } from '$lib/tokens';
 
 
@@ -116,6 +118,7 @@
   }
 
   let showClearConfirm = $state(false);
+  let showResetConfirm = $state(false);
 
   function requestClear(): void {
     showClearConfirm = true;
@@ -134,6 +137,28 @@
 
   function cancelClear(): void {
     showClearConfirm = false;
+  }
+
+  function requestReset(): void {
+    showResetConfirm = true;
+  }
+
+  function confirmReset(): void {
+    if (isRunning) return;
+    showResetConfirm = false;
+    clearPersistedSettings();
+    endpointStore.reset();
+    settingsStore.set({ ...DEFAULT_SETTINGS });
+    measurementStore.reset();
+    // Re-init default endpoints in measurement store
+    const endpoints = get(endpointStore);
+    for (const ep of endpoints) {
+      measurementStore.initEndpoint(ep.id);
+    }
+  }
+
+  function cancelReset(): void {
+    showResetConfirm = false;
   }
 </script>
 
@@ -251,10 +276,28 @@
       <div class="danger-zone">
         <div class="danger-header">
           <span class="danger-label">Danger zone</span>
-          <span class="danger-desc">Clears all data, stats, and history</span>
         </div>
+
+        <!-- Reset to defaults -->
+        {#if !showResetConfirm}
+          <button type="button" class="btn-danger" disabled={isRunning} aria-disabled={isRunning} onclick={requestReset}>
+            Reset to defaults
+          </button>
+        {:else}
+          <div class="confirm-group" role="alert" aria-live="assertive">
+            <p class="confirm-text">Restores default endpoints and settings. Continue?</p>
+            <div class="confirm-actions">
+              <button type="button" class="btn-danger" disabled={isRunning} onclick={confirmReset}>Yes, reset</button>
+              <button type="button" class="btn-secondary" onclick={cancelReset}>Cancel</button>
+            </div>
+          </div>
+        {/if}
+
+        <!-- Clear results -->
         {#if !showClearConfirm}
-          <button type="button" class="btn-danger" disabled={isRunning} aria-disabled={isRunning} onclick={requestClear}>Clear all results</button>
+          <button type="button" class="btn-danger" disabled={isRunning} aria-disabled={isRunning} onclick={requestClear}>
+            Clear all results
+          </button>
         {:else}
           <div class="confirm-group" role="alert" aria-live="assertive">
             <p class="confirm-text">This cannot be undone. Continue?</p>

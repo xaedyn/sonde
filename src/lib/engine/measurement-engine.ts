@@ -31,6 +31,8 @@ export class MeasurementEngine {
   private expectedResponses: number = 0;
   private flushTimers: Map<number, ReturnType<typeof setTimeout>> = new Map();
   private lastFlushedRound = -1;
+  _paused = false;
+  private _visibilityHandler: (() => void) | null = null;
 
   constructor(workerFactory?: WorkerFactory) {
     this.workerFactory = workerFactory ?? defaultWorkerFactory;
@@ -73,6 +75,13 @@ export class MeasurementEngine {
       this._spawnWorkers(endpoints);
       measurementStore.setLifecycle('running');
       this.freezeDetector.start();
+
+      // Register visibility change handler to pause/resume when tab is hidden
+      if (typeof document !== 'undefined') {
+        this._visibilityHandler = () => this._handleVisibilityChange();
+        document.addEventListener('visibilitychange', this._visibilityHandler);
+      }
+
       // Dispatch the first round immediately (no delay for the very first round).
       this._dispatchRound();
     } catch (err: unknown) {
@@ -86,6 +95,13 @@ export class MeasurementEngine {
     if (lifecycle === 'idle') return;
 
     measurementStore.setLifecycle('stopping');
+
+    // Remove visibility change listener
+    if (this._visibilityHandler && typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', this._visibilityHandler);
+      this._visibilityHandler = null;
+    }
+    this._paused = false;
 
     if (this.roundTimer !== null) {
       clearTimeout(this.roundTimer);
@@ -215,6 +231,7 @@ export class MeasurementEngine {
             latency: 0,
             status: 'error' as const,
             timestamp,
+            errorMessage: msg.message || msg.errorType,
           };
       }
     });
@@ -225,6 +242,37 @@ export class MeasurementEngine {
     // This prevents round overlap and self-inflicted network contention.
     if (get(measurementStore).lifecycle === 'running') {
       this._scheduleNextRound();
+    }
+  }
+
+  // ── Visibility-aware pause/resume ─────────────────────────────────────────
+
+  _pause(): void {
+    if (this._paused) return;
+    this._paused = true;
+    if (this.roundTimer !== null) {
+      clearTimeout(this.roundTimer);
+      this.roundTimer = null;
+    }
+  }
+
+  _resume(): void {
+    if (!this._paused) return;
+    this._paused = false;
+    // Clear any orphaned roundTimer that _flushRound may have set during pause
+    if (this.roundTimer !== null) {
+      clearTimeout(this.roundTimer);
+      this.roundTimer = null;
+    }
+    this._scheduleNextRound();
+  }
+
+  _handleVisibilityChange(): void {
+    if (typeof document === 'undefined') return;
+    if (document.visibilityState === 'hidden') {
+      this._pause();
+    } else {
+      this._resume();
     }
   }
 
@@ -244,21 +292,40 @@ export class MeasurementEngine {
     });
   }
 
+  /** Number of rounds over which to ease from burst (0ms) to monitor delay. */
+  private static readonly TRANSITION_ROUNDS = 10;
+
   /**
-   * Two-phase cadence: burst (0ms delay) for the first N rounds, then
-   * monitor (configurable delay) for all subsequent rounds.
+   * Three-phase cadence: burst (0ms) → ease-in transition → monitor (full delay).
+   * The transition uses a quadratic ease-in so the rhythm feels smooth rather
+   * than snapping from rapid-fire to one-second gaps.
    */
   private _scheduleNextRound(): void {
     const { burstRounds, monitorDelay } = get(settingsStore);
     const { roundCounter } = get(measurementStore);
 
-    const isBurst = roundCounter < burstRounds;
-    const delay = isBurst ? 0 : monitorDelay;
+    let delay: number;
+    if (roundCounter < burstRounds) {
+      // Burst phase: no delay
+      delay = 0;
+    } else {
+      const roundsIntoCruise = roundCounter - burstRounds;
+      if (roundsIntoCruise < MeasurementEngine.TRANSITION_ROUNDS) {
+        // Transition: quadratic ease-in from 0 → monitorDelay
+        const t = (roundsIntoCruise + 1) / MeasurementEngine.TRANSITION_ROUNDS;
+        delay = Math.round(monitorDelay * t * t);
+      } else {
+        // Steady-state monitor
+        delay = monitorDelay;
+      }
+    }
 
     this.roundTimer = setTimeout(() => this._dispatchRound(), delay);
   }
 
-  private _dispatchRound(): void {
+  _dispatchRound(): void {
+    if (this._paused) return;
+
     const lifecycle = get(measurementStore).lifecycle;
     if (lifecycle !== 'running') return;
 

@@ -11,16 +11,20 @@
     endpoint,
     isRunning = false,
     isLast = false,
+    isLastEnabled = false,
     lastLatency = null,
     lastStatus = null,
+    lastErrorMessage = null,
     onRemove,
     onUpdate,
   }: {
     endpoint: Endpoint;
     isRunning?: boolean;
     isLast?: boolean;
+    isLastEnabled?: boolean;
     lastLatency?: number | null;
     lastStatus?: SampleStatus | null;
+    lastErrorMessage?: string | null;
     onRemove?: (id: string) => void;
     onUpdate?: (id: string, patch: Partial<Omit<Endpoint, 'id'>>) => void;
   } = $props();
@@ -40,7 +44,7 @@
   let latencyText = $derived.by(() => {
     if (lastStatus === null || lastLatency === null) return '';
     if (lastStatus === 'timeout') return 'timeout';
-    if (lastStatus === 'error') return 'error';
+    if (lastStatus === 'error') return lastErrorMessage ?? 'error';
     return `${Math.round(lastLatency)}ms`;
   });
 
@@ -116,12 +120,16 @@
   {/if}
 
   <!-- Enable/disable toggle -->
-  <label class="toggle-label" aria-label="{endpoint.enabled ? 'Disable' : 'Enable'} this endpoint">
+  <label
+    class="toggle-label"
+    aria-label="{endpoint.enabled ? 'Disable' : 'Enable'} this endpoint"
+    title={isLastEnabled ? 'At least one endpoint must be enabled' : ''}
+  >
     <input
       type="checkbox"
       class="toggle-input"
       checked={endpoint.enabled}
-      disabled={isRunning}
+      disabled={isRunning || isLastEnabled}
       onchange={handleToggle}
     />
     <span class="toggle-track" aria-hidden="true"></span>

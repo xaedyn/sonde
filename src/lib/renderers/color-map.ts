@@ -13,16 +13,18 @@ export const STATUS_COLORS = {
 } as const;
 
 // ── Anchor points ──────────────────────────────────────────────────────────
+// Cyan-anchored thermal gradient with log-weighted thresholds.
+// Cool→warm sweep preserves brand identity while reading intuitively.
 // Each entry: [latency_ms, r, g, b]
 const ANCHORS: readonly [number, number, number, number][] = [
-  [0,    0x00, 0xb4, 0xd8], // #00b4d8 — excellent/cyan
-  [25,   0x00, 0x96, 0xc7], // #0096c7 — fast
-  [50,   0x00, 0x77, 0xb6], // #0077b6 — good/blue
-  [100,  0x90, 0xbe, 0x6d], // #90be6d — moderate/green
-  [200,  0xf9, 0xc7, 0x4f], // #f9c74f — elevated/yellow
-  [500,  0xf8, 0x96, 0x1e], // #f8961e — slow/orange
-  [1000, 0xf3, 0x72, 0x2c], // #f3722c — critical
-  [1500, 0xf9, 0x41, 0x44], // #f94144 — failing/red
+  [0,    0x67, 0xe8, 0xf9], // #67e8f9 — excellent / cyan (brand accent)
+  [10,   0x2d, 0xd4, 0xbf], // #2dd4bf — great / teal
+  [25,   0x22, 0xc5, 0x5e], // #22c55e — good / green
+  [50,   0xea, 0xb3, 0x08], // #eab308 — moderate / yellow
+  [100,  0xf9, 0x73, 0x16], // #f97316 — elevated / orange
+  [200,  0xef, 0x44, 0x44], // #ef4444 — degraded / red
+  [500,  0xdc, 0x26, 0x26], // #dc2626 — critical / deep red
+  [1500, 0xb9, 0x1c, 0x1c], // #b91c1c — failing / crimson
 ];
 
 // ── Interpolation helper ────────────────────────────────────────────────────
