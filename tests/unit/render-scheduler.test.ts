@@ -120,4 +120,114 @@ describe('RenderScheduler', () => {
     scheduler.registerDataRenderer(dataRenderer);
     expect(dataRenderer).not.toHaveBeenCalled();
   });
+
+  // ── Hysteresis recovery tests ─────────────────────────────────────────────
+
+  it('re-enables effects after 60 consecutive under-budget frames', () => {
+    const effectsRenderer = vi.fn();
+    scheduler.registerEffectsRenderer(effectsRenderer);
+
+    // Trigger overload disable (10 consecutive frames >12ms)
+    for (let i = 0; i < 10; i++) {
+      simulateDirtyFrame(scheduler, 15);
+    }
+    effectsRenderer.mockClear();
+    simulateDirtyFrame(scheduler, 1);
+    expect(effectsRenderer).not.toHaveBeenCalled(); // still disabled
+
+    // Run 60 under-budget dirty frames for recovery
+    for (let i = 0; i < 60; i++) {
+      simulateDirtyFrame(scheduler, 5);
+    }
+
+    // Effects should now be re-enabled
+    effectsRenderer.mockClear();
+    simulateDirtyFrame(scheduler, 1);
+    expect(effectsRenderer).toHaveBeenCalledTimes(1);
+  });
+
+  it('resets recovery streak on any overload frame during recovery', () => {
+    const effectsRenderer = vi.fn();
+    scheduler.registerEffectsRenderer(effectsRenderer);
+
+    // Trigger overload disable
+    for (let i = 0; i < 10; i++) {
+      simulateDirtyFrame(scheduler, 15);
+    }
+
+    // Accumulate 50 under-budget frames (not enough to recover)
+    for (let i = 0; i < 50; i++) {
+      simulateDirtyFrame(scheduler, 5);
+    }
+
+    // One overload frame resets recovery streak
+    simulateDirtyFrame(scheduler, 15);
+
+    // Another 59 under-budget frames (total since reset = 59, not 60)
+    for (let i = 0; i < 59; i++) {
+      simulateDirtyFrame(scheduler, 5);
+    }
+
+    // Still disabled
+    effectsRenderer.mockClear();
+    simulateDirtyFrame(scheduler, 1);
+    expect(effectsRenderer).not.toHaveBeenCalled();
+
+    // One more makes 60 since last reset → re-enables
+    simulateDirtyFrame(scheduler, 5);
+    effectsRenderer.mockClear();
+    simulateDirtyFrame(scheduler, 1);
+    expect(effectsRenderer).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not accumulate recovery streak while effects are enabled', () => {
+    const effectsRenderer = vi.fn();
+    scheduler.registerEffectsRenderer(effectsRenderer);
+
+    // Run 60 under-budget frames while effects are still enabled
+    for (let i = 0; i < 60; i++) {
+      simulateDirtyFrame(scheduler, 5);
+    }
+
+    // Effects are enabled, should still work
+    effectsRenderer.mockClear();
+    simulateDirtyFrame(scheduler, 1);
+    expect(effectsRenderer).toHaveBeenCalledTimes(1);
+
+    // Now trigger overload disable — recovery should start from 0
+    for (let i = 0; i < 10; i++) {
+      simulateDirtyFrame(scheduler, 15);
+    }
+
+    // Only 10 under-budget frames (not 60) — effects still disabled
+    for (let i = 0; i < 10; i++) {
+      simulateDirtyFrame(scheduler, 5);
+    }
+    effectsRenderer.mockClear();
+    simulateDirtyFrame(scheduler, 1);
+    expect(effectsRenderer).not.toHaveBeenCalled();
+  });
+
+  it('handles multiple disable/recover cycles', () => {
+    const effectsRenderer = vi.fn();
+    scheduler.registerEffectsRenderer(effectsRenderer);
+
+    for (let cycle = 0; cycle < 3; cycle++) {
+      // Disable effects
+      for (let i = 0; i < 10; i++) {
+        simulateDirtyFrame(scheduler, 15);
+      }
+      effectsRenderer.mockClear();
+      simulateDirtyFrame(scheduler, 1);
+      expect(effectsRenderer).not.toHaveBeenCalled();
+
+      // Recover effects
+      for (let i = 0; i < 60; i++) {
+        simulateDirtyFrame(scheduler, 5);
+      }
+      effectsRenderer.mockClear();
+      simulateDirtyFrame(scheduler, 1);
+      expect(effectsRenderer).toHaveBeenCalledTimes(1);
+    }
+  });
 });

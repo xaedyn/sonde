@@ -15,6 +15,7 @@ type RendererFn = () => void;
 
 const OVERLOAD_THRESHOLD_MS = 12;  // frames above this count toward the streak
 const OVERLOAD_STREAK_LIMIT = 10;  // consecutive frames before effects are disabled
+const RECOVERY_STREAK_LIMIT = 60;  // consecutive under-budget frames to re-enable effects
 
 export class RenderScheduler {
   private readonly dataRenderers: RendererFn[] = [];
@@ -27,6 +28,7 @@ export class RenderScheduler {
 
   private overloadStreak = 0;
   private effectsDisabled = false;
+  private recoveryStreak = 0;
 
   // ── Registration ─────────────────────────────────────────────────────────
 
@@ -93,7 +95,20 @@ export class RenderScheduler {
   }
 
   private updateOverloadStreak(dataMs: number): void {
-    if (this.effectsDisabled) return;
+    if (this.effectsDisabled) {
+      // Recovery phase: accumulate under-budget frames
+      if (dataMs > OVERLOAD_THRESHOLD_MS) {
+        this.recoveryStreak = 0; // reset on any overload frame
+      } else {
+        this.recoveryStreak++;
+        if (this.recoveryStreak >= RECOVERY_STREAK_LIMIT) {
+          this.effectsDisabled = false;
+          this.recoveryStreak = 0;
+          this.overloadStreak = 0;
+        }
+      }
+      return;
+    }
 
     if (dataMs > OVERLOAD_THRESHOLD_MS) {
       this.overloadStreak++;
