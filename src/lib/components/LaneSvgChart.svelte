@@ -15,6 +15,7 @@
     yRange,
     heatmapCells = [],
     timeoutMs = 5000,
+    ttfbPoints = undefined,
   }: {
     color: string;
     colorRgba06: string;
@@ -25,6 +26,7 @@
     yRange: YRange;
     heatmapCells?: readonly HeatmapCellData[];
     timeoutMs?: number;
+    ttfbPoints?: readonly { round: number; ttfb: number }[];
   } = $props();
 
   // ── ViewBox dimensions ───────────────────────────────────────────────────
@@ -92,6 +94,37 @@
     return ribbon.p50Path.map(([round, ny], i) =>
       `${i === 0 ? 'M' : 'L'}${toX(round)},${toY(ny)}`
     ).join(' ');
+  });
+
+  // ── TTFB overlay ─────────────────────────────────────────────────────────
+  interface TtfbDot { cx: number; cy: number; }
+
+  const ttfbDots: TtfbDot[] = $derived.by(() => {
+    if (!ttfbPoints || ttfbPoints.length < 2) return [];
+    return ttfbPoints.map(pt => ({
+      cx: toX(pt.round),
+      cy: toY(normalizeLatency(pt.ttfb, yRange)),
+    }));
+  });
+
+  const ttfbOverlayPath: string = $derived.by(() => {
+    if (ttfbDots.length < 2) return '';
+    return ttfbDots.map((d, i) => `${i === 0 ? 'M' : 'L'}${d.cx},${d.cy}`).join(' ');
+  });
+
+  // Area fill between total-latency dots and TTFB dots
+  const ttfbAreaPath: string = $derived.by(() => {
+    if (ttfbDots.length < 2 || dots.length < 2) return '';
+    if (!ttfbPoints) return '';
+    const ttfbMap = new Map(ttfbDots.map((d, i) => {
+      const pt = ttfbPoints[i];
+      return [pt ? pt.round : -1, d.cy];
+    }));
+    const sharedDots = dots.filter(d => ttfbMap.has(d.round));
+    if (sharedDots.length < 2) return '';
+    const topEdge = sharedDots.map((d, i) => `${i === 0 ? 'M' : 'L'}${d.cx},${d.cy}`).join(' ');
+    const botEdge = [...sharedDots].reverse().map(d => `L${d.cx},${ttfbMap.get(d.round) ?? 0}`).join(' ');
+    return `${topEdge} ${botEdge} Z`;
   });
 
   const gridlineYs: number[] = [
@@ -182,6 +215,8 @@
   aria-label="Latency scatter chart"
   style:--ep-color={color}
   style:--ribbon-fill={colorRgba06}
+  style:--ttfb-stroke="color-mix(in srgb, var(--ep-color) 40%, transparent)"
+  style:--ttfb-fill="color-mix(in srgb, var(--ep-color) 4%, transparent)"
   style:--empty-fill={tokens.color.text.emptyFill}
   style:--grid-line={tokens.color.svg.gridLine}
   style:--future-zone={tokens.color.svg.futureZone}
@@ -278,6 +313,18 @@
     </g>
   {/if}
 
+  <!-- TTFB overlay (independent of scatter data) -->
+  {#if ttfbAreaPath || ttfbOverlayPath}
+    <g class="slide-group" transform="translate({slideX}, 0)">
+      {#if ttfbAreaPath}
+        <path class="ttfb-area" d={ttfbAreaPath} />
+      {/if}
+      {#if ttfbOverlayPath}
+        <path class="ttfb-overlay" d={ttfbOverlayPath} stroke-dasharray="3 4" />
+      {/if}
+    </g>
+  {/if}
+
   <!-- Heatmap strip -->
   {#each cellRects as rect (rect.x)}
     <rect
@@ -314,6 +361,18 @@
   /* Timeout line */
   .timeout-line { stroke: var(--timeout-stroke); stroke-width: 0.8; stroke-dasharray: 6 4; opacity: 0.4; }
   .timeout-label { font-family: 'Martian Mono', monospace; font-size: 5px; font-weight: 400; fill: var(--timeout-stroke); opacity: 0.5; }
+  /* TTFB overlay */
+  .ttfb-overlay {
+    fill: none;
+    stroke: var(--ttfb-stroke);
+    stroke-width: 1.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .ttfb-area {
+    fill: var(--ttfb-fill);
+    stroke: none;
+  }
   /* Heatmap */
   .heatmap-cell { cursor: default; }
   @media (prefers-reduced-motion: reduce) {

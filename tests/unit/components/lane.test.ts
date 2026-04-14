@@ -128,4 +128,27 @@ describe('Lane', () => {
     const grip = container.querySelector('.lane-grip');
     expect(grip).toBeNull();
   });
+
+  // ── LaneHeaderWaterfall integration ─────────────────────────────────────────
+
+  it('does not render .waterfall-bar when tier2Averages is undefined (AC-4)', () => {
+    const { container } = render(Lane, { props });
+    expect(container.querySelector('.waterfall-bar')).toBeNull();
+  });
+
+  it('renders .waterfall-bar when tier2Averages provided and ready=true (AC-2)', () => {
+    const tier2Averages = { dnsLookup: 10, tcpConnect: 15, tlsHandshake: 10, ttfb: 80, contentTransfer: 15 };
+    const { container } = render(Lane, {
+      props: { ...props, tier2Averages, ready: true },
+    });
+    expect(container.querySelector('.waterfall-bar')).not.toBeNull();
+  });
+
+  it('does not render .waterfall-bar in compact mode even with tier2Averages (AC-3)', () => {
+    const tier2Averages = { dnsLookup: 10, tcpConnect: 15, tlsHandshake: 10, ttfb: 80, contentTransfer: 15 };
+    const { container } = render(Lane, {
+      props: { ...props, tier2Averages, ready: true, compact: true },
+    });
+    expect(container.querySelector('.waterfall-bar')).toBeNull();
+  });
 });

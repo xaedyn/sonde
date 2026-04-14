@@ -1,6 +1,7 @@
 <!-- src/lib/components/Lane.svelte -->
 <script lang="ts">
   import { tokens } from '$lib/tokens';
+  import LaneHeaderWaterfall from './LaneHeaderWaterfall.svelte';
 
   let {
     endpointId,
@@ -20,6 +21,7 @@
     noTransition = false,
     translateY = 0,
     onGripPointerDown = undefined,
+    tier2Averages = undefined,
     onGripKeyDown = undefined,
     children,
   }: {
@@ -39,6 +41,13 @@
     settling?: boolean;
     noTransition?: boolean;
     translateY?: number;
+    tier2Averages?: {
+      dnsLookup: number;
+      tcpConnect: number;
+      tlsHandshake: number;
+      ttfb: number;
+      contentTransfer: number;
+    };
     onGripPointerDown?: (e: PointerEvent) => void;
     onGripKeyDown?: (e: KeyboardEvent) => void;
     children?: import('svelte').Snippet;
@@ -61,6 +70,7 @@
 
 <article
   id="lane-{endpointId}"
+  data-endpoint-id={endpointId}
   class="lane"
   class:compact={compact}
   class:is-dragging={dragging}
@@ -118,6 +128,9 @@
         <div class="ls"><div class="ls-label">Loss</div><div class="ls-val">{fmtLoss(lossPercent)}</div></div>
       </div>
       </div>
+      {#if !compact && tier2Averages !== undefined}
+        <LaneHeaderWaterfall {tier2Averages} />
+      {/if}
     {:else}
       <div class="collecting-note">Collecting data…</div>
     {/if}

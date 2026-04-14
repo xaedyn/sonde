@@ -132,4 +132,58 @@ describe('LaneSvgChart', () => {
     const ring = container.querySelector('.empty-ring');
     expect(ring).toBeNull();
   });
+
+  // ── TTFB overlay tests ──────────────────────────────────────────────────
+
+  it('does not render .ttfb-overlay when ttfbPoints is undefined (AC-4)', () => {
+    const { container } = render(LaneSvgChart, { props: baseProps });
+    expect(container.querySelector('.ttfb-overlay')).toBeNull();
+  });
+
+  it('does not render .ttfb-overlay when ttfbPoints is empty', () => {
+    const { container } = render(LaneSvgChart, { props: { ...baseProps, ttfbPoints: [] } });
+    expect(container.querySelector('.ttfb-overlay')).toBeNull();
+  });
+
+  it('does not render .ttfb-overlay when fewer than 2 ttfbPoints', () => {
+    const { container } = render(LaneSvgChart, {
+      props: { ...baseProps, ttfbPoints: [{ round: 1, ttfb: 50 }] },
+    });
+    expect(container.querySelector('.ttfb-overlay')).toBeNull();
+  });
+
+  it('renders .ttfb-overlay when 2+ ttfbPoints provided (AC-3)', () => {
+    const { container } = render(LaneSvgChart, {
+      props: {
+        ...baseProps,
+        ttfbPoints: [{ round: 1, ttfb: 60 }, { round: 2, ttfb: 70 }],
+      },
+    });
+    expect(container.querySelector('.ttfb-overlay')).not.toBeNull();
+  });
+
+  it('.ttfb-overlay has stroke-dasharray (AC-3)', () => {
+    const { container } = render(LaneSvgChart, {
+      props: {
+        ...baseProps,
+        ttfbPoints: [{ round: 1, ttfb: 60 }, { round: 2, ttfb: 70 }],
+      },
+    });
+    const overlay = container.querySelector('.ttfb-overlay');
+    expect(overlay?.getAttribute('stroke-dasharray')).toBeTruthy();
+  });
+
+  it('renders .ttfb-area when 2+ ttfbPoints provided', () => {
+    const { container } = render(LaneSvgChart, {
+      props: {
+        ...baseProps,
+        points: [
+          { round: 1, y: 0.5, latency: 100, status: 'ok', endpointId: 'ep-1', x: 1, color: '#67e8f9' },
+          { round: 2, y: 0.6, latency: 120, status: 'ok', endpointId: 'ep-1', x: 2, color: '#67e8f9' },
+        ],
+        ttfbPoints: [{ round: 1, ttfb: 60 }, { round: 2, ttfb: 70 }],
+      },
+    });
+    expect(container.querySelector('.ttfb-area')).not.toBeNull();
+  });
 });

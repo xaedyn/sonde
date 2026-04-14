@@ -10,9 +10,10 @@
   import { tokens } from '$lib/tokens';
   import { deriveLayoutMode } from '$lib/layout';
   import type { LayoutMode } from '$lib/layout';
-  import type { HeatmapCellData, RibbonData } from '$lib/types';
+  import type { HeatmapCellData, RibbonData, MeasurementSample } from '$lib/types';
   import Lane from './Lane.svelte';
   import LaneSvgChart from './LaneSvgChart.svelte';
+  import LaneTimingTooltip from './LaneTimingTooltip.svelte';
 
   let {
     visibleStart = 1,
@@ -109,6 +110,42 @@
     cachedHeatmapCells = map;
     return map;
   });
+
+  // Round-indexed lookup for tooltip: Map<endpointId, Map<round, MeasurementSample>>
+  const roundMapsByEndpoint = $derived.by(() => {
+    const outer = new SvelteMap<string, ReadonlyMap<number, MeasurementSample>>();
+    for (const ep of endpoints) {
+      const epState = $measurementStore.endpoints[ep.id];
+      if (!epState) { outer.set(ep.id, new SvelteMap()); continue; }
+      const inner = new SvelteMap<number, MeasurementSample>();
+      epState.samples.forEach(s => inner.set(s.round, s));
+      outer.set(ep.id, inner);
+    }
+    return outer;
+  });
+
+  // TTFB points for chart overlay: Map<endpointId, array of {round, ttfb}>
+  const ttfbPointsByEndpoint = $derived.by(() => {
+    const map = new SvelteMap<string, readonly { round: number; ttfb: number }[]>();
+    for (const ep of endpoints) {
+      const epState = $measurementStore.endpoints[ep.id];
+      if (!epState) { map.set(ep.id, []); continue; }
+      const pts: { round: number; ttfb: number }[] = [];
+      epState.samples.forEach(s => {
+        if (s.tier2 !== undefined && s.tier2.ttfb > 0) {
+          pts.push({ round: s.round, ttfb: s.tier2.ttfb });
+        }
+      });
+      map.set(ep.id, pts);
+    }
+    return map;
+  });
+
+  // Hover tracking for tooltip
+  let hoverEndpointId: string | null = $state(null);
+  const laneHoverRound = $derived($uiStore.laneHoverRound);
+  const laneHoverX = $derived($uiStore.laneHoverX);
+  const laneHoverY = $derived($uiStore.laneHoverY);
 
   function colorToRgba06(hex: string): string {
     if (!/^#[0-9a-fA-F]{6}$/.test(hex)) {
@@ -294,6 +331,9 @@
   }
 
   function handleMouseMove(e: MouseEvent): void {
+    const laneEl = (e.target as HTMLElement).closest('[data-endpoint-id]');
+    hoverEndpointId = laneEl?.getAttribute('data-endpoint-id') ?? null;
+
     const lane = (e.target as HTMLElement).closest('.lane');
     const chartEl = lane?.querySelector('.lane-chart') as HTMLElement | null;
     if (!chartEl) {
@@ -319,6 +359,7 @@
   }
 
   function handleMouseLeave(): void {
+    hoverEndpointId = null;
     uiStore.clearLaneHover();
   }
 
@@ -327,10 +368,10 @@
     const epState = $measurementStore.endpoints[endpointId];
     if (!stats || !stats.ready) {
       const lastLatency = epState?.lastLatency ?? 0;
-      return { p50: lastLatency, p95: lastLatency, p99: lastLatency, jitter: 0, lossPercent: 0, ready: false };
+      return { p50: lastLatency, p95: lastLatency, p99: lastLatency, jitter: 0, lossPercent: 0, ready: false, tier2Averages: undefined };
     }
     const lossPercent = incrementalLossCounter.getCounts(endpointId).lossPercent;
-    return { p50: stats.p50, p95: stats.p95, p99: stats.p99, jitter: stats.stddev, lossPercent, ready: true };
+    return { p50: stats.p50, p95: stats.p95, p99: stats.p99, jitter: stats.stddev, lossPercent, ready: true, tier2Averages: stats.tier2Averages };
   }
 </script>
 
@@ -371,6 +412,7 @@
         jitter={laneProps.jitter}
         lossPercent={laneProps.lossPercent}
         ready={laneProps.ready}
+        tier2Averages={laneProps.tier2Averages}
         {lastLatency}
         compact={isCompact}
         showGrip={endpoints.length > 1 && layoutMode !== 'compact-2col'}
@@ -383,6 +425,8 @@
       >
           {@const allPoints = frameData.pointsByEndpoint.get(ep.id) ?? []}
           {@const windowedPoints = allPoints.filter(p => p.round >= visibleStart && p.round <= visibleEnd)}
+          {@const allTtfbPts = ttfbPointsByEndpoint.get(ep.id) ?? []}
+          {@const ttfbPts = allTtfbPts.filter(p => p.round >= visibleStart && p.round <= visibleEnd)}
           <LaneSvgChart
             color={ep.color}
             colorRgba06={colorToRgba06(ep.color)}
@@ -393,9 +437,25 @@
             yRange={frameData.yRangesByEndpoint.get(ep.id) ?? frameData.yRange}
             heatmapCells={heatmapCellsByEndpoint.get(ep.id) ?? []}
             timeoutMs={$settingsStore.timeout}
+            ttfbPoints={ttfbPts}
           />
       </Lane>
     {/each}
+  {/if}
+
+  {#if laneHoverRound !== null && laneHoverX !== null && laneHoverY !== null && hoverEndpointId}
+    {@const hoveredSample = roundMapsByEndpoint.get(hoverEndpointId)?.get(laneHoverRound)}
+    {#if hoveredSample}
+      {@const hoveredEp = endpoints.find(e => e.id === hoverEndpointId)}
+      {#if hoveredEp}
+        <LaneTimingTooltip
+          sample={hoveredSample}
+          x={laneHoverX + 12}
+          y={laneHoverY - 8}
+          color={hoveredEp.color}
+        />
+      {/if}
+    {/if}
   {/if}
 </div>
 
