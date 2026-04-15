@@ -215,6 +215,7 @@ export class MeasurementEngine {
             status: 'ok' as const,
             timestamp,
             tier2: msg.timing,
+            ...(msg.timingFallback ? { timingFallback: true } : {}),
           };
         case 'timeout':
           return {

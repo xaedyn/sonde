@@ -181,6 +181,45 @@ describe('MeasurementEngine', () => {
     expect((engine as unknown as { roundTimer: ReturnType<typeof setTimeout> | null }).roundTimer).not.toBeNull();
   });
 
+  it('threads timingFallback through to the measurement sample', () => {
+    const testId = endpointStore.addEndpoint('https://a.example.com');
+    engine.start();
+    const epoch = get(measurementStore).epoch;
+
+    (engine as unknown as { expectedResponses: number }).expectedResponses = 1;
+
+    engine._handleWorkerMessage({
+      type: 'result',
+      endpointId: testId,
+      epoch,
+      roundId: 0,
+      timing: { total: 80, dnsLookup: 0, tcpConnect: 5, tlsHandshake: 0, ttfb: 70, contentTransfer: 5 },
+      timingFallback: true,
+    });
+
+    const sample = get(measurementStore).endpoints[testId]?.samples[0];
+    expect(sample?.timingFallback).toBe(true);
+  });
+
+  it('does not set timingFallback when flag is absent from message', () => {
+    const testId = endpointStore.addEndpoint('https://a.example.com');
+    engine.start();
+    const epoch = get(measurementStore).epoch;
+
+    (engine as unknown as { expectedResponses: number }).expectedResponses = 1;
+
+    engine._handleWorkerMessage({
+      type: 'result',
+      endpointId: testId,
+      epoch,
+      roundId: 0,
+      timing: { total: 80, dnsLookup: 0, tcpConnect: 5, tlsHandshake: 0, ttfb: 70, contentTransfer: 5 },
+    });
+
+    const sample = get(measurementStore).endpoints[testId]?.samples[0];
+    expect(sample?.timingFallback).toBeUndefined();
+  });
+
   it('flushes partial batch via timeout for stragglers', async () => {
     const testId = endpointStore.addEndpoint('https://a.example.com');
     endpointStore.addEndpoint('https://b.example.com');

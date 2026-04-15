@@ -145,6 +145,7 @@ function createMeasurementStore() {
       timestamp: number;
       tier2?: TimingPayload;
       errorMessage?: string;
+      timingFallback?: boolean;
     }>): void {
       update(s => {
         // Clone the top-level endpoints map once to trigger reactivity
@@ -163,6 +164,7 @@ function createMeasurementStore() {
             timestamp: entry.timestamp,
             ...(entry.tier2 !== undefined ? { tier2: entry.tier2 } : {}),
             ...(entry.errorMessage !== undefined ? { errorMessage: entry.errorMessage } : {}),
+            ...(entry.timingFallback ? { timingFallback: true } : {}),
           };
 
           const tierLevel: 1 | 2 =

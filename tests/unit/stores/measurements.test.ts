@@ -73,6 +73,24 @@ describe('measurementStore — error/timeout counters', () => {
     expect(get(measurementStore).errorCount).toBe(0);
   });
 
+  it('addSamples propagates timingFallback: true to the stored sample', () => {
+    measurementStore.initEndpoint('ep1');
+    measurementStore.addSamples([
+      { endpointId: 'ep1', round: 1, latency: 80, status: 'ok', timestamp: Date.now(), timingFallback: true },
+    ]);
+    const sample = get(measurementStore).endpoints['ep1']?.samples[0];
+    expect(sample?.timingFallback).toBe(true);
+  });
+
+  it('addSamples does not set timingFallback when absent', () => {
+    measurementStore.initEndpoint('ep1');
+    measurementStore.addSamples([
+      { endpointId: 'ep1', round: 1, latency: 80, status: 'ok', timestamp: Date.now() },
+    ]);
+    const sample = get(measurementStore).endpoints['ep1']?.samples[0];
+    expect(sample?.timingFallback).toBeUndefined();
+  });
+
   it('reset zeroes errorCount and timeoutCount', () => {
     measurementStore.initEndpoint('ep1');
     measurementStore.addSample('ep1', 1, 0, 'error', Date.now());
