@@ -262,7 +262,8 @@
     transition: background var(--timing-stat) ease,
                 border-color var(--timing-stat) ease,
                 color var(--timing-stat) ease,
-                box-shadow var(--timing-stat) ease;
+                box-shadow var(--timing-stat) ease,
+                transform 100ms ease;
     white-space: nowrap; min-height: 44px;
     display: flex; align-items: center; justify-content: center;
   }
@@ -301,6 +302,11 @@
     border-color: var(--pink-border-subtle);
     box-shadow: 0 0 12px var(--glow-pink);
     color: var(--accent-pink);
+  }
+
+  .btn:active:not(:disabled) {
+    transform: scale(0.97);
+    transition-duration: 50ms;
   }
 
   .btn:disabled { opacity: 0.5; cursor: not-allowed; }

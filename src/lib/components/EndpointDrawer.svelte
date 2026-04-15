@@ -278,6 +278,11 @@
     box-shadow: 0 0 12px rgba(103,232,249,.2);
   }
 
+  .close-btn:active {
+    transform: scale(0.94);
+    transition-duration: 50ms;
+  }
+
   /* ── Body ────────────────────────────────────────────────────────────────── */
   .drawer-body {
     flex: 1;

@@ -497,6 +497,11 @@
     box-shadow: 0 0 12px rgba(103,232,249,.2);
   }
 
+  .close-btn:active {
+    transform: scale(0.94);
+    transition-duration: 50ms;
+  }
+
   /* ── Body ────────────────────────────────────────────────────────────────── */
   .drawer-body {
     padding: var(--spacing-lg);
@@ -753,6 +758,11 @@
     transform: translateY(-1px);
   }
 
+  .btn-danger:active:not(:disabled) {
+    transform: scale(0.97);
+    transition-duration: 50ms;
+  }
+
   .btn-danger:disabled {
     opacity: 0.4;
     cursor: not-allowed;
@@ -778,6 +788,11 @@
     color: var(--t1);
     background: var(--glass-bg-strong);
     transform: translateY(-1px);
+  }
+
+  .btn-secondary:active {
+    transform: scale(0.97);
+    transition-duration: 50ms;
   }
 
   /* ── Confirm ─────────────────────────────────────────────────────────────── */
