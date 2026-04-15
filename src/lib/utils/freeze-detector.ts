@@ -1,6 +1,8 @@
 // src/lib/utils/freeze-detector.ts
-// Heartbeat-based freeze detector. Detects when the browser tab is backgrounded
-// or the JS thread is blocked for >1000ms, emitting "freeze" events.
+// Heartbeat-based freeze detector. Detects when the JS thread is blocked for
+// >2000ms while the tab is visible, emitting "freeze" events. Pauses detection
+// during tab backgrounding and applies a grace period on restore to eliminate
+// false positives caused by browser timer throttling.
 
 export interface FreezeEvent {
   readonly round: number;
@@ -11,22 +13,33 @@ export interface FreezeEvent {
 export type FreezeCallback = (event: FreezeEvent) => void;
 
 const HEARTBEAT_INTERVAL_MS = 100;
-const FREEZE_THRESHOLD_MS = 1000;
+const FREEZE_THRESHOLD_MS = 2000;
+const GRACE_PERIOD_MS = 3000;
 
 export class FreezeDetector {
   private timerId: ReturnType<typeof setInterval> | null = null;
   private lastTick = 0;
+  private graceUntil = 0;
   private readonly callbacks: FreezeCallback[] = [];
-  private getRound: () => number;
+  private readonly getRound: () => number;
+  private readonly _visibilityHandler: () => void;
 
   constructor(getRound: () => number) {
     this.getRound = getRound;
+    this._visibilityHandler = () => {
+      if (document.visibilityState === 'hidden') {
+        this._handleVisibilityHidden();
+      } else {
+        this._handleVisibilityVisible();
+      }
+    };
   }
 
   start(): void {
     if (this.timerId !== null) return;
     this.lastTick = Date.now();
     this.timerId = setInterval(() => this._tick(), HEARTBEAT_INTERVAL_MS);
+    document.addEventListener('visibilitychange', this._visibilityHandler);
   }
 
   stop(): void {
@@ -34,10 +47,26 @@ export class FreezeDetector {
       clearInterval(this.timerId);
       this.timerId = null;
     }
+    document.removeEventListener('visibilitychange', this._visibilityHandler);
   }
 
   onFreeze(cb: FreezeCallback): void {
     this.callbacks.push(cb);
+  }
+
+  _handleVisibilityHidden(): void {
+    if (this.timerId !== null) {
+      clearInterval(this.timerId);
+      this.timerId = null;
+    }
+  }
+
+  _handleVisibilityVisible(): void {
+    this.lastTick = Date.now();
+    this.graceUntil = Date.now() + GRACE_PERIOD_MS;
+    if (this.timerId === null) {
+      this.timerId = setInterval(() => this._tick(), HEARTBEAT_INTERVAL_MS);
+    }
   }
 
   private _tick(): void {
@@ -45,7 +74,7 @@ export class FreezeDetector {
     const gap = now - this.lastTick;
     this.lastTick = now;
 
-    if (gap > FREEZE_THRESHOLD_MS) {
+    if (gap > FREEZE_THRESHOLD_MS && now > this.graceUntil) {
       const event: FreezeEvent = {
         round: this.getRound(),
         at: now,
