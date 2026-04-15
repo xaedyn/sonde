@@ -138,7 +138,7 @@
     border-radius: var(--radius-sm);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    padding: 10px 12px;
+    padding: var(--spacing-md) var(--spacing-md);
     max-width: 220px;
   }
 
@@ -146,6 +146,7 @@
     font-family: var(--mono);
     font-size: 13px;
     font-weight: 700;
+    font-variant-numeric: tabular-nums;
     color: var(--ep-color);
     margin-bottom: 6px;
   }
@@ -185,8 +186,9 @@
 
   .lt-phase-label {
     font-family: var(--mono);
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 400;
+    letter-spacing: 0.04em;
     color: var(--t4);
     flex: 1;
   }
@@ -195,6 +197,7 @@
     font-family: var(--mono);
     font-size: 10px;
     font-weight: 500;
+    font-variant-numeric: tabular-nums;
     color: var(--t2);
   }
 

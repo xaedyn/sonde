@@ -63,18 +63,19 @@
 <style>
   .foot {
     height: var(--footer-height); display: flex; align-items: center;
-    padding: 0 20px; flex-shrink: 0;
+    padding: 0 var(--spacing-lg2); flex-shrink: 0;
     background: var(--footer-bg);
     border-top: 1px solid var(--footer-border);
     backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
-    font-family: var(--mono); font-size: 10px; font-weight: 300;
-    color: var(--t3); gap: 16px;
+    font-family: var(--mono); font-size: 9px; font-weight: 400;
+    font-variant-numeric: tabular-nums;
+    color: var(--t3); gap: var(--spacing-lg);
   }
   .highlight { color: var(--t1); font-weight: 400; }
   .spacer { flex: 1; }
   .config, .progress { color: var(--t3); }
   @media (max-width: 767px) {
-    .foot { padding: 0 12px; gap: 8px; }
+    .foot { padding: 0 var(--spacing-md); gap: var(--spacing-sm); }
     .config { display: none; }
   }
   @media (max-width: 479px) {

@@ -178,21 +178,22 @@
   .tip-inner {
     background: var(--tooltip-bg);
     border: 1px solid var(--glass-border);
-    border-radius: 12px; padding: 10px 14px;
+    border-radius: 12px; padding: var(--spacing-md) var(--spacing-md);
     backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
     box-shadow: 0 8px 32px var(--glass-shadow-strong), 0 0 1px var(--glass-border);
     min-width: 160px;
   }
   .tip-round {
     font-family: var(--mono); font-size: 9px; font-weight: 400;
+    font-variant-numeric: tabular-nums;
     color: var(--t3); text-transform: uppercase; letter-spacing: 0.06em;
     margin-bottom: 8px; padding-bottom: 6px;
     border-bottom: 1px solid var(--t5);
   }
   .tip-row { display: flex; align-items: center; gap: 8px; margin: 5px 0; }
   .tip-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-  .tip-name { font-family: var(--mono); font-size: 10px; font-weight: 300; color: var(--t3); flex: 1; }
-  .tip-val { font-family: var(--mono); font-size: 13px; font-weight: 500; }
+  .tip-name { font-family: var(--mono); font-size: 9px; font-weight: 400; color: var(--t3); flex: 1; }
+  .tip-val { font-family: var(--mono); font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums; }
   .tip-delta {
     font-family: var(--mono); font-size: 9px; color: var(--t4);
     text-align: right; margin-top: 6px; padding-top: 5px;
@@ -203,7 +204,7 @@
     transform: translateY(8px);
     background: var(--tooltip-bg);
     border: 1px solid var(--glass-border);
-    border-radius: 6px; padding: 5px 10px;
+    border-radius: 6px; padding: var(--spacing-xs) var(--spacing-sm);
     backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
     font-family: var(--mono, 'Martian Mono', monospace);
     font-size: 11px; font-weight: 400;
