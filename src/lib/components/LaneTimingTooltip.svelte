@@ -56,12 +56,37 @@
     if (tier2Total <= 0) return '20%';
     return `${(value / tier2Total) * 100}%`;
   }
+
+  const VIEWPORT_MARGIN = 8;
+
+  let tooltipEl: HTMLDivElement | undefined = $state();
+
+  function clamp(pos: number, size: number, viewportSize: number): number {
+    if (pos + size > viewportSize - VIEWPORT_MARGIN) {
+      pos = viewportSize - size - VIEWPORT_MARGIN;
+    }
+    if (pos < VIEWPORT_MARGIN) {
+      pos = VIEWPORT_MARGIN;
+    }
+    return pos;
+  }
+
+  let clampedX = $derived.by(() => {
+    if (!tooltipEl) return x;
+    return clamp(x, tooltipEl.offsetWidth, window.innerWidth);
+  });
+
+  let clampedY = $derived.by(() => {
+    if (!tooltipEl) return y;
+    return clamp(y, tooltipEl.offsetHeight, window.innerHeight);
+  });
 </script>
 
 <div
   class="lt-tooltip"
-  style:left="{x}px"
-  style:top="{y}px"
+  bind:this={tooltipEl}
+  style:left="{clampedX}px"
+  style:top="{clampedY}px"
   style:--tooltip-bg={tokens.color.tooltip.bg}
   style:--shadow-low={tokens.shadow.low}
   style:--radius-sm="{tokens.radius.sm}px"
