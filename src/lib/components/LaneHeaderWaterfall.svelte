@@ -34,7 +34,7 @@
   }
 
   const ariaLabel = $derived(
-    phases.map((p) => `${p.label}: ${p.value}ms`).join(', ')
+    phases.map((p) => `${p.label}: ${Math.round(p.value)}ms`).join(', ')
   );
 </script>
 
@@ -62,7 +62,7 @@
   <div class="wf-labels" aria-hidden="true">
     {#each phases as phase (phase.key)}
       {#if phase.value > 0}
-        <span class="wf-label">{phase.label} {phase.value}ms</span>
+        <span class="wf-label">{phase.label} {Math.round(phase.value)}ms</span>
       {/if}
     {/each}
   </div>

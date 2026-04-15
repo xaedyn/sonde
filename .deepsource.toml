@@ -8,23 +8,23 @@ enabled = true
   environment = ["browser"]
   dialect = "typescript"
   plugins = ["svelte"]
-
-  [analyzers.meta.skip_rules]
-  # Module-level const exports are not "global scope" — false positive for ES modules
-  "JS-0067" = true
-  # Short variable names (i, r, s) are appropriate in math-heavy renderers
-  "JS-C1002" = true
-  # Cyclomatic complexity threshold is too aggressive for data pipelines
-  "JS-R1005" = true
-  # Explicit type declarations are often required in TypeScript
-  "JS-0331" = true
-  # Non-null assertions in test files are intentional
-  "JS-0339" = true
-  # Switch exhaustiveness is enforced by TypeScript's type narrowing
-  "JS-0047" = true
-  # Array .map() callbacks with switch returns — TypeScript validates all paths
-  "JS-0042" = true
-  "JS-0045" = true
+  skip_rules = [
+    # Module-level const exports are not "global scope" — false positive for ES modules
+    "JS-0067",
+    # Short variable names (i, r, s) are appropriate in math-heavy renderers
+    "JS-C1002",
+    # Cyclomatic complexity threshold is too aggressive for data pipelines
+    "JS-R1005",
+    # Explicit type declarations are often required in TypeScript
+    "JS-0331",
+    # Non-null assertions in test files are intentional
+    "JS-0339",
+    # Switch exhaustiveness is enforced by TypeScript's type narrowing
+    "JS-0047",
+    # Array .map() callbacks with switch returns — TypeScript validates all paths
+    "JS-0042",
+    "JS-0045",
+  ]
 
 [[analyzers]]
 name = "secrets"

@@ -253,6 +253,12 @@
     {#if ribbonPath}
       <path class="ribbon" d={ribbonPath} />
     {/if}
+    {#if ttfbAreaPath}
+      <path class="ttfb-area" d={ttfbAreaPath} />
+    {/if}
+    {#if ttfbOverlayPath}
+      <path class="ttfb-overlay" d={ttfbOverlayPath} stroke-dasharray="3 4" />
+    {/if}
     {#if medianPath}
       <path class="median" d={medianPath} />
     {/if}
@@ -310,18 +316,6 @@
         text-anchor="middle"
         dominant-baseline="middle"
       >Waiting for data</text>
-    </g>
-  {/if}
-
-  <!-- TTFB overlay (independent of scatter data) -->
-  {#if ttfbAreaPath || ttfbOverlayPath}
-    <g class="slide-group" transform="translate({slideX}, 0)">
-      {#if ttfbAreaPath}
-        <path class="ttfb-area" d={ttfbAreaPath} />
-      {/if}
-      {#if ttfbOverlayPath}
-        <path class="ttfb-overlay" d={ttfbOverlayPath} stroke-dasharray="3 4" />
-      {/if}
     </g>
   {/if}
 

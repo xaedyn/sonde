@@ -156,6 +156,10 @@ describe('LaneSvgChart', () => {
     const { container } = render(LaneSvgChart, {
       props: {
         ...baseProps,
+        points: [
+          { round: 1, y: 0.5, latency: 100, status: 'ok', endpointId: 'ep-1', x: 1, color: '#67e8f9' },
+          { round: 2, y: 0.6, latency: 120, status: 'ok', endpointId: 'ep-1', x: 2, color: '#67e8f9' },
+        ],
         ttfbPoints: [{ round: 1, ttfb: 60 }, { round: 2, ttfb: 70 }],
       },
     });
@@ -166,6 +170,10 @@ describe('LaneSvgChart', () => {
     const { container } = render(LaneSvgChart, {
       props: {
         ...baseProps,
+        points: [
+          { round: 1, y: 0.5, latency: 100, status: 'ok', endpointId: 'ep-1', x: 1, color: '#67e8f9' },
+          { round: 2, y: 0.6, latency: 120, status: 'ok', endpointId: 'ep-1', x: 2, color: '#67e8f9' },
+        ],
         ttfbPoints: [{ round: 1, ttfb: 60 }, { round: 2, ttfb: 70 }],
       },
     });
