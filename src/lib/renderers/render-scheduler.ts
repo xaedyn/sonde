@@ -13,7 +13,7 @@
 
 type RendererFn = () => void;
 
-const OVERLOAD_THRESHOLD_MS = 12;  // frames above this count toward the streak
+const OVERLOAD_THRESHOLD_MS = 14;  // frames above this count toward the streak
 const OVERLOAD_STREAK_LIMIT = 10;  // consecutive frames before effects are disabled
 const RECOVERY_STREAK_LIMIT = 60;  // consecutive under-budget frames to re-enable effects
 

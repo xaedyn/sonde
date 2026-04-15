@@ -6,7 +6,7 @@ export class FrameBudgetMonitor {
   private readonly warnThresholdMs: number;
   private readonly errorThresholdMs: number;
 
-  constructor(windowSize = 60, warnThresholdMs = 12, errorThresholdMs = 16) {
+  constructor(windowSize = 60, warnThresholdMs = 14, errorThresholdMs = 16) {
     this.windowSize = windowSize;
     this.warnThresholdMs = warnThresholdMs;
     this.errorThresholdMs = errorThresholdMs;

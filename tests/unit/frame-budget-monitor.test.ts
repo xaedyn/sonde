@@ -38,4 +38,10 @@ describe('FrameBudgetMonitor', () => {
     monitor.reset();
     expect(monitor.getP95()).toBe(0);
   });
+
+  it('default warnThresholdMs is 14ms — 13ms frames do not trigger warn', () => {
+    const monitor = new FrameBudgetMonitor(); // default params
+    for (let i = 0; i < 60; i++) monitor.record(13);
+    expect(monitor.getStatus()).not.toBe('warn');
+  });
 });

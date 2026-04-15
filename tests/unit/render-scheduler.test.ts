@@ -61,11 +61,11 @@ describe('RenderScheduler', () => {
     expect(effectsRenderer).toHaveBeenCalledTimes(1);
   });
 
-  it('disables effects after 10 consecutive overloaded dirty frames exceeding 12ms', () => {
+  it('disables effects after 10 consecutive overloaded dirty frames exceeding 14ms', () => {
     const effectsRenderer = vi.fn();
     scheduler.registerEffectsRenderer(effectsRenderer);
 
-    // Simulate 10 consecutive overloaded frames (>12ms each, dirty each time)
+    // Simulate 10 consecutive overloaded frames (>14ms each, dirty each time)
     for (let i = 0; i < 10; i++) {
       simulateDirtyFrame(scheduler, 15);
     }
@@ -127,7 +127,7 @@ describe('RenderScheduler', () => {
     const effectsRenderer = vi.fn();
     scheduler.registerEffectsRenderer(effectsRenderer);
 
-    // Trigger overload disable (10 consecutive frames >12ms)
+    // Trigger overload disable (10 consecutive frames >14ms)
     for (let i = 0; i < 10; i++) {
       simulateDirtyFrame(scheduler, 15);
     }
@@ -150,7 +150,7 @@ describe('RenderScheduler', () => {
     const effectsRenderer = vi.fn();
     scheduler.registerEffectsRenderer(effectsRenderer);
 
-    // Trigger overload disable
+    // Trigger overload disable (10 consecutive frames >14ms)
     for (let i = 0; i < 10; i++) {
       simulateDirtyFrame(scheduler, 15);
     }
