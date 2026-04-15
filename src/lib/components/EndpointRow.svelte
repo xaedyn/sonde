@@ -184,7 +184,7 @@
     height: 10px;
     border-radius: 50%;
     background: var(--dot-color);
-    box-shadow: 0 0 8px var(--dot-color);
+    box-shadow: 0 0 8px var(--dot-color); /* fallback for browsers without color-mix() */
     box-shadow: 0 0 8px color-mix(in srgb, var(--dot-color) 40%, transparent);
     transition: background var(--timing-btn) ease, box-shadow var(--timing-btn) ease;
   }

@@ -237,7 +237,7 @@
     content: ''; position: absolute;
     left: 0; top: 0; bottom: 0; width: 80px; z-index: 1;
     pointer-events: none;
-    background: linear-gradient(90deg, rgba(255,255,255,0.015), transparent);
+    background: linear-gradient(90deg, rgba(255,255,255,0.015), transparent); /* fallback for browsers without color-mix() */
     background: linear-gradient(90deg, color-mix(in srgb, var(--ep-color) 3%, transparent), transparent);
   }
   .lane-panel {
@@ -300,7 +300,7 @@
     position: absolute; top: 8px; right: 12px;
     font-family: var(--mono); font-size: 12px; font-weight: 400;
     color: var(--ep-color);
-    text-shadow: 0 0 8px var(--ep-color), 0 0 16px var(--ep-color);
+    text-shadow: 0 0 8px var(--ep-color), 0 0 16px var(--ep-color); /* fallback for browsers without color-mix() */
     text-shadow: 0 0 8px var(--ep-color), 0 0 16px color-mix(in srgb, var(--ep-color) 50%, transparent);
     pointer-events: none; z-index: 10;
     line-height: 1;

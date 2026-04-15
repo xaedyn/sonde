@@ -50,7 +50,7 @@
   .ring {
     position: absolute;
     border-radius: 50%;
-    border: 1.5px solid rgba(103, 232, 249, 0.2);
+    border: 1.5px solid rgba(103, 232, 249, 0.2); /* fallback for browsers without color-mix() */
     border: 1.5px solid color-mix(in srgb, var(--accent) 20%, transparent);
     transform: scale(0);
     opacity: 0;
