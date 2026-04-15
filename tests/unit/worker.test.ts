@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { extractTimingPayload, classifyLatencyTier, resolveProbeUrl } from '../../src/lib/engine/worker';
+import { extractTimingPayload, classifyLatencyTier, resolveProbeUrl, isTimingFallback } from '../../src/lib/engine/worker';
 
 describe('worker — extractTimingPayload', () => {
   it('returns tier 1 data (zeros) when TAO is absent', () => {
@@ -63,6 +63,38 @@ describe('worker — resolveProbeUrl', () => {
 
   it('returns original URL for invalid input', () => {
     expect(resolveProbeUrl('not-a-url')).toBe('not-a-url');
+  });
+});
+
+describe('worker — isTimingFallback', () => {
+  it('returns true when total > 0 and all sub-fields are zero (observer fallback)', () => {
+    expect(isTimingFallback({
+      total: 150, dnsLookup: 0, tcpConnect: 0, tlsHandshake: 0, ttfb: 0, contentTransfer: 0,
+    })).toBe(true);
+  });
+
+  it('returns false when ttfb > 0 (valid timing data)', () => {
+    expect(isTimingFallback({
+      total: 150, dnsLookup: 0, tcpConnect: 0, tlsHandshake: 0, ttfb: 80, contentTransfer: 35,
+    })).toBe(false);
+  });
+
+  it('returns false when connection-reused (ttfb > 0)', () => {
+    expect(isTimingFallback({
+      total: 90, dnsLookup: 0, tcpConnect: 0, tlsHandshake: 0, ttfb: 65, contentTransfer: 25,
+    })).toBe(false);
+  });
+
+  it('returns false when total === 0 (failed request)', () => {
+    expect(isTimingFallback({
+      total: 0, dnsLookup: 0, tcpConnect: 0, tlsHandshake: 0, ttfb: 0, contentTransfer: 0,
+    })).toBe(false);
+  });
+
+  it('returns true for TAO-blocked response (all sub-fields zero, total > 0)', () => {
+    expect(isTimingFallback({
+      total: 200, dnsLookup: 0, tcpConnect: 0, tlsHandshake: 0, ttfb: 0, contentTransfer: 0,
+    })).toBe(true);
   });
 });
 

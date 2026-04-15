@@ -70,6 +70,22 @@ export function extractTimingPayload(entry: PerformanceResourceTiming): TimingPa
   };
 }
 
+/**
+ * Returns true when PerformanceObserver sub-fields are all zero but total > 0.
+ * This happens when TAO is absent (cross-origin without Timing-Allow-Origin),
+ * or when the browser uses an observer-level fallback that strips sub-fields.
+ */
+export function isTimingFallback(timing: TimingPayload): boolean {
+  return (
+    timing.total > 0 &&
+    timing.ttfb === 0 &&
+    timing.dnsLookup === 0 &&
+    timing.tcpConnect === 0 &&
+    timing.tlsHandshake === 0 &&
+    timing.contentTransfer === 0
+  );
+}
+
 /** Classify a latency value (ms) into a display tier. */
 export function classifyLatencyTier(
   latency: number | null
@@ -256,6 +272,7 @@ if (typeof (globalThis as any).WorkerGlobalScope !== 'undefined' && self instanc
           epoch,
           roundId,
           timing,
+          ...(isTimingFallback(timing) ? { timingFallback: true } : {}),
         };
 
         measuring = false;
