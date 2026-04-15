@@ -102,15 +102,16 @@
   .wf-labels {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px 8px;
-    margin-top: 4px;
+    gap: var(--spacing-xs) var(--spacing-sm);
+    margin-top: var(--spacing-xs);
   }
 
   .wf-label {
-    font-size: 6px;
-    font-family: 'Martian Mono', monospace;
+    font-size: 9px;
+    font-family: var(--mono);
     color: var(--wf-label-color);
     white-space: nowrap;
+    letter-spacing: 0.04em;
   }
 
   .wf-fallback {
@@ -121,8 +122,8 @@
   }
 
   .wf-fallback-text {
-    font-size: 7px;
-    font-family: 'Martian Mono', monospace;
+    font-size: 9px;
+    font-family: var(--mono);
     color: var(--wf-label-color);
     opacity: 0.6;
   }
