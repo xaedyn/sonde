@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { render } from '@testing-library/svelte';
 import Lane from '../../../src/lib/components/Lane.svelte';
 import LaneSvgChart from '../../../src/lib/components/LaneSvgChart.svelte';

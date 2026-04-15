@@ -37,9 +37,12 @@ export class FreezeDetector {
 
   start(): void {
     if (this.timerId !== null) return;
+    document.addEventListener('visibilitychange', this._visibilityHandler);
+    if (document.visibilityState === 'hidden') {
+      return; // stay paused until visible
+    }
     this.lastTick = Date.now();
     this.timerId = setInterval(() => this._tick(), HEARTBEAT_INTERVAL_MS);
-    document.addEventListener('visibilitychange', this._visibilityHandler);
   }
 
   stop(): void {
