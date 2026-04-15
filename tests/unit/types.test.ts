@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, expectTypeOf } from 'vitest';
 import type {
   Endpoint,
   MainToWorkerMessage,
@@ -121,6 +121,66 @@ describe('types', () => {
       isSharedView: false,
     };
     expect(state.isSharedView).toBe(false);
+  });
+});
+
+describe('types — timingFallback additions', () => {
+  it('WorkerToMainMessage result variant accepts timingFallback: boolean', () => {
+    const msg: WorkerToMainMessage = {
+      type: 'result',
+      endpointId: 'ep-1',
+      epoch: 1,
+      roundId: 0,
+      timing: {
+        total: 150,
+        dnsLookup: 0,
+        tcpConnect: 0,
+        tlsHandshake: 0,
+        ttfb: 0,
+        contentTransfer: 0,
+      },
+      timingFallback: true,
+    };
+    expectTypeOf(msg).toMatchTypeOf<WorkerToMainMessage>();
+  });
+
+  it('WorkerToMainMessage result variant accepts timingFallback absent (optional)', () => {
+    const msg: WorkerToMainMessage = {
+      type: 'result',
+      endpointId: 'ep-1',
+      epoch: 1,
+      roundId: 0,
+      timing: {
+        total: 150,
+        dnsLookup: 10,
+        tcpConnect: 20,
+        tlsHandshake: 5,
+        ttfb: 80,
+        contentTransfer: 35,
+      },
+    };
+    expectTypeOf(msg).toMatchTypeOf<WorkerToMainMessage>();
+  });
+
+  it('MeasurementSample accepts timingFallback: boolean', () => {
+    const sample: MeasurementSample = {
+      round: 1,
+      latency: 150,
+      status: 'ok',
+      timestamp: Date.now(),
+      timingFallback: true,
+    };
+    expectTypeOf(sample).toMatchTypeOf<MeasurementSample>();
+  });
+
+  it('MeasurementSample accepts timingFallback absent (optional)', () => {
+    const sample: MeasurementSample = {
+      round: 1,
+      latency: 150,
+      status: 'ok',
+      timestamp: Date.now(),
+    };
+    expectTypeOf(sample).toMatchTypeOf<MeasurementSample>();
   });
 });
 

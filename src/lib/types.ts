@@ -50,6 +50,7 @@ export type WorkerToMainMessage =
       epoch: number;
       roundId: number;
       timing: TimingPayload;
+      timingFallback?: boolean;
     }
   | {
       type: 'timeout';
@@ -83,6 +84,7 @@ export interface MeasurementSample {
   readonly timestamp: number;
   readonly tier2?: TimingPayload;
   readonly errorMessage?: string;
+  readonly timingFallback?: boolean;
 }
 
 /** Array-like interface backed by RingBuffer. Consumers read through this. */
