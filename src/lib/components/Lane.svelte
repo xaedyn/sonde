@@ -252,12 +252,10 @@
     justify-content: center;
     border-right: 1px solid rgba(255,255,255,.05);
     position: relative; z-index: 2;
-    overflow-y: auto;
-    scrollbar-width: none;
+    container-type: size;
+    container-name: lane-panel;
   }
-  .lane-panel::-webkit-scrollbar {
-    display: none;
-  }
+
   .lane-url {
     font-family: var(--sans); font-size: 12px; font-weight: 500;
     color: var(--t2); letter-spacing: 0.02em;
@@ -432,5 +430,21 @@
     .lane:not(.compact) .lane-stats { margin-top: 0; padding-top: 0; border-top: none; }
     .hero-value { font-size: clamp(32px, 10vw, 54px); }
     .ch-url { max-width: 120px; }
+  }
+
+  /* ── Responsive panel condensation (must be AFTER base rules to win cascade) ── */
+  @container lane-panel (max-height: 260px) {
+    .hero-value { font-size: 42px; }
+    .hero-unit { font-size: 14px; }
+    .lane-stats-container { margin-top: 8px; padding-top: 8px; }
+    .lane-label { margin-top: 2px; }
+    .lane-hero { margin-top: 4px; }
+  }
+
+  @container lane-panel (max-height: 200px) {
+    .hero-value { font-size: 36px; }
+    .hero-unit { font-size: 12px; }
+    .lane-stats-container { margin-top: 4px; padding-top: 4px; }
+    .collecting-note { display: none; }
   }
 </style>
