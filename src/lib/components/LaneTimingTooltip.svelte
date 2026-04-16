@@ -60,40 +60,40 @@
   const VIEWPORT_MARGIN = 8;
 
   let tooltipEl: HTMLDivElement | undefined = $state();
+  let posX = $state(x);
+  let posY = $state(y);
 
-  function clamp(pos: number, size: number, viewportSize: number): number {
-    if (pos + size > viewportSize - VIEWPORT_MARGIN) {
-      pos = viewportSize - size - VIEWPORT_MARGIN;
-    }
-    if (pos < VIEWPORT_MARGIN) {
-      pos = VIEWPORT_MARGIN;
-    }
-    return pos;
-  }
-
-  let clampedX = $derived.by(() => {
-    if (!tooltipEl) return x;
-    return clamp(x, tooltipEl.offsetWidth, window.innerWidth);
-  });
-
-  let clampedY = $derived.by(() => {
-    if (!tooltipEl) return y;
+  // Reposition after layout so offsetHeight is accurate
+  $effect(() => {
+    if (!tooltipEl) { posX = x; posY = y; return; }
+    // Read layout dimensions
+    const w = tooltipEl.offsetWidth;
     const h = tooltipEl.offsetHeight;
+    const vw = window.innerWidth;
     const vh = window.innerHeight;
-    // If tooltip would overflow below viewport, flip it above the dot
-    if (y + h > vh - VIEWPORT_MARGIN) {
-      const flipped = y - h - 16; // 16px gap above the dot
-      if (flipped >= VIEWPORT_MARGIN) return flipped;
+
+    // X clamping
+    let nx = x;
+    if (nx + w > vw - VIEWPORT_MARGIN) nx = vw - w - VIEWPORT_MARGIN;
+    if (nx < VIEWPORT_MARGIN) nx = VIEWPORT_MARGIN;
+
+    // Y: prefer below the dot, flip above if it overflows
+    let ny = y;
+    if (ny + h > vh - VIEWPORT_MARGIN) {
+      const flipped = y - h - 16;
+      ny = flipped >= VIEWPORT_MARGIN ? flipped : VIEWPORT_MARGIN;
     }
-    return clamp(y, h, vh);
+
+    posX = nx;
+    posY = ny;
   });
 </script>
 
 <div
   class="lt-tooltip"
   bind:this={tooltipEl}
-  style:left="{clampedX}px"
-  style:top="{clampedY}px"
+  style:left="{posX}px"
+  style:top="{posY}px"
   style:--tooltip-bg={tokens.color.tooltip.bg}
   style:--shadow-low={tokens.shadow.low}
   style:--radius-sm="{tokens.radius.sm}px"
