@@ -93,7 +93,7 @@
   style:--t5={tokens.color.text.t5}
   style:--stats-border={tokens.color.glass.statsBorder}
   style:--lane-bg={tokens.color.lane.bg}
-  style:--lane-border={tokens.color.lane.border}
+  style:--border-mid={tokens.color.surface.border.mid}
   style:--glass-highlight={tokens.color.glass.highlight}
   style:--mono={tokens.typography.mono.fontFamily}
   style:--sans={tokens.typography.sans.fontFamily}
@@ -190,7 +190,7 @@
     position: relative; overflow: hidden;
     border-radius: var(--radius-lg);
     background: var(--lane-bg);
-    border: 1px solid var(--lane-border);
+    border: 1px solid var(--border-mid);
     backdrop-filter: blur(20px) saturate(1.2);
     -webkit-backdrop-filter: blur(20px) saturate(1.2);
     transform: translateY(var(--drag-translate, 0px));
