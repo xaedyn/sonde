@@ -248,8 +248,7 @@
   }
   .lane-panel {
     width: var(--panel-width); flex-shrink: 0;
-    padding: 24px 28px; display: flex; flex-direction: column;
-    justify-content: center;
+    padding: clamp(12px, 8cqh, 24px) 28px; display: flex; flex-direction: column;
     border-right: 1px solid rgba(255,255,255,.05);
     position: relative; z-index: 2;
     container-type: size;
@@ -433,18 +432,26 @@
   }
 
   /* ── Responsive panel condensation (must be AFTER base rules to win cascade) ── */
-  @container lane-panel (max-height: 260px) {
-    .hero-value { font-size: 42px; }
-    .hero-unit { font-size: 14px; }
-    .lane-stats-container { margin-top: 8px; padding-top: 8px; }
-    .lane-label { margin-top: 2px; }
-    .lane-hero { margin-top: 4px; }
-  }
-
-  @container lane-panel (max-height: 200px) {
+  /* Condensed: ~3 endpoints. Reduce hero, tighten spacing, reduce padding. */
+  @container lane-panel (max-height: 280px) {
+    .lane-url { font-size: 11px; }
     .hero-value { font-size: 36px; }
     .hero-unit { font-size: 12px; }
+    .lane-hero { margin-top: 2px; }
+    .lane-label { margin-top: 2px; font-size: 8px; }
+    .lane-stats-container { margin-top: 6px; padding-top: 6px; }
+    .lane-stats { gap: 8px; }
+    .ls-val { font-size: 11px; }
+  }
+
+  /* Very tight: content must be minimal */
+  @container lane-panel (max-height: 200px) {
+    .hero-value { font-size: 28px; }
+    .hero-unit { font-size: 10px; }
     .lane-stats-container { margin-top: 4px; padding-top: 4px; }
+    .lane-stats { gap: 4px; }
+    .ls-label { font-size: 7px; }
+    .ls-val { font-size: 10px; margin-top: 1px; }
     .collecting-note { display: none; }
   }
 </style>
