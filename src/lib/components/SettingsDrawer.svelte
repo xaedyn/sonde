@@ -81,7 +81,7 @@
     closeTimeoutId = setTimeout(() => {
       isClosing = false;
       closeTimeoutId = null;
-      uiStore.toggleSettings();
+      if ($uiStore.showSettings) uiStore.toggleSettings();
     }, 150);
   }
 

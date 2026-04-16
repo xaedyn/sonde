@@ -406,7 +406,7 @@
   }
 
   .lane.entrance {
-    animation: laneEntrance 200ms cubic-bezier(0.0, 0.0, 0.2, 1) both;
+    animation: laneEntrance 200ms cubic-bezier(0.0, 0.0, 0.2, 1) forwards;
     animation-delay: min(calc(var(--lane-index, 0) * 50ms), 540ms);
   }
 

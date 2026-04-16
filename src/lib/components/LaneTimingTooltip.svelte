@@ -79,8 +79,9 @@
     posY = preferAbove ? Math.max(VIEWPORT_MARGIN, _y - 180) : _y;
 
     // Pass 2: measure actual dimensions after DOM layout
+    let cancelled = false;
     tick().then(() => {
-      if (!tooltipEl) return;
+      if (cancelled || !tooltipEl) return;
       const w = tooltipEl.offsetWidth;
       const h = tooltipEl.offsetHeight;
 
@@ -88,15 +89,16 @@
       if (nx + w > vw - VIEWPORT_MARGIN) nx = vw - w - VIEWPORT_MARGIN;
       if (nx < VIEWPORT_MARGIN) nx = VIEWPORT_MARGIN;
 
-      let ny = _y;
-      if (ny + h > vh - VIEWPORT_MARGIN) {
-        ny = _y - h - 16;
-      }
+      // Honor pass-1 preferAbove decision; only flip if it would overflow.
+      let ny = preferAbove ? _y - h - 16 : _y;
+      if (ny + h > vh - VIEWPORT_MARGIN) ny = _y - h - 16;
       if (ny < VIEWPORT_MARGIN) ny = VIEWPORT_MARGIN;
 
       posX = nx;
       posY = ny;
     });
+
+    return () => { cancelled = true; };
   });
 </script>
 

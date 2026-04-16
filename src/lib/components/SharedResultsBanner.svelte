@@ -85,7 +85,7 @@
 
   .btn-run-again:hover {
     background: var(--accent-cyan);
-    color: var(--t1);
+    color: var(--bg-base);
   }
 
   /* ── Mobile ────────────────────────────────────────────────────────────── */
