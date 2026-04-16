@@ -120,26 +120,28 @@
       </button>
     {/if}
     <div class="lane-url">{url}</div>
-    <div class="lane-hero" aria-label="Median latency {fmt(p50)}">
-      <span class="hero-value">{Math.round(p50)}</span>
-      <span class="hero-unit">ms</span>
-    </div>
-    <div class="lane-label">Median</div>
-    {#if ready}
-      <div class="lane-stats-container">
-      <div class="lane-stats" aria-label="Statistics">
-        <div class="ls"><div class="ls-label">P95</div><div class="ls-val">{fmt(p95)}</div></div>
-        <div class="ls"><div class="ls-label">P99</div><div class="ls-val">{fmt(p99)}</div></div>
-        <div class="ls"><div class="ls-label">Jitter</div><div class="ls-val">{fmt(jitter)}</div></div>
-        <div class="ls"><div class="ls-label">Loss</div><div class="ls-val">{fmtLoss(lossPercent)}</div></div>
+    <div class="lane-body">
+      <div class="lane-hero" aria-label="Median latency {fmt(p50)}">
+        <span class="hero-value">{Math.round(p50)}</span>
+        <span class="hero-unit">ms</span>
       </div>
-      </div>
-      {#if !compact && tier2Averages !== undefined}
-        <LaneHeaderWaterfall {tier2Averages} />
+      <div class="lane-label">Median</div>
+      {#if ready}
+        <div class="lane-stats-container">
+        <div class="lane-stats" aria-label="Statistics">
+          <div class="ls"><div class="ls-label">P95</div><div class="ls-val">{fmt(p95)}</div></div>
+          <div class="ls"><div class="ls-label">P99</div><div class="ls-val">{fmt(p99)}</div></div>
+          <div class="ls"><div class="ls-label">Jitter</div><div class="ls-val">{fmt(jitter)}</div></div>
+          <div class="ls"><div class="ls-label">Loss</div><div class="ls-val">{fmtLoss(lossPercent)}</div></div>
+        </div>
+        </div>
+        {#if !compact && tier2Averages !== undefined}
+          <LaneHeaderWaterfall {tier2Averages} />
+        {/if}
+      {:else}
+        <div class="collecting-note">Collecting data…</div>
       {/if}
-    {:else}
-      <div class="collecting-note">Collecting data…</div>
-    {/if}
+    </div>
   </div>
   {#if compact}
     <div class="lane-compact-header">
@@ -249,9 +251,12 @@
   .lane-panel {
     width: var(--panel-width); flex-shrink: 0;
     padding: 24px 28px; display: flex; flex-direction: column;
-    justify-content: center;
     border-right: 1px solid rgba(255,255,255,.05);
     position: relative; z-index: 2;
+  }
+  .lane-body {
+    flex: 1; display: flex; flex-direction: column;
+    min-height: 0; overflow: hidden;
   }
 
   .lane-url {
