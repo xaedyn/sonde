@@ -56,12 +56,10 @@ const primitive = {
   glassHighlight: 'rgba(255,255,255,.12)',
 
   // Lane surface (slightly darker glass)
-  laneBg:     'rgba(255,255,255,.025)',
-  laneBorder: 'rgba(255,255,255,.06)',
+  laneBg: 'rgba(255,255,255,.025)',
 
   // Topbar
-  topbarBg:     'rgba(255,255,255,.025)',
-  topbarBorder: 'rgba(255,255,255,.07)',
+  topbarBg: 'rgba(255,255,255,.025)',
 
   // Footer
   footerBg: 'rgba(255,255,255,.02)',
@@ -178,13 +176,11 @@ export const tokens = {
     },
 
     lane: {
-      bg:     primitive.laneBg,
-      border: primitive.laneBorder,
+      bg: primitive.laneBg,
     },
 
     topbar: {
-      bg:     primitive.topbarBg,
-      border: primitive.topbarBorder,
+      bg: primitive.topbarBg,
     },
 
     footer: {
