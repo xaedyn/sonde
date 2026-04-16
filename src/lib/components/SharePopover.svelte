@@ -276,7 +276,7 @@
     justify-content: flex-end;
     padding: var(--spacing-lg);
     z-index: 200;
-    animation: panelFadeIn 280ms ease-out forwards;
+    animation: panelFadeIn 200ms ease-out forwards;
   }
 
   @keyframes panelFadeIn {
@@ -298,12 +298,12 @@
     display: flex;
     flex-direction: column;
     gap: var(--spacing-md);
-    animation: panelAppear 280ms ease-out forwards;
+    animation: panelAppear 180ms cubic-bezier(0.0, 0.0, 0.2, 1) forwards;
     overflow: hidden;
   }
 
   @keyframes panelAppear {
-    from { opacity: 0; transform: scale(0.98); }
+    from { opacity: 0; transform: scale(0.96); }
     to   { opacity: 1; transform: scale(1); }
   }
 
@@ -521,6 +521,10 @@
     outline: none;
     border-color: var(--accent-cyan);
     box-shadow: inset 0 1px 4px rgba(0,0,0,.3), 0 0 12px rgba(103,232,249,.15);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .share-popover { animation: none; opacity: 1; transform: none; }
   }
 
   /* ── Mobile ────────────────────────────────────────────────────────────── */

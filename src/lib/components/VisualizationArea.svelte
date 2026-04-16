@@ -6,7 +6,6 @@
   import { tokens } from '$lib/tokens';
   import TimelineCanvas from './TimelineCanvas.svelte';
   import HeatmapCanvas from './HeatmapCanvas.svelte';
-  import Legend from './Legend.svelte';
   import LoadingAnimation from './LoadingAnimation.svelte';
   import { measurementStore } from '$lib/stores/measurements';
   import type { ActiveView } from '$lib/types';
@@ -64,9 +63,6 @@
       Split
     </button>
   </div>
-
-  <!-- Legend -->
-  <Legend />
 
   <!-- Canvas panels -->
   <div class="panels-container" class:split={$uiStore.activeView === 'split'}>

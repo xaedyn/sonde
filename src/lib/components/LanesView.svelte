@@ -14,6 +14,7 @@
   import Lane from './Lane.svelte';
   import LaneSvgChart from './LaneSvgChart.svelte';
   import LaneTimingTooltip from './LaneTimingTooltip.svelte';
+  import LoadingAnimation from './LoadingAnimation.svelte';
 
   let {
     visibleStart = 1,
@@ -24,6 +25,14 @@
   } = $props();
 
   const endpoints = $derived($endpointStore.filter(ep => ep.enabled));
+
+  const lifecycle = $derived($measurementStore.lifecycle);
+  const hasEnabledEndpoints = $derived(endpoints.length > 0);
+
+  const emptyStateMessage = $derived.by(() => {
+    if (lifecycle === 'running' || lifecycle === 'starting') return 'No endpoints enabled';
+    return 'Add an endpoint to begin';
+  });
 
   // ── Layout mode derivation ────────────────────────────────────────────────────
   let containerHeight = $state(0);
@@ -156,6 +165,17 @@
     const b = parseInt(hex.slice(5, 7), 16);
     return `rgba(${r},${g},${b},.06)`;
   }
+
+  let hasAnimatedEntrance = $state(false);
+  let prevLifecycle = $state($measurementStore.lifecycle);
+
+  $effect(() => {
+    const current = $measurementStore.lifecycle;
+    if (prevLifecycle !== 'running' && current === 'running' && !hasAnimatedEntrance) {
+      hasAnimatedEntrance = true;
+    }
+    prevLifecycle = current;
+  });
 
   let lanesEl: HTMLDivElement;
 
@@ -393,7 +413,11 @@
 >
   {#if endpoints.length === 0}
     <div class="no-endpoints">
-      <span>Add an endpoint to begin</span>
+      {#if lifecycle === 'idle' && !hasEnabledEndpoints}
+        <LoadingAnimation message="Configure endpoints to begin" />
+      {:else}
+        <span class="no-endpoints-text">{emptyStateMessage}</span>
+      {/if}
     </div>
   {:else}
     {#each endpoints as ep, i (ep.id)}
@@ -404,6 +428,8 @@
       {@const offset = dragOffsets[i] ?? 0}
       <Lane
         endpointId={ep.id}
+        laneIndex={i}
+        showEntrance={hasAnimatedEntrance}
         color={ep.color}
         url={ep.label || ep.url}
         p50={laneProps.p50}
@@ -443,7 +469,7 @@
     {/each}
   {/if}
 
-  {#if laneHoverRound !== null && laneHoverX !== null && laneHoverY !== null && hoverEndpointId}
+  {#if laneHoverRound !== null && laneHoverX !== null && laneHoverY !== null && hoverEndpointId && endpoints.length <= 1}
     {@const hoveredSample = roundMapsByEndpoint.get(hoverEndpointId)?.get(laneHoverRound)}
     {#if hoveredSample}
       {@const hoveredEp = endpoints.find(e => e.id === hoverEndpointId)}
@@ -486,8 +512,13 @@
 
   .no-endpoints {
     flex: 1; display: flex; align-items: center; justify-content: center;
-    font-family: 'Martian Mono', monospace;
-    font-size: 13px; font-weight: 300;
-    color: rgba(255,255,255,.14);
+  }
+
+  .no-endpoints-text {
+    font-family: var(--mono);
+    font-size: 9px; font-weight: 400;
+    color: var(--t3);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
   }
 </style>

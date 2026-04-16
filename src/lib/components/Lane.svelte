@@ -20,6 +20,8 @@
     settling = false,
     noTransition = false,
     translateY = 0,
+    laneIndex = 0,
+    showEntrance = false,
     onGripPointerDown = undefined,
     tier2Averages = undefined,
     onGripKeyDown = undefined,
@@ -48,6 +50,8 @@
       ttfb: number;
       contentTransfer: number;
     };
+    laneIndex?: number;
+    showEntrance?: boolean;
     onGripPointerDown?: (e: PointerEvent) => void;
     onGripKeyDown?: (e: KeyboardEvent) => void;
     children?: import('svelte').Snippet;
@@ -73,12 +77,14 @@
   data-endpoint-id={endpointId}
   class="lane"
   class:compact={compact}
+  class:entrance={showEntrance}
   class:is-dragging={dragging}
   class:is-settling={settling}
   class:no-transition={noTransition}
   aria-label="Endpoint {url}"
   data-dragging={dragging ? 'true' : undefined}
   style:--drag-translate="{translateY}px"
+  style:--lane-index={laneIndex}
   style:--ep-color={color}
   style:--t1={tokens.color.text.t1}
   style:--t2={tokens.color.text.t2}
@@ -114,26 +120,28 @@
       </button>
     {/if}
     <div class="lane-url">{url}</div>
-    <div class="lane-hero" aria-label="Median latency {fmt(p50)}">
-      <span class="hero-value">{Math.round(p50)}</span>
-      <span class="hero-unit">ms</span>
-    </div>
-    <div class="lane-label">Median</div>
-    {#if ready}
-      <div class="lane-stats-container">
-      <div class="lane-stats" aria-label="Statistics">
-        <div class="ls"><div class="ls-label">P95</div><div class="ls-val">{fmt(p95)}</div></div>
-        <div class="ls"><div class="ls-label">P99</div><div class="ls-val">{fmt(p99)}</div></div>
-        <div class="ls"><div class="ls-label">Jitter</div><div class="ls-val">{fmt(jitter)}</div></div>
-        <div class="ls"><div class="ls-label">Loss</div><div class="ls-val">{fmtLoss(lossPercent)}</div></div>
+    <div class="lane-body">
+      <div class="lane-hero" aria-label="Median latency {fmt(p50)}">
+        <span class="hero-value">{Math.round(p50)}</span>
+        <span class="hero-unit">ms</span>
       </div>
-      </div>
-      {#if !compact && tier2Averages !== undefined}
-        <LaneHeaderWaterfall {tier2Averages} />
+      <div class="lane-label">Median</div>
+      {#if ready}
+        <div class="lane-stats-container">
+        <div class="lane-stats" aria-label="Statistics">
+          <div class="ls"><div class="ls-label">P95</div><div class="ls-val">{fmt(p95)}</div></div>
+          <div class="ls"><div class="ls-label">P99</div><div class="ls-val">{fmt(p99)}</div></div>
+          <div class="ls"><div class="ls-label">Jitter</div><div class="ls-val">{fmt(jitter)}</div></div>
+          <div class="ls"><div class="ls-label">Loss</div><div class="ls-val">{fmtLoss(lossPercent)}</div></div>
+        </div>
+        </div>
+        {#if !compact && tier2Averages !== undefined}
+          <LaneHeaderWaterfall {tier2Averages} />
+        {/if}
+      {:else}
+        <div class="collecting-note">Collecting data…</div>
       {/if}
-    {:else}
-      <div class="collecting-note">Collecting data…</div>
-    {/if}
+    </div>
   </div>
   {#if compact}
     <div class="lane-compact-header">
@@ -224,8 +232,8 @@
       box-shadow 280ms ease-out;
   }
   .lane:hover {
-    border-color: var(--glass-highlight);
-    box-shadow: 0 4px 30px rgba(0,0,0,.15);
+    border-color: rgba(255,255,255,.09);
+    box-shadow: 0 6px 32px rgba(0,0,0,.25);
   }
   .lane::before {
     content: ''; position: absolute;
@@ -243,10 +251,16 @@
   .lane-panel {
     width: var(--panel-width); flex-shrink: 0;
     padding: 24px 28px; display: flex; flex-direction: column;
-    justify-content: center;
     border-right: 1px solid rgba(255,255,255,.05);
     position: relative; z-index: 2;
   }
+  .lane-body {
+    flex: 1; display: flex; flex-direction: column;
+    min-height: 0; overflow: hidden;
+    container-type: size;
+    container-name: lane-body;
+  }
+
   .lane-url {
     font-family: var(--sans); font-size: 12px; font-weight: 500;
     color: var(--t2); letter-spacing: 0.02em;
@@ -258,7 +272,7 @@
   }
   .hero-value {
     font-family: var(--sans); font-size: 54px; font-weight: 200;
-    letter-spacing: -0.06em;
+    letter-spacing: -0.06em; font-variant-numeric: tabular-nums;
   }
   .hero-unit {
     font-family: var(--sans); font-size: 16px; font-weight: 300;
@@ -287,7 +301,7 @@
   }
   .ls-val {
     font-family: var(--mono); font-size: 12px; font-weight: 300;
-    color: var(--t2); margin-top: 3px;
+    color: var(--t2); margin-top: 3px; font-variant-numeric: tabular-nums;
   }
   .collecting-note {
     font-family: var(--mono); font-size: 11px; font-weight: 300;
@@ -350,7 +364,7 @@
     color: var(--t2);
   }
 
-  /* Grip handle */
+  /* Grip handle — hidden until lane hover, Apple-style progressive disclosure */
   .lane-grip {
     display: flex; align-items: center; justify-content: center;
     width: 20px; height: 32px; flex-shrink: 0;
@@ -359,7 +373,12 @@
     cursor: grab;
     touch-action: none;
     border-radius: 4px;
-    transition: color var(--timing-hover) ease, background var(--timing-hover) ease;
+    opacity: 0;
+    transition: opacity 200ms ease, color 200ms ease, background 200ms ease;
+  }
+  .lane:hover .lane-grip,
+  .lane-grip:focus-visible {
+    opacity: 1;
   }
   .lane-grip:hover {
     color: var(--t2);
@@ -381,6 +400,29 @@
   /* Shift now-label below compact header */
   .lane.compact .now-label { top: 34px; }
 
+  @keyframes laneEntrance {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .lane.entrance {
+    animation: laneEntrance 200ms cubic-bezier(0.0, 0.0, 0.2, 1) forwards;
+    animation-delay: min(calc(var(--lane-index, 0) * 50ms), 540ms);
+  }
+
+  .lane.is-dragging.entrance,
+  .lane.is-settling.entrance {
+    animation: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .lane.entrance {
+      animation: none;
+      opacity: 1;
+      transform: none;
+    }
+  }
+
   @media (max-width: 767px) {
     .lane:not(.compact) { flex-direction: column; }
     .lane:not(.compact) .lane-panel {
@@ -394,4 +436,27 @@
     .hero-value { font-size: clamp(32px, 10vw, 54px); }
     .ch-url { max-width: 120px; }
   }
+
+  /* ── Condensed body: when lane-body is short, adapt content to fit ── */
+  @container lane-body (max-height: 160px) {
+    .lane-hero { margin-top: 2px; }
+    .hero-value { font-size: 36px; }
+    .hero-unit { font-size: 14px; }
+    .lane-label { margin-top: 2px; }
+    .lane-stats-container { margin-top: 6px; padding-top: 6px; }
+    .lane-stats { grid-template-columns: repeat(4, auto); gap: 4px 12px; }
+    .ls-label { display: none; }
+    .ls-val { margin-top: 0; }
+    .ls-val::before { font-size: 7px; color: var(--t5); text-transform: uppercase; letter-spacing: 0.05em; margin-right: 3px; }
+    .collecting-note { display: none; }
+  }
+
+  /* Inline stat labels via ::before pseudo-elements in condensed mode */
+  @container lane-body (max-height: 160px) {
+    .ls:nth-child(1) .ls-val::before { content: 'P95 '; }
+    .ls:nth-child(2) .ls-val::before { content: 'P99 '; }
+    .ls:nth-child(3) .ls-val::before { content: 'J '; }
+    .ls:nth-child(4) .ls-val::before { content: 'L '; }
+  }
+
 </style>

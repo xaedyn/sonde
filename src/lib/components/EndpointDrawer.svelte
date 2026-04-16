@@ -2,12 +2,14 @@
 <!-- Slide-in endpoint drawer. Uses <dialog> for a11y. Closes on Escape or      -->
 <!-- backdrop click. Embeds EndpointPanel.                                       -->
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { uiStore } from '$lib/stores/ui';
   import { tokens } from '$lib/tokens';
   import EndpointPanel from './EndpointPanel.svelte';
 
   let dialogEl: HTMLDialogElement;
+  let isClosing = $state(false);
+  let closeTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
   let showEndpoints = $derived($uiStore.showEndpoints);
 
@@ -16,7 +18,7 @@
     if (dialogEl) {
       if (showEndpoints && !dialogEl.open) {
         dialogEl.showModal();
-      } else if (!showEndpoints && dialogEl.open) {
+      } else if (!showEndpoints && dialogEl.open && !isClosing) {
         dialogEl.close();
       }
     }
@@ -30,10 +32,24 @@
     dialogEl.addEventListener('close', () => {
       if ($uiStore.showEndpoints) uiStore.toggleEndpoints();
     });
+    dialogEl.addEventListener('cancel', (e) => {
+      e.preventDefault();
+      close();
+    });
+  });
+
+  onDestroy(() => {
+    if (closeTimeoutId !== null) clearTimeout(closeTimeoutId);
   });
 
   function close(): void {
-    uiStore.toggleEndpoints();
+    if (isClosing) return;
+    isClosing = true;
+    closeTimeoutId = setTimeout(() => {
+      isClosing = false;
+      closeTimeoutId = null;
+      uiStore.toggleEndpoints();
+    }, 150);
   }
 
   function handleBackdropClick(event: MouseEvent): void {
@@ -71,7 +87,7 @@
   aria-label="Endpoints"
   onclick={handleBackdropClick}
 >
-  <div class="drawer-content" role="document">
+  <div class="drawer-content" class:closing={isClosing} role="document">
     <!-- Header -->
     <div class="drawer-header">
       <h2 class="drawer-title">Endpoints</h2>
@@ -111,7 +127,7 @@
 
   .endpoint-dialog::backdrop {
     background: rgba(0,0,0,.4);
-    animation: panelFadeIn 280ms ease-out forwards;
+    animation: panelFadeIn 200ms ease-out forwards;
   }
 
   @keyframes panelFadeIn {
@@ -135,13 +151,23 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    animation: panelAppear 280ms ease-out forwards;
+    animation: panelSlideIn 220ms cubic-bezier(0.0, 0.0, 0.2, 1) forwards;
     box-shadow: -8px 0 40px rgba(0,0,0,.3);
   }
 
-  @keyframes panelAppear {
-    from { opacity: 0; transform: scale(0.98); }
-    to   { opacity: 1; transform: scale(1); }
+  .drawer-content.closing {
+    animation: panelSlideOut 150ms ease-in forwards;
+  }
+
+  /* Desktop: slide from right */
+  @keyframes panelSlideIn {
+    from { opacity: 0; transform: translateX(100%); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  @keyframes panelSlideOut {
+    from { opacity: 1; transform: translateX(0); }
+    to   { opacity: 0; transform: translateX(100%); }
   }
 
   /* Top-edge gradient highlight */
@@ -171,11 +197,33 @@
       top: auto;
       height: 80vh;
       border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-      animation: panelAppear 280ms ease-out forwards;
+      animation: panelSlideUp 220ms cubic-bezier(0.0, 0.0, 0.2, 1) forwards;
       box-shadow: 0 -8px 40px rgba(0,0,0,.3);
+    }
+    .drawer-content.closing {
+      animation: panelSlideDown 150ms ease-in forwards;
     }
     .drawer-content::after {
       display: none;
+    }
+
+    @keyframes panelSlideUp {
+      from { opacity: 0; transform: translateY(100%); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes panelSlideDown {
+      from { opacity: 1; transform: translateY(0); }
+      to   { opacity: 0; transform: translateY(100%); }
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .drawer-content,
+    .drawer-content.closing {
+      animation: none !important;
+      opacity: 1;
+      transform: none;
     }
   }
 
@@ -228,6 +276,11 @@
     background: var(--glass-highlight);
     border-color: rgba(103,232,249,.2);
     box-shadow: 0 0 12px rgba(103,232,249,.2);
+  }
+
+  .close-btn:active {
+    transform: scale(0.94);
+    transition-duration: 50ms;
   }
 
   /* ── Body ────────────────────────────────────────────────────────────────── */

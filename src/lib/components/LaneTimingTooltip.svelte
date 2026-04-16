@@ -2,6 +2,7 @@
 <!-- Floating tooltip showing tier2 timing decomposition for a scatter dot hover. -->
 <script lang="ts">
   import { tokens } from '$lib/tokens';
+  import { tick } from 'svelte';
   import type { MeasurementSample } from '$lib/types';
 
   let { sample, x, y, color }: {
@@ -60,33 +61,52 @@
   const VIEWPORT_MARGIN = 8;
 
   let tooltipEl: HTMLDivElement | undefined = $state();
+  let posX = $state(x);
+  let posY = $state(y);
 
-  function clamp(pos: number, size: number, viewportSize: number): number {
-    if (pos + size > viewportSize - VIEWPORT_MARGIN) {
-      pos = viewportSize - size - VIEWPORT_MARGIN;
-    }
-    if (pos < VIEWPORT_MARGIN) {
-      pos = VIEWPORT_MARGIN;
-    }
-    return pos;
-  }
+  // Two-pass positioning: initial render, then adjust after layout measurement
+  $effect(() => {
+    const _x = x;
+    const _y = y;
+    const vh = typeof window !== 'undefined' ? window.innerHeight : 900;
+    const vw = typeof window !== 'undefined' ? window.innerWidth : 1440;
 
-  let clampedX = $derived.by(() => {
-    if (!tooltipEl) return x;
-    return clamp(x, tooltipEl.offsetWidth, window.innerWidth);
-  });
+    // Pass 1: heuristic — if dot is in the bottom 40% of viewport, position above
+    const preferAbove = _y > vh * 0.6;
 
-  let clampedY = $derived.by(() => {
-    if (!tooltipEl) return y;
-    return clamp(y, tooltipEl.offsetHeight, window.innerHeight);
+    // Set initial position immediately (avoids flash at wrong position)
+    posX = Math.max(VIEWPORT_MARGIN, Math.min(_x, vw - 240));
+    posY = preferAbove ? Math.max(VIEWPORT_MARGIN, _y - 180) : _y;
+
+    // Pass 2: measure actual dimensions after DOM layout
+    let cancelled = false;
+    tick().then(() => {
+      if (cancelled || !tooltipEl) return;
+      const w = tooltipEl.offsetWidth;
+      const h = tooltipEl.offsetHeight;
+
+      let nx = _x;
+      if (nx + w > vw - VIEWPORT_MARGIN) nx = vw - w - VIEWPORT_MARGIN;
+      if (nx < VIEWPORT_MARGIN) nx = VIEWPORT_MARGIN;
+
+      // Honor pass-1 preferAbove decision; only flip if it would overflow.
+      let ny = preferAbove ? _y - h - 16 : _y;
+      if (ny + h > vh - VIEWPORT_MARGIN) ny = _y - h - 16;
+      if (ny < VIEWPORT_MARGIN) ny = VIEWPORT_MARGIN;
+
+      posX = nx;
+      posY = ny;
+    });
+
+    return () => { cancelled = true; };
   });
 </script>
 
 <div
   class="lt-tooltip"
   bind:this={tooltipEl}
-  style:left="{clampedX}px"
-  style:top="{clampedY}px"
+  style:left="{posX}px"
+  style:top="{posY}px"
   style:--tooltip-bg={tokens.color.tooltip.bg}
   style:--shadow-low={tokens.shadow.low}
   style:--radius-sm="{tokens.radius.sm}px"
@@ -146,6 +166,7 @@
     font-family: var(--mono);
     font-size: 13px;
     font-weight: 700;
+    font-variant-numeric: tabular-nums;
     color: var(--ep-color);
     margin-bottom: 6px;
   }
@@ -195,6 +216,7 @@
     font-family: var(--mono);
     font-size: 10px;
     font-weight: 500;
+    font-variant-numeric: tabular-nums;
     color: var(--t2);
   }
 

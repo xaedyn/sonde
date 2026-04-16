@@ -3,7 +3,6 @@
 <!-- Close via Escape, click outside, or dedicated close button.                -->
 <script lang="ts">
   import { uiStore } from '$lib/stores/ui';
-  import { tokens } from '$lib/tokens';
 
   const shortcuts: { keys: string; description: string }[] = [
     { keys: 'Space / Enter', description: 'Start or stop the test' },
@@ -81,19 +80,6 @@
   class="backdrop"
   role="presentation"
   onclick={handleBackdropClick}
-  style:--surface-overlay={tokens.color.surface.overlay}
-  style:--surface-elevated={tokens.color.surface.elevated}
-  style:--border={tokens.color.chrome.border}
-  style:--text-primary={tokens.color.text.primary}
-  style:--text-secondary={tokens.color.text.secondary}
-  style:--text-muted={tokens.color.text.muted}
-  style:--accent={tokens.color.chrome.accent}
-  style:--spacing-xs="{tokens.spacing.xs}px"
-  style:--spacing-sm="{tokens.spacing.sm}px"
-  style:--spacing-md="{tokens.spacing.md}px"
-  style:--spacing-lg="{tokens.spacing.lg}px"
-  style:--spacing-xl="{tokens.spacing.xl}px"
-  style:--radius-md="{tokens.radius.md}px"
 >
   <div
     bind:this={dialogEl}
@@ -140,7 +126,7 @@
   .backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.6);
+    background: var(--surface-overlay);
     z-index: 200;
     display: flex;
     align-items: center;
@@ -149,8 +135,10 @@
   }
 
   .dialog {
-    background: var(--surface-elevated);
-    border: 1px solid var(--border);
+    background: rgba(12,10,20,.75);
+    backdrop-filter: blur(40px) saturate(1.4);
+    -webkit-backdrop-filter: blur(40px) saturate(1.4);
+    border: 1px solid var(--glass-border);
     border-radius: var(--radius-md);
     padding: var(--spacing-xl);
     min-width: 360px;
@@ -158,6 +146,16 @@
     width: 100%;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
     outline: none;
+    position: relative;
+    overflow: hidden;
+  }
+  .dialog::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 10%; right: 10%;
+    height: 1px; z-index: 2;
+    background: linear-gradient(90deg, transparent, var(--glass-highlight), transparent);
+    pointer-events: none;
   }
 
   .dialog-header {
@@ -169,54 +167,59 @@
 
   .dialog-title {
     margin: 0;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sans);
     font-size: 16px;
     font-weight: 600;
-    color: var(--text-primary);
+    color: var(--t1);
   }
 
   .close-btn {
     background: none;
     border: none;
-    color: var(--text-muted);
+    color: var(--t3);
     font-size: 16px;
     cursor: pointer;
     padding: var(--spacing-xs);
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     line-height: 1;
     transition: color 150ms ease;
+    min-height: 44px;
+    min-width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .close-btn:hover {
-    color: var(--text-primary);
+    color: var(--t1);
   }
 
   .close-btn:focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--accent-cyan);
     outline-offset: 2px;
   }
 
   .shortcut-table {
     width: 100%;
     border-collapse: collapse;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sans);
     font-size: 13px;
   }
 
   .shortcut-table th {
     text-align: left;
-    color: var(--text-muted);
+    color: var(--t3);
     font-weight: 500;
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     padding: var(--spacing-xs) var(--spacing-sm);
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid var(--glass-border);
   }
 
   .shortcut-table td {
     padding: var(--spacing-sm) var(--spacing-sm);
-    color: var(--text-secondary);
+    color: var(--t2);
     vertical-align: middle;
   }
 
@@ -228,19 +231,19 @@
     display: inline-block;
     padding: 2px var(--spacing-xs);
     background: var(--surface-overlay);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    font-family: 'JetBrains Mono', monospace;
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-xs);
+    font-family: var(--mono);
     font-size: 11px;
-    color: var(--text-primary);
+    color: var(--t1);
     white-space: nowrap;
   }
 
   .hint {
     margin: var(--spacing-md) 0 0;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sans);
     font-size: 11px;
-    color: var(--text-muted);
+    color: var(--t3);
     text-align: center;
   }
 

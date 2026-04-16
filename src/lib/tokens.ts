@@ -98,9 +98,12 @@ const primitive = {
 export const tokens = {
   color: {
     surface: {
-      base:    primitive.bgBase,
-      mid:     primitive.bgMid,
-      deep:    primitive.bgDeep,
+      base:     primitive.bgBase,
+      mid:      primitive.bgMid,
+      deep:     primitive.bgDeep,
+      raised:   primitive.bgMid,
+      elevated: primitive.bgDeep,
+      overlay:  'rgba(0, 0, 0, 0.6)',
     },
 
     text: {
@@ -250,13 +253,17 @@ export const tokens = {
     urlWeight:  300,
     bodySize:   14,
     bodyWeight: 400,
+    caption: { size: 9,  weight: 400, opacity: 0.5,  letterSpacing: '0.04em' },
+    label:   { size: 11, weight: 500, opacity: 0.58, letterSpacing: '0.06em' },
+    body:    { size: 14, weight: 400, opacity: 0.94, letterSpacing: '0' },
   },
 
   spacing: {
-    xxs: 2, xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32, xxxl: 48,
+    xxs: 2, xs: 4, sm: 8, md: 12, lg: 16, lg2: 20, xl: 24, xxl: 32, xxxl: 48,
   },
 
   radius: {
+    xs:  4,
     sm:   8,
     md:  12,
     lg:  18,   // lane cards
@@ -286,6 +293,8 @@ export const tokens = {
     statTransition:  200,
     dotEntrance:     200,
     dotExit:         150,
+    loadingPulse:         2400,
+    loadingRingDuration:  1800,
   },
 
   easing: {

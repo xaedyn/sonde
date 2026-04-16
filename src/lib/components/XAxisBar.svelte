@@ -67,10 +67,10 @@
   }
   .x-spacer { width: var(--panel-width); padding: 0 28px; flex-shrink: 0; }
   .x-spacer-label {
-    font-family: var(--mono); font-size: 9px; font-weight: 300;
-    color: var(--t4); text-transform: uppercase; letter-spacing: 0.08em;
+    font-family: var(--mono); font-size: 9px; font-weight: 400;
+    color: var(--t4); text-transform: uppercase; letter-spacing: 0.04em;
   }
   .x-labels { flex: 1; display: flex; justify-content: space-between; padding: 0 18px; }
-  .x-tick { font-family: var(--mono); font-size: 10px; font-weight: 300; color: var(--t3); }
+  .x-tick { font-family: var(--mono); font-size: 9px; font-weight: 400; font-variant-numeric: tabular-nums; color: var(--t3); }
   .x-tick.future { color: var(--t4); opacity: 0.5; }
 </style>

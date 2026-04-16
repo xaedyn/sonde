@@ -14,6 +14,8 @@
 
 
   let dialogEl: HTMLDialogElement;
+  let isClosing = $state(false);
+  let closeTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
   let isRunning = $derived($measurementStore.lifecycle === 'running' || $measurementStore.lifecycle === 'starting');
   let showSettings = $derived($uiStore.showSettings);
@@ -39,7 +41,7 @@
     if (dialogEl) {
       if (showSettings && !dialogEl.open) {
         dialogEl.showModal();
-      } else if (!showSettings && dialogEl.open) {
+      } else if (!showSettings && dialogEl.open && !isClosing) {
         dialogEl.close();
       }
     }
@@ -60,16 +62,27 @@
       dialogEl.showModal();
     }
     dialogEl.addEventListener('close', handleDialogClose);
+    dialogEl.addEventListener('cancel', (e) => {
+      e.preventDefault();
+      close();
+    });
     dialogEl.addEventListener('wheel', handleWheel, { passive: false });
   });
 
   onDestroy(() => {
+    if (closeTimeoutId !== null) clearTimeout(closeTimeoutId);
     dialogEl?.removeEventListener('close', handleDialogClose);
     dialogEl?.removeEventListener('wheel', handleWheel);
   });
 
   function close(): void {
-    uiStore.toggleSettings();
+    if (isClosing) return;
+    isClosing = true;
+    closeTimeoutId = setTimeout(() => {
+      isClosing = false;
+      closeTimeoutId = null;
+      if ($uiStore.showSettings) uiStore.toggleSettings();
+    }, 150);
   }
 
   let drawerContentEl: HTMLDivElement;
@@ -195,7 +208,7 @@
   aria-label="Settings"
   onclick={handleBackdropClick}
 >
-  <div class="drawer-content" role="document" bind:this={drawerContentEl}>
+  <div class="drawer-content" class:closing={isClosing} role="document" bind:this={drawerContentEl}>
     <!-- Header -->
     <div class="drawer-header">
       <h2 class="drawer-title">Settings</h2>
@@ -330,7 +343,7 @@
 
   .settings-dialog::backdrop {
     background: rgba(0,0,0,.4);
-    animation: panelFadeIn 280ms ease-out forwards;
+    animation: panelFadeIn 200ms ease-out forwards;
   }
 
   @keyframes panelFadeIn {
@@ -353,13 +366,23 @@
     border-radius: var(--radius-lg) 0 0 var(--radius-lg);
     overflow-y: auto;
     overflow-x: hidden;
-    animation: panelAppear 280ms ease-out forwards;
+    animation: panelSlideIn 220ms cubic-bezier(0.0, 0.0, 0.2, 1) forwards;
     box-shadow: -8px 0 40px rgba(0,0,0,.3);
   }
 
-  @keyframes panelAppear {
-    from { opacity: 0; transform: scale(0.98); }
-    to   { opacity: 1; transform: scale(1); }
+  .drawer-content.closing {
+    animation: panelSlideOut 150ms ease-in forwards;
+  }
+
+  /* Desktop: slide from right */
+  @keyframes panelSlideIn {
+    from { opacity: 0; transform: translateX(100%); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  @keyframes panelSlideOut {
+    from { opacity: 1; transform: translateX(0); }
+    to   { opacity: 0; transform: translateX(100%); }
   }
 
   /* Top-edge gradient highlight */
@@ -389,11 +412,33 @@
       top: auto;
       height: 80vh;
       border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-      animation: panelAppear 280ms ease-out forwards;
+      animation: panelSlideUp 220ms cubic-bezier(0.0, 0.0, 0.2, 1) forwards;
       box-shadow: 0 -8px 40px rgba(0,0,0,.3);
+    }
+    .drawer-content.closing {
+      animation: panelSlideDown 150ms ease-in forwards;
     }
     .drawer-content::after {
       display: none;
+    }
+
+    @keyframes panelSlideUp {
+      from { opacity: 0; transform: translateY(100%); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes panelSlideDown {
+      from { opacity: 1; transform: translateY(0); }
+      to   { opacity: 0; transform: translateY(100%); }
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .drawer-content,
+    .drawer-content.closing {
+      animation: none !important;
+      opacity: 1;
+      transform: none;
     }
   }
 
@@ -450,6 +495,11 @@
     background: var(--glass-highlight);
     border-color: rgba(103,232,249,.2);
     box-shadow: 0 0 12px rgba(103,232,249,.2);
+  }
+
+  .close-btn:active {
+    transform: scale(0.94);
+    transition-duration: 50ms;
   }
 
   /* ── Body ────────────────────────────────────────────────────────────────── */
@@ -708,6 +758,11 @@
     transform: translateY(-1px);
   }
 
+  .btn-danger:active:not(:disabled) {
+    transform: scale(0.97);
+    transition-duration: 50ms;
+  }
+
   .btn-danger:disabled {
     opacity: 0.4;
     cursor: not-allowed;
@@ -733,6 +788,11 @@
     color: var(--t1);
     background: var(--glass-bg-strong);
     transform: translateY(-1px);
+  }
+
+  .btn-secondary:active {
+    transform: scale(0.97);
+    transition-duration: 50ms;
   }
 
   /* ── Confirm ─────────────────────────────────────────────────────────────── */

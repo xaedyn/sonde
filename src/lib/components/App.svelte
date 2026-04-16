@@ -77,8 +77,8 @@
     root.style.setProperty('--easing-decelerate',tokens.easing.decelerate);
 
     // Legacy properties (Settings/Share drawers not yet redesigned)
-    root.style.setProperty('--surface-raised',   tokens.color.surface.mid);
-    root.style.setProperty('--surface-elevated', tokens.color.surface.deep);
+    root.style.setProperty('--surface-raised',   tokens.color.surface.raised);
+    root.style.setProperty('--surface-elevated', tokens.color.surface.elevated);
     root.style.setProperty('--text-primary',     tokens.color.text.t1);
     root.style.setProperty('--text-secondary',   tokens.color.text.t2);
     root.style.setProperty('--text-muted',       tokens.color.text.t3);
@@ -88,6 +88,13 @@
     root.style.setProperty('--status-success',   tokens.color.status.success);
     root.style.setProperty('--status-error',     tokens.color.status.error);
     root.style.setProperty('--status-timeout',   tokens.color.status.timeout);
+    root.style.setProperty('--surface-overlay', tokens.color.surface.overlay);
+    root.style.setProperty('--spacing-lg2', `${tokens.spacing.lg2}px`);
+    root.style.setProperty('--timing-loading-pulse', `${tokens.timing.loadingPulse}ms`);
+    root.style.setProperty('--timing-loading-ring',  `${tokens.timing.loadingRingDuration}ms`);
+    root.style.setProperty('--timing-btn',           `${tokens.timing.btnHover}ms`);
+    root.style.setProperty('--shadow-low', tokens.shadow.low);
+    root.style.setProperty('--radius-xs', `${tokens.radius.xs}px`);
   }
 
   // ── Apply persisted settings to stores ──────────────────────────────────────
