@@ -249,9 +249,14 @@
   .lane-panel {
     width: var(--panel-width); flex-shrink: 0;
     padding: 24px 28px; display: flex; flex-direction: column;
-    justify-content: flex-start;
+    justify-content: center;
     border-right: 1px solid rgba(255,255,255,.05);
     position: relative; z-index: 2;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+  .lane-panel::-webkit-scrollbar {
+    display: none;
   }
   .lane-url {
     font-family: var(--sans); font-size: 12px; font-weight: 500;
