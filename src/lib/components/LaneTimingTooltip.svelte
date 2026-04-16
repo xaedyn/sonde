@@ -116,6 +116,7 @@
   style:--t4={tokens.color.tier2.labelText}
   style:--mono={tokens.typography.mono.fontFamily}
   style:--ep-color={color}
+  style:--border-dim={tokens.color.surface.border.dim}
   aria-live="polite"
 >
   <div class="lt-total">{Math.round(sample.latency)}ms</div>
@@ -154,6 +155,7 @@
     pointer-events: none;
     z-index: 100;
     background: var(--tooltip-bg);
+    border: 1px solid var(--border-dim);
     box-shadow: var(--shadow-low);
     border-radius: var(--radius-sm);
     backdrop-filter: blur(12px);

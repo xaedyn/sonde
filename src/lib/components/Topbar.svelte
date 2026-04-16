@@ -4,7 +4,6 @@
   import { uiStore } from '$lib/stores/ui';
   import { tokens } from '$lib/tokens';
   import type { TestLifecycleState } from '$lib/types';
-  import { onMount, onDestroy } from 'svelte';
 
   let { onStart, onStop }: {
     onStart?: () => void;
@@ -41,23 +40,6 @@
     lifecycle === 'idle' || lifecycle === 'stopped' || lifecycle === 'completed'
   );
 
-  let isMobile: boolean = $state(false);
-  let mql: MediaQueryList | null = null;
-
-  function handleMqlChange(e: MediaQueryListEvent | MediaQueryList): void {
-    isMobile = e.matches;
-  }
-
-  onMount(() => {
-    mql = window.matchMedia('(max-width: 767px)');
-    isMobile = mql.matches;
-    mql.addEventListener('change', handleMqlChange as EventListener);
-  });
-
-  onDestroy(() => {
-    mql?.removeEventListener('change', handleMqlChange as EventListener);
-  });
-
   function handleStartStop(): void {
     if (lifecycle === 'running') {
       onStop?.();
@@ -79,7 +61,7 @@
 <header
   class="topbar"
   style:--topbar-bg={tokens.color.topbar.bg}
-  style:--topbar-border={tokens.color.topbar.border}
+  style:--border-bright={tokens.color.surface.border.bright}
   style:--t1={tokens.color.text.t1}
   style:--t2={tokens.color.text.t2}
   style:--t3={tokens.color.text.t3}
@@ -130,46 +112,30 @@
   <nav class="actions" aria-label="Test controls">
     {#if isSharedView}
       <button type="button" class="btn btn-ghost" aria-label="Share results" aria-expanded={$uiStore.showShare} aria-controls="share-popover" onclick={handleShare}>
-        {#if isMobile}
-          <svg class="btn-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <path d="M4 10V12.5C4 13.052 4.448 13.5 5 13.5H11C11.552 13.5 12 13.052 12 12.5V10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M8 2.5V10M8 2.5L5.5 5M8 2.5L10.5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        {:else}
-          Share
-        {/if}
+        <svg class="btn-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M4 10V12.5C4 13.052 4.448 13.5 5 13.5H11C11.552 13.5 12 13.052 12 12.5V10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M8 2.5V10M8 2.5L5.5 5M8 2.5L10.5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
       </button>
       <button type="button" class="btn btn-start-stop start" aria-label="Run your own test" onclick={handleRunOwn}>Run Your Own Test</button>
     {:else}
       <button type="button" class="btn btn-ghost" aria-label="Add or remove endpoints" aria-expanded={$uiStore.showEndpoints} aria-controls="endpoint-drawer" onclick={handleEndpoints}>
-        {#if isMobile}
-          <svg class="btn-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.3"/>
-            <path d="M8 5V11M5 8H11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-          </svg>
-        {:else}
-          + Endpoint
-        {/if}
+        <svg class="btn-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.3"/>
+          <path d="M8 5V11M5 8H11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+        </svg>
       </button>
       <button type="button" class="btn btn-ghost" aria-label="Open settings" aria-expanded={$uiStore.showSettings} aria-controls="settings-drawer" onclick={handleSettings}>
-        {#if isMobile}
-          <svg class="btn-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.3"/>
-            <path d="M8 1.5V3M8 13V14.5M14.5 8H13M3 8H1.5M12.6 3.4L11.5 4.5M4.5 11.5L3.4 12.6M12.6 12.6L11.5 11.5M4.5 4.5L3.4 3.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-          </svg>
-        {:else}
-          Settings
-        {/if}
+        <svg class="btn-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.3"/>
+          <path d="M8 1.5V3M8 13V14.5M14.5 8H13M3 8H1.5M12.6 3.4L11.5 4.5M4.5 11.5L3.4 12.6M12.6 12.6L11.5 11.5M4.5 4.5L3.4 3.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+        </svg>
       </button>
       <button type="button" class="btn btn-ghost" aria-label="Share results" aria-expanded={$uiStore.showShare} aria-controls="share-popover" onclick={handleShare}>
-        {#if isMobile}
-          <svg class="btn-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <path d="M4 10V12.5C4 13.052 4.448 13.5 5 13.5H11C11.552 13.5 12 13.052 12 12.5V10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M8 2.5V10M8 2.5L5.5 5M8 2.5L10.5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        {:else}
-          Share
-        {/if}
+        <svg class="btn-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M4 10V12.5C4 13.052 4.448 13.5 5 13.5H11C11.552 13.5 12 13.052 12 12.5V10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M8 2.5V10M8 2.5L5.5 5M8 2.5L10.5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
       </button>
       <button
         type="button"
@@ -194,7 +160,7 @@
     gap: 14px;
     flex-shrink: 0;
     background: var(--topbar-bg);
-    border-bottom: 1px solid var(--topbar-border);
+    border-bottom: 1px solid var(--border-bright);
     backdrop-filter: blur(30px) saturate(1.3);
     -webkit-backdrop-filter: blur(30px) saturate(1.3);
     position: relative;
@@ -323,6 +289,10 @@
   @media (max-width: 767px) {
     .topbar { padding: 0 12px; gap: 8px; }
     .btn-ghost { padding: 7px; min-width: 44px; }
+  }
+
+  @media (min-width: 768px) {
+    .btn-ghost { min-width: 44px; }
   }
 
   @media (max-width: 479px) {

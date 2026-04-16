@@ -132,3 +132,13 @@ describe('LaneTimingTooltip', () => {
     expect(tooltip?.getAttribute('aria-live')).toBe('polite');
   });
 });
+
+describe('LaneTimingTooltip — AC2 dim border', () => {
+  it('injects --border-dim from tokens.color.surface.border.dim', () => {
+    const sample = makeSample(120);
+    const { container } = render(LaneTimingTooltip, { props: { sample, ...defaultProps } });
+    const tooltip = container.querySelector('.lt-tooltip') as HTMLElement;
+    expect(tooltip).not.toBeNull();
+    expect(tooltip.style.getPropertyValue('--border-dim')).toBe('rgba(255,255,255,.04)');
+  });
+});

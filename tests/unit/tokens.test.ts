@@ -200,3 +200,47 @@ describe('tier2 visualization tokens', () => {
     expect(tokens.color.tier2.labelText).toBe('rgba(255,255,255,.40)');
   });
 });
+
+describe('apple-polish-v3 tokens (AC1 + AC2)', () => {
+  const parseAlpha = (s: string): number => {
+    const match = s.match(/,\s*([\d.]+)\s*\)/);
+    return match ? parseFloat(match[1]) : 0;
+  };
+
+  it('color.bg.accent has alpha ≤ .04 (AC1)', () => {
+    const val: string = tokens.color.bg.accent;
+    expect(parseAlpha(val)).toBeLessThanOrEqual(0.04);
+  });
+
+  it('color.orb.cyan has alpha ≤ .045 (AC1 orb baseline)', () => {
+    expect(parseAlpha(tokens.color.orb.cyan)).toBeLessThanOrEqual(0.045);
+  });
+
+  it('color.orb.pink has alpha ≤ .045 (AC1 orb baseline)', () => {
+    expect(parseAlpha(tokens.color.orb.pink)).toBeLessThanOrEqual(0.045);
+  });
+
+  it('color.orb.violet has alpha ≤ .045 (AC1 orb baseline)', () => {
+    expect(parseAlpha(tokens.color.orb.violet)).toBeLessThanOrEqual(0.045);
+  });
+
+  it('color.surface.border.dim is rgba(255,255,255,.04) (AC2)', () => {
+    expect(tokens.color.surface.border.dim).toBe('rgba(255,255,255,.04)');
+  });
+
+  it('color.surface.border.mid is rgba(255,255,255,.08) (AC2)', () => {
+    expect(tokens.color.surface.border.mid).toBe('rgba(255,255,255,.08)');
+  });
+
+  it('color.surface.border.bright is rgba(255,255,255,.14) (AC2)', () => {
+    expect(tokens.color.surface.border.bright).toBe('rgba(255,255,255,.14)');
+  });
+
+  it('border tiers have ≥ .04 alpha delta between adjacent tiers (AC2)', () => {
+    const dim    = parseAlpha(tokens.color.surface.border.dim);
+    const mid    = parseAlpha(tokens.color.surface.border.mid);
+    const bright = parseAlpha(tokens.color.surface.border.bright);
+    expect(mid - dim).toBeGreaterThanOrEqual(0.04);
+    expect(bright - mid).toBeGreaterThanOrEqual(0.04);
+  });
+});

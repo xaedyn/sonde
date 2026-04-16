@@ -63,7 +63,7 @@
 
 <a href="#lanes" class="skip-link">Skip to lanes</a>
 
-<div class="bg" aria-hidden="true"></div>
+<div class="bg" aria-hidden="true" style:--bg-accent={tokens.color.bg.accent}></div>
 <div class="orb orb-1" aria-hidden="true"></div>
 <div class="orb orb-2" aria-hidden="true"></div>
 <div class="orb orb-3" aria-hidden="true"></div>
@@ -104,9 +104,7 @@
   .bg {
     position: fixed; inset: 0; z-index: 0;
     background:
-      radial-gradient(ellipse 80% 60% at 20% 10%, rgba(103,232,249,.07) 0%, transparent 60%),
-      radial-gradient(ellipse 60% 80% at 85% 90%, rgba(249,168,212,.06) 0%, transparent 50%),
-      radial-gradient(ellipse 50% 50% at 50% 50%, rgba(139,92,246,.04) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 80% at 85% 90%, var(--bg-accent, rgba(249,168,212,.03)) 0%, transparent 50%),
       linear-gradient(160deg, #0c0a14 0%, #100e1e 40%, #0e0c18 100%);
     animation: bgShift 20s ease-in-out infinite alternate;
   }
