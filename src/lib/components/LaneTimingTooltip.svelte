@@ -64,30 +64,35 @@
   let posX = $state(x);
   let posY = $state(y);
 
-  // Reposition after DOM layout so offsetHeight is accurate
+  // Two-pass positioning: initial render, then adjust after layout measurement
   $effect(() => {
-    // Track x/y to re-run when dot changes
     const _x = x;
     const _y = y;
-    // Wait for Svelte to flush DOM updates, then measure
+    const vh = typeof window !== 'undefined' ? window.innerHeight : 900;
+    const vw = typeof window !== 'undefined' ? window.innerWidth : 1440;
+
+    // Pass 1: heuristic — if dot is in the bottom 40% of viewport, position above
+    const preferAbove = _y > vh * 0.6;
+
+    // Set initial position immediately (avoids flash at wrong position)
+    posX = Math.max(VIEWPORT_MARGIN, Math.min(_x, vw - 240));
+    posY = preferAbove ? Math.max(VIEWPORT_MARGIN, _y - 180) : _y;
+
+    // Pass 2: measure actual dimensions after DOM layout
     tick().then(() => {
-      if (!tooltipEl) { posX = _x; posY = _y; return; }
+      if (!tooltipEl) return;
       const w = tooltipEl.offsetWidth;
       const h = tooltipEl.offsetHeight;
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
 
-      // X clamping
       let nx = _x;
       if (nx + w > vw - VIEWPORT_MARGIN) nx = vw - w - VIEWPORT_MARGIN;
       if (nx < VIEWPORT_MARGIN) nx = VIEWPORT_MARGIN;
 
-      // Y: prefer below the dot, flip above if it overflows
       let ny = _y;
       if (ny + h > vh - VIEWPORT_MARGIN) {
-        const flipped = _y - h - 16;
-        ny = flipped >= VIEWPORT_MARGIN ? flipped : VIEWPORT_MARGIN;
+        ny = _y - h - 16;
       }
+      if (ny < VIEWPORT_MARGIN) ny = VIEWPORT_MARGIN;
 
       posX = nx;
       posY = ny;
