@@ -176,10 +176,6 @@ describe('ux-polish tokens', () => {
   it('exports glass.statsBorder token', () => {
     expect(tokens.color.glass.statsBorder).toBe('rgba(255,255,255,.04)');
   });
-
-  it('exports text.emptyFill token', () => {
-    expect(tokens.color.text.emptyFill).toBe('rgba(255,255,255,.1)');
-  });
 });
 
 describe('tier2 visualization tokens', () => {

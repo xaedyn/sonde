@@ -127,7 +127,6 @@ export const tokens = {
       t3: primitive.t3,
       t4: primitive.t4,
       t5: primitive.t5,
-      emptyFill: 'rgba(255,255,255,.1)',
       // Legacy aliases used by non-Glass components (persistence layer, share, engine)
       primary:   primitive.t1,
       secondary: primitive.t2,

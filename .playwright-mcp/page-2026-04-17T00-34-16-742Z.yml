@@ -1,0 +1,58 @@
+- generic [ref=e3]:
+  - link "Skip to lanes" [ref=e4] [cursor=pointer]:
+    - /url: "#lanes"
+  - generic [ref=e6]:
+    - banner [ref=e7]:
+      - generic "Chronoscope" [ref=e8]:
+        - generic [ref=e9]: Chronoscope
+      - navigation "Test controls" [ref=e10]:
+        - button "Add or remove endpoints" [ref=e11] [cursor=pointer]:
+          - img [ref=e12]
+        - button "Open settings" [ref=e15] [cursor=pointer]:
+          - img [ref=e16]
+        - button "Share results" [ref=e21] [cursor=pointer]:
+          - img [ref=e22]
+        - button "Start" [ref=e25] [cursor=pointer]
+    - region "Endpoint lanes" [ref=e26]:
+      - article "Endpoint https://www.google.com" [ref=e27]:
+        - generic [ref=e28]:
+          - button "Reorder lane" [ref=e29]:
+            - img [ref=e30]
+          - generic [ref=e37]: https://www.google.com
+          - generic [ref=e38]:
+            - generic "Median latency 0ms" [ref=e39]:
+              - generic [ref=e40]: "0"
+              - generic [ref=e41]: ms
+            - generic [ref=e42]: Median
+            - generic [ref=e43]: Collecting data…
+        - generic "Latency chart for https://www.google.com" [ref=e44]:
+          - img "Latency scatter chart" [ref=e46]
+      - article "Endpoint https://1.1.1.1" [ref=e47]:
+        - generic [ref=e48]:
+          - button "Reorder lane" [ref=e49]:
+            - img [ref=e50]
+          - generic [ref=e57]: https://1.1.1.1
+          - generic [ref=e58]:
+            - generic "Median latency 0ms" [ref=e59]:
+              - generic [ref=e60]: "0"
+              - generic [ref=e61]: ms
+            - generic [ref=e62]: Median
+            - generic [ref=e63]: Collecting data…
+        - generic "Latency chart for https://1.1.1.1" [ref=e64]:
+          - img "Latency scatter chart" [ref=e66]
+    - generic "Elapsed time axis" [ref=e67]:
+      - generic [ref=e68]: Elapsed
+      - list "Elapsed time markers" [ref=e69]:
+        - listitem "0:00 (future)" [ref=e70]: 0:00
+        - listitem "0:00 (future)" [ref=e71]: 0:00
+        - listitem "0:00 (future)" [ref=e72]: 0:00
+        - listitem "0:00 (future)" [ref=e73]: 0:00
+        - listitem "0:00 (future)" [ref=e74]: 0:00
+    - contentinfo [ref=e75]:
+      - generic [ref=e76]: Measuring from your browser
+      - generic [ref=e77]: Burst · 0/50 · 5s timeout
+      - 'img "Latency color scale: cyan is fast, red is slow" [ref=e78]':
+        - generic [ref=e79]: Fast
+        - generic [ref=e81]: Slow
+      - generic [ref=e82]: 0 of ∞ complete
+  - status [ref=e83]

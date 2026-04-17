@@ -23,12 +23,6 @@ describe('LaneSvgChart', () => {
     expect(container.querySelector('svg')).not.toBeNull();
   });
 
-  it('renders "Waiting for data" when no points exist', () => {
-    const { container } = render(LaneSvgChart, { props: baseProps });
-    const text = container.querySelector('.empty-text');
-    expect(text?.textContent).toContain('Waiting for data');
-  });
-
   it('renders future zone rect when rounds < totalRounds', () => {
     const { container } = render(LaneSvgChart, {
       props: {
@@ -96,41 +90,10 @@ describe('LaneSvgChart', () => {
     expect(thresholdLine).toBeNull();
   });
 
-  // ── Empty state ring tests ──────────────────────────────────────────────
-  it('renders .empty-ring circle when no points exist', () => {
+  it('renders no empty-state decoration when no points exist (grid + axis carry the empty state)', () => {
     const { container } = render(LaneSvgChart, { props: baseProps });
-    const ring = container.querySelector('.empty-ring');
-    expect(ring).not.toBeNull();
-  });
-
-  it('empty ring has r="40" and stroke-width="0.5"', () => {
-    const { container } = render(LaneSvgChart, { props: baseProps });
-    const ring = container.querySelector('.empty-ring');
-    expect(ring?.getAttribute('r')).toBe('40');
-    expect(ring?.getAttribute('stroke-width')).toBe('0.5');
-  });
-
-  it('empty ring uses var(--ep-color) as stroke', () => {
-    const { container } = render(LaneSvgChart, { props: baseProps });
-    const ring = container.querySelector('.empty-ring');
-    expect(ring?.getAttribute('stroke')).toBe('var(--ep-color)');
-  });
-
-  it('empty text says "Waiting for data"', () => {
-    const { container } = render(LaneSvgChart, { props: baseProps });
-    const text = container.querySelector('.empty-state .empty-text');
-    expect(text?.textContent).toContain('Waiting for data');
-  });
-
-  it('does not render .empty-ring when points exist', () => {
-    const { container } = render(LaneSvgChart, {
-      props: {
-        ...baseProps,
-        points: [{ round: 1, y: 0.5, latency: 50, status: 'ok', endpointId: 'ep-1', x: 1, color: '#67e8f9' }],
-      },
-    });
-    const ring = container.querySelector('.empty-ring');
-    expect(ring).toBeNull();
+    expect(container.querySelector('.empty-ring')).toBeNull();
+    expect(container.querySelector('.empty-text')).toBeNull();
   });
 
   // ── TTFB overlay tests ──────────────────────────────────────────────────
