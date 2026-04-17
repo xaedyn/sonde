@@ -25,9 +25,10 @@ describe('REGIONAL_DEFAULTS', () => {
     }
   });
 
-  it('lane 2 is Cloudflare URL for every region', () => {
+  it('lane 2 is the TAO-anchor self-probe for every region', () => {
     for (const region of REGIONS) {
-      expect(REGIONAL_DEFAULTS[region][1]?.url).toBe('https://www.cloudflare.com');
+      expect(REGIONAL_DEFAULTS[region][1]?.url).toBe('https://chronoscope.dev/probe');
+      expect(REGIONAL_DEFAULTS[region][1]?.role).toBe('TAO-anchor');
     }
   });
 
@@ -140,8 +141,8 @@ describe('brandFor', () => {
   it('returns Google/Baseline for canonical URL', () => {
     expect(brandFor('https://www.google.com')).toEqual({ label: 'Google', role: 'Baseline' });
   });
-  it('returns Cloudflare/Alt-operator', () => {
-    expect(brandFor('https://www.cloudflare.com')).toEqual({ label: 'Cloudflare', role: 'Alt-operator' });
+  it('returns Self/TAO-anchor for the probe URL', () => {
+    expect(brandFor('https://chronoscope.dev/probe')).toEqual({ label: 'Self', role: 'TAO-anchor' });
   });
   it('returns AWS/Third-operator', () => {
     expect(brandFor('https://aws.amazon.com')).toEqual({ label: 'AWS', role: 'Third-operator' });
