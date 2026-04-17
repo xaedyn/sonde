@@ -63,17 +63,11 @@
 
 <a href="#lanes" class="skip-link">Skip to lanes</a>
 
-<div class="bg" aria-hidden="true" style:--bg-accent={tokens.color.bg.accent}></div>
-<div class="orb orb-1" aria-hidden="true"></div>
-<div class="orb orb-2" aria-hidden="true"></div>
-<div class="orb orb-3" aria-hidden="true"></div>
+<div class="bg" aria-hidden="true"></div>
 
 <div
   class="app"
   style:--bg-base={tokens.color.surface.base}
-  style:--orb-cyan={tokens.color.orb.cyan}
-  style:--orb-pink={tokens.color.orb.pink}
-  style:--orb-violet={tokens.color.orb.violet}
   style:--t1={tokens.color.text.t1}
 >
   <Topbar {onStart} {onStop} />
@@ -103,37 +97,7 @@
 
   .bg {
     position: fixed; inset: 0; z-index: 0;
-    background:
-      radial-gradient(ellipse 60% 80% at 85% 90%, var(--bg-accent, rgba(249,168,212,.03)) 0%, transparent 50%),
-      #0e0c18;
-    animation: bgShift 20s ease-in-out infinite alternate;
-  }
-  @keyframes bgShift {
-    0%   { filter: hue-rotate(0deg) brightness(1); }
-    100% { filter: hue-rotate(8deg) brightness(1.02); }
-  }
-
-  .orb {
-    position: fixed; border-radius: 50%; pointer-events: none;
-    z-index: 0; filter: blur(80px);
-    animation: float 15s ease-in-out infinite;
-  }
-  .orb-1 {
-    width: 400px; height: 400px; top: -80px; left: 10%;
-    background: var(--orb-cyan); animation-delay: 0s;
-  }
-  .orb-2 {
-    width: 350px; height: 350px; bottom: -60px; right: 5%;
-    background: var(--orb-pink); animation-delay: -5s; animation-duration: 18s;
-  }
-  .orb-3 {
-    width: 250px; height: 250px; top: 40%; left: 50%;
-    background: var(--orb-violet); animation-delay: -10s; animation-duration: 22s;
-  }
-  @keyframes float {
-    0%, 100% { transform: translate(0, 0) scale(1); }
-    33%       { transform: translate(30px, -20px) scale(1.05); }
-    66%       { transform: translate(-20px, 15px) scale(.95); }
+    background: #0e0c18;
   }
 
   .app {
@@ -148,8 +112,4 @@
     clip-path: inset(50%); white-space: nowrap; border: 0;
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .bg { animation: none; }
-    .orb { animation: none; }
-  }
 </style>

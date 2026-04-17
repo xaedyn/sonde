@@ -47,11 +47,6 @@
     root.style.setProperty('--glass-border',    tokens.color.glass.border);
     root.style.setProperty('--glass-highlight', tokens.color.glass.highlight);
 
-    // Orbs
-    root.style.setProperty('--orb-cyan',   tokens.color.orb.cyan);
-    root.style.setProperty('--orb-pink',   tokens.color.orb.pink);
-    root.style.setProperty('--orb-violet', tokens.color.orb.violet);
-
     // Fonts
     root.style.setProperty('--sans', tokens.typography.sans.fontFamily);
     root.style.setProperty('--mono', tokens.typography.mono.fontFamily);
