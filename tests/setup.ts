@@ -25,3 +25,18 @@ if (typeof window !== 'undefined' && !window.ResizeObserver) {
     disconnect() {}
   };
 }
+
+// HTMLDialogElement.showModal / close are not implemented in jsdom; provide stubs
+// so SettingsDrawer (which uses <dialog>) can be rendered in unit tests.
+if (typeof HTMLDialogElement !== 'undefined') {
+  if (!HTMLDialogElement.prototype.showModal) {
+    HTMLDialogElement.prototype.showModal = function () {
+      this.setAttribute('open', '');
+    };
+  }
+  if (!HTMLDialogElement.prototype.close) {
+    HTMLDialogElement.prototype.close = function () {
+      this.removeAttribute('open');
+    };
+  }
+}

@@ -11,6 +11,8 @@
   import { clearPersistedSettings } from '$lib/utils/persistence';
   import { DEFAULT_SETTINGS } from '$lib/types';
   import { tokens } from '$lib/tokens';
+  import { REGIONS, REGION_DISPLAY_NAMES, detectRegion } from '$lib/regional-defaults';
+  import type { Region } from '$lib/regional-defaults';
 
 
   let dialogEl: HTMLDialogElement;
@@ -132,6 +134,27 @@
 
   let showClearConfirm = $state(false);
   let showResetConfirm = $state(false);
+  let showResetRegionalConfirm = $state(false);
+
+  function requestResetRegional(): void {
+    showResetRegionalConfirm = true;
+  }
+
+  function confirmResetRegional(): void {
+    if (isRunning) return;
+    showResetRegionalConfirm = false;
+    const currentRegion: Region = $settingsStore.region ?? detectRegion();
+    endpointStore.reset(currentRegion);
+  }
+
+  function cancelResetRegional(): void {
+    showResetRegionalConfirm = false;
+  }
+
+  function applyRegion(value: string): void {
+    if (value === '') return;
+    settingsStore.update(s => ({ ...s, region: value as Region }));
+  }
 
   function requestClear(): void {
     showClearConfirm = true;
@@ -159,9 +182,12 @@
   function confirmReset(): void {
     if (isRunning) return;
     showResetConfirm = false;
+    // Preserve the user's region across a "Reset to defaults" so regional lanes
+    // re-seed to their region, not NA. Spec §7.5.
+    const currentRegion: Region = $settingsStore.region ?? detectRegion();
     clearPersistedSettings();
-    endpointStore.reset();
-    settingsStore.set({ ...DEFAULT_SETTINGS });
+    endpointStore.reset(currentRegion);
+    settingsStore.set({ ...DEFAULT_SETTINGS, region: currentRegion });
     measurementStore.reset();
     // Re-init default endpoints in measurement store
     const endpoints = get(endpointStore);
@@ -282,6 +308,23 @@
         </fieldset>
       </div>
 
+      <!-- Region select -->
+      <div class="field">
+        <label class="field-label" for="region-select">
+          Region
+        </label>
+        <select
+          id="region-select"
+          class="field-input"
+          value={$settingsStore.region ?? detectRegion()}
+          onchange={(e) => applyRegion((e.target as HTMLSelectElement).value)}
+        >
+          {#each REGIONS as region (region)}
+            <option value={region}>{REGION_DISPLAY_NAMES[region]}</option>
+          {/each}
+        </select>
+      </div>
+
       <!-- Divider -->
       <div class="divider" aria-hidden="true"></div>
 
@@ -290,6 +333,21 @@
         <div class="danger-header">
           <span class="danger-label">Danger zone</span>
         </div>
+
+        <!-- Reset to regional defaults -->
+        {#if !showResetRegionalConfirm}
+          <button type="button" class="btn-danger" disabled={isRunning} aria-disabled={isRunning} onclick={requestResetRegional}>
+            Reset to regional defaults
+          </button>
+        {:else}
+          <div class="confirm-group" role="alert" aria-live="assertive">
+            <p class="confirm-text">Replaces current endpoints with regional defaults. Continue?</p>
+            <div class="confirm-actions">
+              <button type="button" class="btn-danger" disabled={isRunning} onclick={confirmResetRegional}>Yes, reset</button>
+              <button type="button" class="btn-secondary" onclick={cancelResetRegional}>Cancel</button>
+            </div>
+          </div>
+        {/if}
 
         <!-- Reset to defaults -->
         {#if !showResetConfirm}
@@ -817,5 +875,16 @@
   .confirm-actions {
     display: flex;
     gap: var(--spacing-sm);
+  }
+
+  /* Normalize select to match text inputs */
+  select.field-input {
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+    padding-right: 28px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='rgba(255,255,255,0.3)' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
   }
 </style>
