@@ -105,7 +105,7 @@
     position: fixed; inset: 0; z-index: 0;
     background:
       radial-gradient(ellipse 60% 80% at 85% 90%, var(--bg-accent, rgba(249,168,212,.03)) 0%, transparent 50%),
-      linear-gradient(160deg, #0c0a14 0%, #100e1e 40%, #0e0c18 100%);
+      #0e0c18;
     animation: bgShift 20s ease-in-out infinite alternate;
   }
   @keyframes bgShift {
