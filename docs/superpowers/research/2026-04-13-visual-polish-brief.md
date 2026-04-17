@@ -1,10 +1,10 @@
 ---
 date: 2026-04-13
-feature: apple-polish
+feature: visual-polish
 type: research-brief
 ---
 
-# Research Brief — Apple UX Polish
+# Research Brief — Visual Polish
 
 ## Industry Patterns
 

@@ -1,6 +1,6 @@
 ---
 date: 2026-04-13
-feature: apple-polish
+feature: visual-polish
 type: design-validation
 ---
 

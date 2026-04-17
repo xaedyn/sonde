@@ -1,10 +1,10 @@
 ---
 date: 2026-04-13
-feature: apple-polish
+feature: visual-polish
 type: approaches
 ---
 
-# Approach Decision Memos — Apple UX Polish
+# Approach Decision Memos — Visual Polish
 
 ---
 
@@ -34,7 +34,7 @@ Reweight the topbar: Start gets a filled cyan background, secondary buttons beco
 - Status text integration into button state
 
 ### The Bet
-The 80/20 rule applies: 80% of the "Apple feel" comes from information hierarchy and restraint, not from responsive engineering or micro-interactions.
+The 80/20 rule applies: 80% of the target "polished" feel comes from information hierarchy and restraint, not from responsive engineering or micro-interactions.
 
 ### Reversal Cost
 If wrong at 30 days: easy — all changes are CSS/template, no data model or architecture changes.
@@ -62,7 +62,7 @@ Everything in Surgical Hierarchy, plus: add responsive typography tokens using `
 - **Stack alignment:** Extends existing token system with responsive values; adds icon assets for collapsed buttons
 
 ### Tradeoffs
-- **Strong at:** Complete, polished experience across all viewports. Genuine "show this to anyone" quality at 375px. The full Apple bar.
+- **Strong at:** Complete, polished experience across all viewports. Genuine "show this to anyone" quality at 375px — the full polish bar.
 - **Sacrifices:** 2-3x the code delta of Surgical Hierarchy. More visual regression test baselines to update. Risk of unintended layout shifts in compact mode (4+ endpoints). Icon selection for collapsed buttons is a design decision that needs to be made.
 
 ### What We'd Build

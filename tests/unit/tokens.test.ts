@@ -197,7 +197,7 @@ describe('tier2 visualization tokens', () => {
   });
 });
 
-describe('apple-polish-v3 tokens (AC1 + AC2)', () => {
+describe('visual-polish-v3 tokens (AC1 + AC2)', () => {
   const parseAlpha = (s: string): number => {
     const match = s.match(/,\s*([\d.]+)\s*\)/);
     return match ? parseFloat(match[1]) : 0;

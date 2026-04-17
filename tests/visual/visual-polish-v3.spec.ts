@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('Apple polish v3 — Topbar icons (AC3) + touch targets (AC5)', () => {
+test.describe('Visual polish v3 — Topbar icons (AC3) + touch targets (AC5)', () => {
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/');
@@ -35,7 +35,7 @@ test.describe('Apple polish v3 — Topbar icons (AC3) + touch targets (AC5)', ()
   });
 });
 
-test.describe('Apple polish v3 — Lane + Topbar elevation borders (AC2)', () => {
+test.describe('Visual polish v3 — Lane + Topbar elevation borders (AC2)', () => {
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/');
@@ -55,7 +55,7 @@ test.describe('Apple polish v3 — Lane + Topbar elevation borders (AC2)', () =>
   });
 });
 
-test.describe('Apple polish v3 — Mobile a11y (AC5)', () => {
+test.describe('Visual polish v3 — Mobile a11y (AC5)', () => {
   test('AC5: no horizontal overflow at 375px', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto('/');

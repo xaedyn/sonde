@@ -1,10 +1,10 @@
 ---
 date: 2026-04-13
-feature: apple-polish
+feature: visual-polish
 type: acceptance-criteria
 ---
 
-# Acceptance Criteria — Apple UX Polish
+# Acceptance Criteria — Visual Polish
 
 ## AC1: Primary Action Dominance
 

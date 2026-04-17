@@ -26,7 +26,7 @@ These features are not cosmetic — they answer questions the current UI cannot:
 
 ## Design Principles
 
-All decisions follow Apple's design philosophy applied to the Glass Lanes aesthetic:
+All decisions follow a subtractive-design philosophy applied to the Glass Lanes aesthetic:
 
 - **Remove until it breaks, then add back one thing.** No feature exists for completeness — each must earn its space.
 - **Information appears when relevant, hides when not.** No always-on indicators for rare events.

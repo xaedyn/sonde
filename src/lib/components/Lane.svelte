@@ -364,7 +364,6 @@
     color: var(--t2);
   }
 
-  /* Grip handle — hidden until lane hover, Apple-style progressive disclosure */
   .lane-grip {
     display: flex; align-items: center; justify-content: center;
     width: 20px; height: 32px; flex-shrink: 0;

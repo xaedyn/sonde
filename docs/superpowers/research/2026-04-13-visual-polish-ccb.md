@@ -1,10 +1,10 @@
 ---
 date: 2026-04-13
-feature: apple-polish
+feature: visual-polish
 type: ccb
 ---
 
-# Codebase Context Brief — Apple UX Polish
+# Codebase Context Brief — Visual Polish
 
 ## Stack
 

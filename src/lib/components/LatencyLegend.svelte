@@ -1,6 +1,4 @@
 <!-- src/lib/components/LatencyLegend.svelte -->
-<!-- Minimal gradient bar legend showing the latency color scale.              -->
-<!-- Apple-style: thin, rounded, unobtrusive. Labels at key thresholds.        -->
 <script lang="ts">
   import { tokens } from '$lib/tokens';
   import { latencyToColor } from '$lib/renderers/color-map';

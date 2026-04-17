@@ -9,7 +9,7 @@
 
 Chronoscope is currently a browser-based HTTP latency diagnostic tool. This document outlines the path to becoming a comprehensive, free network diagnostic platform that fills gaps no existing tool addresses — combining capabilities that today require $50k+/year enterprise tools or cobbling together 5-8 separate CLI utilities.
 
-The core insight: **network engineers need one tool that does speed + latency + path + DNS + bufferbloat + loss analysis, produces a shareable interactive report, and looks like it was designed in Cupertino.** Nothing like this exists at any price point. The closest (ThousandEyes) costs $50-200k/year and has a dense enterprise UI.
+The core insight: **network engineers need one tool that does speed + latency + path + DNS + bufferbloat + loss analysis, produces a shareable interactive report, and feels considered rather than utilitarian.** Nothing like this exists at any price point. The closest (ThousandEyes) costs $50-200k/year and has a dense enterprise UI.
 
 ---
 
@@ -325,7 +325,7 @@ This is a **diagnostic tool**, not a monitoring platform. It answers "why is my 
 ## The Moat
 
 1. **Free forever** — no freemium bait-and-switch
-2. **Beautiful UI** — Apple-quality design in a space full of ugly tools
+2. **Beautiful UI** — rare design care in a category dominated by dense enterprise dashboards
 3. **Browser-first** — zero install for 80% of value
 4. **Shareable reports** — every diagnosis drives organic traffic to chronoscope.dev
 5. **Open source** — trust, community contributions, no vendor lock-in
