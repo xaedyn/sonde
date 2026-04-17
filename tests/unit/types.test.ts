@@ -14,7 +14,8 @@ import type {
   PersistedSettings,
   TestLifecycleState,
 } from '../../src/lib/types';
-import { DEFAULT_SETTINGS, DEFAULT_ENDPOINTS } from '../../src/lib/types';
+import { DEFAULT_SETTINGS } from '../../src/lib/types';
+import { REGIONAL_DEFAULTS } from '../../src/lib/regional-defaults';
 import type { FrameData, RibbonData, XTick, YRange, Gridline, HeatmapCellData } from '../../src/lib/types';
 
 describe('types', () => {
@@ -87,10 +88,10 @@ describe('types', () => {
     expect(DEFAULT_SETTINGS.corsMode).toBe('no-cors');
   });
 
-  it('DEFAULT_ENDPOINTS has 2 entries', () => {
-    expect(DEFAULT_ENDPOINTS).toHaveLength(2);
-    expect(DEFAULT_ENDPOINTS[0]?.url).toBe('https://www.google.com');
-    expect(DEFAULT_ENDPOINTS[1]?.url).toBe('https://1.1.1.1');
+  it('REGIONAL_DEFAULTS north-america has 4 entries with Google as first URL', () => {
+    // AC1/AC5: north-america is the default fallback region
+    expect(REGIONAL_DEFAULTS['north-america']).toHaveLength(4);
+    expect(REGIONAL_DEFAULTS['north-america'][0]?.url).toBe('https://www.google.com');
   });
 
   it('UIState has showKeyboardHelp field', () => {
