@@ -3,7 +3,17 @@
 // All functions are pure (no DOM side effects) except buildShareURL and parseShareURL.
 
 import LZString from 'lz-string';
-import type { SharePayload } from '../types';
+import type { SharePayload, Settings } from '../types';
+
+// ── Share settings helper ──────────────────────────────────────────────────
+// Explicitly destructures only the 6 allowed share fields.
+// Prevents region (and any future Settings-only fields) from leaking
+// into share links via TypeScript's structural-subtype-allows-excess-fields behavior.
+
+export function toSharedSettings(s: Settings): SharePayload['settings'] {
+  const { timeout, delay, burstRounds, monitorDelay, cap, corsMode } = s;
+  return { timeout, delay, burstRounds, monitorDelay, cap, corsMode };
+}
 
 // ── Encode / Decode ────────────────────────────────────────────────────────
 

@@ -8,7 +8,7 @@
   import { endpointStore } from '$lib/stores/endpoints';
   import { settingsStore } from '$lib/stores/settings';
   import { measurementStore } from '$lib/stores/measurements';
-  import { buildShareURL, estimateShareSize, truncatePayload } from '$lib/share/share-manager';
+  import { buildShareURL, estimateShareSize, truncatePayload, toSharedSettings } from '$lib/share/share-manager';
   import { tokens } from '$lib/tokens';
   import type { SharePayload } from '$lib/types';
 
@@ -37,7 +37,7 @@
       v: 1,
       mode: 'config',
       endpoints: endpoints.map(ep => ({ url: ep.url, enabled: ep.enabled })),
-      settings,
+      settings: toSharedSettings(settings),
     };
   }
 
@@ -62,7 +62,7 @@
       v: 1,
       mode: 'results',
       endpoints: endpoints.map(ep => ({ url: ep.url, enabled: ep.enabled })),
-      settings,
+      settings: toSharedSettings(settings),
       results,
     };
 
