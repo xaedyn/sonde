@@ -11,6 +11,7 @@
   import { deriveLayoutMode } from '$lib/layout';
   import type { LayoutMode } from '$lib/layout';
   import type { HeatmapCellData, RibbonData, MeasurementSample } from '$lib/types';
+  import { brandFor } from '$lib/regional-defaults';
   import Lane from './Lane.svelte';
   import LaneSvgChart from './LaneSvgChart.svelte';
   import LaneTimingTooltip from './LaneTimingTooltip.svelte';
@@ -426,12 +427,15 @@
       {@const isDragging = dragState?.fromIndex === i}
       {@const isSettling = settlingIndex === i}
       {@const offset = dragOffsets[i] ?? 0}
+      {@const brand = brandFor(ep.url)}
       <Lane
         endpointId={ep.id}
         laneIndex={i}
         showEntrance={hasAnimatedEntrance}
         color={ep.color}
-        url={ep.label || ep.url}
+        url={ep.url}
+        label={brand?.label ?? ep.label}
+        brandRole={brand?.role}
         p50={laneProps.p50}
         p95={laneProps.p95}
         p99={laneProps.p99}

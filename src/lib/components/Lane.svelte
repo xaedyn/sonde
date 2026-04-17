@@ -25,11 +25,15 @@
     onGripPointerDown = undefined,
     tier2Averages = undefined,
     onGripKeyDown = undefined,
+    label = undefined,
+    brandRole = undefined,
     children,
   }: {
     endpointId: string;
     color: string;
     url: string;
+    label?: string | undefined;
+    brandRole?: string | undefined;
     p50: number;
     p95: number;
     p99: number;
@@ -119,7 +123,12 @@
         </svg>
       </button>
     {/if}
-    <div class="lane-url">{url}</div>
+    <div class="lane-header-row">
+      <div class="lane-url">{label ?? url}</div>
+      {#if brandRole}
+        <span class="lane-role" aria-label="Role: {brandRole}">{brandRole}</span>
+      {/if}
+    </div>
     <div class="lane-body">
       <div class="lane-hero" aria-label="Median latency {fmt(p50)}">
         <span class="hero-value">{Math.round(p50)}</span>
@@ -162,7 +171,10 @@
         </button>
       {/if}
       <span class="ch-dot" style:background={color}></span>
-      <span class="ch-url">{url}</span>
+      <span class="ch-url">{label ?? url}</span>
+      {#if brandRole}
+        <span class="ch-role" aria-label="Role: {brandRole}">{brandRole}</span>
+      {/if}
       <span class="ch-hero" style:color={color}>{Math.round(p50)}<span class="ch-hero-unit">ms</span></span>
       {#if ready}
         <span class="ch-stat"><span class="ch-stat-label">P95</span> <span class="ch-stat-val">{fmt(p95)}</span></span>
@@ -259,6 +271,45 @@
     min-height: 0; overflow: hidden;
     container-type: size;
     container-name: lane-body;
+  }
+
+  /* Lane header row — url + role badge side by side */
+  .lane-header-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .lane-role {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 400;
+    color: var(--t4);
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 3px;
+    padding: 1px 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .ch-role {
+    font-family: var(--mono);
+    font-size: 8px;
+    font-weight: 400;
+    color: var(--t4);
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 2px;
+    padding: 1px 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 
   .lane-url {
