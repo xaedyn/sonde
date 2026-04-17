@@ -145,6 +145,9 @@
     showResetRegionalConfirm = false;
     const currentRegion: Region = $settingsStore.region ?? detectRegion();
     endpointStore.reset(currentRegion);
+    if (!$settingsStore.region) {
+      settingsStore.update(s => ({ ...s, region: currentRegion }));
+    }
   }
 
   function cancelResetRegional(): void {

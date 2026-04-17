@@ -434,7 +434,7 @@
         showEntrance={hasAnimatedEntrance}
         color={ep.color}
         url={ep.url}
-        label={brand?.label ?? ep.label}
+        label={ep.label === ep.url ? (brand?.label ?? ep.url) : ep.label}
         brandRole={brand?.role}
         p50={laneProps.p50}
         p95={laneProps.p95}

@@ -316,6 +316,7 @@
     font-family: var(--sans); font-size: 12px; font-weight: 500;
     color: var(--t2); letter-spacing: 0.02em;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    min-width: 0; flex: 1 1 0;
   }
   .lane-hero {
     display: flex; align-items: baseline;

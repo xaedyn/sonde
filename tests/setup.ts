@@ -37,6 +37,7 @@ if (typeof HTMLDialogElement !== 'undefined') {
   if (!HTMLDialogElement.prototype.close) {
     HTMLDialogElement.prototype.close = function () {
       this.removeAttribute('open');
+      this.dispatchEvent(new Event('close'));
     };
   }
 }
