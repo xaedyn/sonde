@@ -108,17 +108,6 @@
       linear-gradient(160deg, #0c0a14 0%, #100e1e 40%, #0e0c18 100%);
     animation: bgShift 20s ease-in-out infinite alternate;
   }
-  /* Dither overlay: SVG turbulence noise breaks 8-bit color banding on the dark gradient.
-     The eye averages sub-pixel noise into smooth transitions, preventing visible stepping
-     between the near-identical dark hex stops (#0c0a14 → #100e1e → #0e0c18). */
-  .bg::after {
-    content: '';
-    position: absolute; inset: 0;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
-    background-size: 200px 200px;
-    opacity: 0.04;
-    pointer-events: none;
-  }
   @keyframes bgShift {
     0%   { filter: hue-rotate(0deg) brightness(1); }
     100% { filter: hue-rotate(8deg) brightness(1.02); }
