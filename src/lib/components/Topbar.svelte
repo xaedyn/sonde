@@ -112,7 +112,7 @@
   <nav class="actions" aria-label="Test controls">
     {#if isSharedView}
       <button type="button" class="btn btn-ghost" aria-label="Share results" aria-expanded={$uiStore.showShare} aria-controls="share-popover" onclick={handleShare}>
-        <svg class="btn-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <svg class="btn-icon" width="20" height="20" viewBox="0 0 16 16" fill="none" aria-hidden="true">
           <path d="M4 10V12.5C4 13.052 4.448 13.5 5 13.5H11C11.552 13.5 12 13.052 12 12.5V10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
           <path d="M8 2.5V10M8 2.5L5.5 5M8 2.5L10.5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
@@ -120,13 +120,13 @@
       <button type="button" class="btn btn-start-stop start" aria-label="Run your own test" onclick={handleRunOwn}>Run Your Own Test</button>
     {:else}
       <button type="button" class="btn btn-ghost" aria-label="Add or remove endpoints" aria-expanded={$uiStore.showEndpoints} aria-controls="endpoint-drawer" onclick={handleEndpoints}>
-        <svg class="btn-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <svg class="btn-icon" width="20" height="20" viewBox="0 0 16 16" fill="none" aria-hidden="true">
           <circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.3"/>
           <path d="M8 5V11M5 8H11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
         </svg>
       </button>
       <button type="button" class="btn btn-ghost" aria-label="Open settings" aria-expanded={$uiStore.showSettings} aria-controls="settings-drawer" onclick={handleSettings}>
-        <svg class="btn-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <svg class="btn-icon" width="20" height="20" viewBox="0 0 16 16" fill="none" aria-hidden="true">
           <path d="M2 4H10.5M13.5 4H14M2 8H5M8 8H14M2 12H8M11 12H14" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
           <circle cx="12" cy="4" r="1.5" stroke="currentColor" stroke-width="1.3"/>
           <circle cx="6.5" cy="8" r="1.5" stroke="currentColor" stroke-width="1.3"/>
@@ -134,7 +134,7 @@
         </svg>
       </button>
       <button type="button" class="btn btn-ghost" aria-label="Share results" aria-expanded={$uiStore.showShare} aria-controls="share-popover" onclick={handleShare}>
-        <svg class="btn-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <svg class="btn-icon" width="20" height="20" viewBox="0 0 16 16" fill="none" aria-hidden="true">
           <path d="M4 10V12.5C4 13.052 4.448 13.5 5 13.5H11C11.552 13.5 12 13.052 12 12.5V10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
           <path d="M8 2.5V10M8 2.5L5.5 5M8 2.5L10.5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
@@ -240,12 +240,12 @@
   .btn-ghost {
     background: transparent;
     border-color: transparent;
-    color: var(--t3);
+    color: var(--t1);
   }
   .btn-ghost:hover:not(:disabled) {
     background: var(--glass-bg);
     border-color: transparent;
-    color: var(--t2);
+    color: var(--t1);
   }
 
   /* Start/Stop — single node, class toggles for CSS crossfade */
