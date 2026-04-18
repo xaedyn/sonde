@@ -25,10 +25,11 @@ describe('REGIONAL_DEFAULTS', () => {
     }
   });
 
-  it('lane 2 is Cloudflare URL for every region', () => {
+  it('lane 2 is the Edge (Timing) self-probe for every region', () => {
     for (const region of REGIONS) {
-      expect(REGIONAL_DEFAULTS[region][1]?.url).toBe('https://www.cloudflare.com');
-      expect(REGIONAL_DEFAULTS[region][1]?.role).toBe('Alt-operator');
+      expect(REGIONAL_DEFAULTS[region][1]?.url).toBe('https://chronoscope.dev/probe');
+      expect(REGIONAL_DEFAULTS[region][1]?.role).toBe('Timing');
+      expect(REGIONAL_DEFAULTS[region][1]?.label).toBe('Edge');
     }
   });
 
@@ -141,12 +142,12 @@ describe('brandFor', () => {
   it('returns Google/Baseline for canonical URL', () => {
     expect(brandFor('https://www.google.com')).toEqual({ label: 'Google', role: 'Baseline' });
   });
-  it('returns Cloudflare/Alt-operator', () => {
-    expect(brandFor('https://www.cloudflare.com')).toEqual({ label: 'Cloudflare', role: 'Alt-operator' });
+  it('returns Edge/Timing for the self-probe URL', () => {
+    expect(brandFor('https://chronoscope.dev/probe')).toEqual({ label: 'Edge', role: 'Timing' });
   });
 
-  it('returns Self/TAO-anchor for the power-user probe URL', () => {
-    expect(brandFor('https://chronoscope.dev/probe')).toEqual({ label: 'Self', role: 'TAO-anchor' });
+  it('returns Cloudflare/Alt-operator for the retained custom-add URL', () => {
+    expect(brandFor('https://www.cloudflare.com')).toEqual({ label: 'Cloudflare', role: 'Alt-operator' });
   });
   it('returns AWS/Third-operator', () => {
     expect(brandFor('https://aws.amazon.com')).toEqual({ label: 'AWS', role: 'Third-operator' });

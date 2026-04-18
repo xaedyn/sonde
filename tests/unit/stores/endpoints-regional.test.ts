@@ -19,7 +19,7 @@ describe('buildDefaultEndpoints', () => {
     const endpoints = buildDefaultEndpoints(undefined);
     expect(endpoints).toHaveLength(4);
     expect(endpoints[0]?.url).toBe('https://www.google.com');
-    expect(endpoints[1]?.url).toBe('https://www.cloudflare.com');
+    expect(endpoints[1]?.url).toBe('https://chronoscope.dev/probe');
     expect(endpoints[2]?.url).toBe('https://aws.amazon.com');
     expect(endpoints[3]?.url).toBe('https://www.fastly.com/robots.txt');
   });

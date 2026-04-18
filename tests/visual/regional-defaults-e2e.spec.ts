@@ -77,8 +77,10 @@ test.describe('Regional Default Lanes — E2E', () => {
     const lanes = page.locator('article[data-endpoint-id]');
     await expect(lanes).toHaveCount(4, { timeout: 3000 });
 
-    // NA defaults: Google, Cloudflare, AWS, Fastly
+    // NA defaults: Google, Edge (Timing self-probe), AWS, Fastly
     await expect(page.locator('[aria-label="Endpoint https://www.google.com"]')).toBeVisible({ timeout: 3000 });
+    await expect(page.locator('[aria-label="Endpoint https://chronoscope.dev/probe"]')).toBeVisible({ timeout: 3000 });
+    await expect(page.locator('[aria-label="Endpoint https://aws.amazon.com"]')).toBeVisible({ timeout: 3000 });
     await expect(page.locator('[aria-label="Endpoint https://www.fastly.com/robots.txt"]')).toBeVisible({ timeout: 3000 });
   });
 });
