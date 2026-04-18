@@ -403,13 +403,13 @@
     pointer-events: none;
   }
 
-  /* Compact tier2 waterfall — thin overlay below compact-header. Renders only when tier2Averages has non-zero phases (TAO-anchor lanes). */
+  /* Compact tier2 waterfall overlay — rendered only on lanes with populated phase data. */
   .lane-compact-waterfall {
     position: absolute;
     top: var(--compact-header-height);
     left: 0; right: 0;
     z-index: 3;
-    padding: 2px 10px;
+    padding: 3px 10px 4px;
     background: rgba(12, 10, 20, 0.5);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);

@@ -158,4 +158,27 @@ describe('LaneHeaderWaterfall — compact variant', () => {
     const label = bar?.getAttribute('aria-label') ?? '';
     expect(label).toContain('TTFB');
   });
+
+  it('compact variant renders .wf-compact-labels with text for non-zero phases', () => {
+    const warmAverages = {
+      dnsLookup: 0, tcpConnect: 0, tlsHandshake: 0, ttfb: 30, contentTransfer: 1,
+    };
+    const { container } = render(LaneHeaderWaterfall, { props: { tier2Averages: warmAverages, compact: true } });
+    const labels = container.querySelectorAll('.wf-compact-label');
+    expect(labels.length).toBe(2);
+    const combined = Array.from(labels).map(l => l.textContent?.trim()).join(' ');
+    expect(combined).toContain('TTFB');
+    expect(combined).toContain('30ms');
+    expect(combined).toContain('Transfer');
+    expect(combined).toContain('1ms');
+  });
+
+  it('compact variant colors each phase label with its segment color', () => {
+    const { container } = render(LaneHeaderWaterfall, { props: { tier2Averages, compact: true } });
+    const labels = container.querySelectorAll('.wf-compact-label');
+    labels.forEach(l => {
+      const style = (l as HTMLElement).getAttribute('style') ?? '';
+      expect(style).toContain('color:');
+    });
+  });
 });
