@@ -20,16 +20,16 @@ describe('persistence', () => {
     expect(loadPersistedSettings()).toBeNull();
   });
 
-  it('round-trips v3 settings correctly', () => {
+  it('round-trips v3 settings correctly (up-migrates to v5)', () => {
     const settings: PersistedSettings = {
       version: 3,
       endpoints: [{ url: 'https://example.com', enabled: true }],
-      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors' },
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
       ui: { expandedCards: [], activeView: 'timeline' },
     };
     saveSettings(settings);
     const loaded = loadPersistedSettings();
-    expect(loaded?.version).toBe(4);
+    expect(loaded?.version).toBe(5);
     expect(loaded?.endpoints[0]?.url).toBe('https://example.com');
     expect(loaded?.settings.burstRounds).toBe(50);
     expect(loaded?.settings.monitorDelay).toBe(1000);
@@ -41,30 +41,30 @@ describe('persistence', () => {
     expect(loadPersistedSettings()).toBeNull();
   });
 
-  it('migrates legacy storage key to new key', () => {
+  it('migrates legacy storage key to new key (result is v5)', () => {
     const settings: PersistedSettings = {
       version: 3,
       endpoints: [{ url: 'https://example.com', enabled: true }],
-      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors' },
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
       ui: { expandedCards: [], activeView: 'timeline' },
     };
     localStorageMock.setItem('chronoscope_v2_settings', JSON.stringify(settings));
     const loaded = loadPersistedSettings();
-    expect(loaded?.version).toBe(4);
+    expect(loaded?.version).toBe(5);
     // Legacy key should be removed, new key should exist
     expect(localStorageMock.getItem('chronoscope_v2_settings')).toBeNull();
     expect(localStorageMock.getItem('chronoscope_settings')).not.toBeNull();
   });
 
-  it('migrates v1 data to v4', () => {
+  it('migrates v1 data all the way to v5', () => {
     const v1Data = { version: 1, endpoints: [{ url: 'https://example.com' }] };
     const migrated = migrateSettings(v1Data);
-    expect(migrated?.version).toBe(4);
+    expect(migrated?.version).toBe(5);
     expect(migrated?.settings.burstRounds).toBe(50);
     expect(migrated?.settings.monitorDelay).toBe(1000);
   });
 
-  it('migrates v2 data to v4 with old delay as monitorDelay', () => {
+  it('migrates v2 data to v5 with old delay as monitorDelay', () => {
     const v2Data = {
       version: 2,
       endpoints: [{ url: 'https://example.com', enabled: true }],
@@ -72,7 +72,7 @@ describe('persistence', () => {
       ui: { expandedCards: [], activeView: 'split' },
     };
     const migrated = migrateSettings(v2Data);
-    expect(migrated?.version).toBe(4);
+    expect(migrated?.version).toBe(5);
     expect(migrated?.settings.monitorDelay).toBe(500);
     expect(migrated?.settings.burstRounds).toBe(50);
     expect(migrated?.settings.delay).toBe(0);

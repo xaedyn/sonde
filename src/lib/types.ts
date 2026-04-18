@@ -160,6 +160,13 @@ export interface EndpointStatistics {
     ttfb: number;
     contentTransfer: number;
   };
+  readonly tier2P95?: {
+    dnsLookup: number;
+    tcpConnect: number;
+    tlsHandshake: number;
+    ttfb: number;
+    contentTransfer: number;
+  };
   readonly ready: boolean;
 }
 
@@ -174,7 +181,11 @@ export interface Settings {
   cap: number;
   corsMode: 'no-cors' | 'cors';
   region?: Region;
+  /** Health alarm threshold in ms (distinct from hard-abort `timeout`). Must be < timeout. */
+  healthThreshold: number;
 }
+
+export const DEFAULT_HEALTH_THRESHOLD = 120;
 
 export const DEFAULT_SETTINGS: Settings = {
   timeout: 5000,
@@ -183,10 +194,38 @@ export const DEFAULT_SETTINGS: Settings = {
   monitorDelay: 1000,
   cap: 0,
   corsMode: 'no-cors',
+  healthThreshold: DEFAULT_HEALTH_THRESHOLD,
 };
 
 // ── UI store ───────────────────────────────────────────────────────────────
-export type ActiveView = 'timeline' | 'heatmap' | 'split';
+/**
+ * UI view routing. `overview | live | atlas | strata | terminal | lanes` are
+ * the v2 surfaces. `timeline | heatmap | split` remain in the union for one
+ * release so persistence loaders can recognise legacy payloads; they are
+ * remapped to `lanes` on migration (see persistence.ts v4→v5).
+ */
+export type ActiveView =
+  | 'overview'
+  | 'live'
+  | 'atlas'
+  | 'strata'
+  | 'terminal'
+  | 'lanes'
+  | 'timeline'
+  | 'heatmap'
+  | 'split';
+
+export type LiveTimeRange = '1m' | '5m' | '15m' | '1h' | '24h';
+
+export type TerminalEventType =
+  | 'timeout'
+  | 'error'
+  | 'threshold_up'
+  | 'threshold_down'
+  | 'freeze'
+  | 'endpoint_added'
+  | 'endpoint_removed'
+  | 'reuse_change';
 
 export interface HoverTarget {
   readonly endpointId: string;
@@ -213,6 +252,16 @@ export interface UIState {
   laneHoverY: number | null;
   heatmapTooltip: { text: string; x: number; y: number } | null;
   showEndpoints: boolean;
+  /** Globally focused endpoint — drives EndpointRail selection and per-view focus. null = unfocused. */
+  focusedEndpointId: string | null;
+  /** Live view layout options. */
+  liveOptions: {
+    /** If true, each endpoint gets its own scope row; false = overlaid unified view. */
+    split: boolean;
+    timeRange: LiveTimeRange;
+  };
+  /** Terminal view event-type filter. Empty set = show all. */
+  terminalFilters: Set<TerminalEventType>;
 }
 
 // ── Lane hover ─────────────────────────────────────────────────────────────
@@ -257,12 +306,20 @@ export interface SharePayload {
 
 // ── Persistence schema ─────────────────────────────────────────────────────
 export interface PersistedSettings {
-  version: 2 | 3 | 4;
+  version: 2 | 3 | 4 | 5;
   endpoints: { url: string; enabled: boolean }[];
   settings: Settings;
   ui: {
     expandedCards: string[];
     activeView: ActiveView;
+    // v5+ fields — optional so v2-v4 normalisers can omit them.
+    focusedEndpointId?: string | null;
+    liveOptions?: {
+      split: boolean;
+      timeRange: LiveTimeRange;
+    };
+    /** Persisted as an array (Set does not JSON-serialise). Rehydrated into a Set at apply time. */
+    terminalFilters?: TerminalEventType[];
   };
 }
 

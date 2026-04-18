@@ -33,4 +33,19 @@ export function applyPersistedSettings(persisted: PersistedSettings): void {
       uiStore.toggleCard(cardId);
     }
   }
+
+  // v5 UI additions — guarded so v2–v4 payloads that were up-migrated without
+  // these fields still apply cleanly.
+  if (persisted.ui.focusedEndpointId !== undefined) {
+    uiStore.setFocusedEndpoint(persisted.ui.focusedEndpointId);
+  }
+  if (persisted.ui.liveOptions) {
+    uiStore.setLiveSplit(persisted.ui.liveOptions.split);
+    uiStore.setLiveTimeRange(persisted.ui.liveOptions.timeRange);
+  }
+  if (persisted.ui.terminalFilters && persisted.ui.terminalFilters.length > 0) {
+    for (const type of persisted.ui.terminalFilters) {
+      uiStore.toggleTerminalFilter(type);
+    }
+  }
 }

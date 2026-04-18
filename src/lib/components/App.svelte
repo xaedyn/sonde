@@ -39,10 +39,17 @@
     root.style.setProperty('--t5', tokens.color.text.t5);
 
     // Accent
-    root.style.setProperty('--accent-cyan',   tokens.color.accent.cyan);
-    root.style.setProperty('--accent-pink',   tokens.color.accent.pink);
-    root.style.setProperty('--accent-green',  tokens.color.accent.green);
-    root.style.setProperty('--green-glow',    tokens.color.accent.greenGlow);
+    root.style.setProperty('--accent-cyan',       tokens.color.accent.cyan);
+    root.style.setProperty('--accent-cyan-glow',  tokens.color.accent.cyanGlow);
+    root.style.setProperty('--accent-cyan-tone',  tokens.color.accent.cyanTone);
+    root.style.setProperty('--accent-pink',       tokens.color.accent.pink);
+    root.style.setProperty('--accent-pink-glow',  tokens.color.accent.pinkGlow);
+    root.style.setProperty('--accent-pink-tone',  tokens.color.accent.pinkTone);
+    root.style.setProperty('--accent-amber',      tokens.color.accent.amber);
+    root.style.setProperty('--accent-amber-glow', tokens.color.accent.amberGlow);
+    root.style.setProperty('--accent-amber-tone', tokens.color.accent.amberTone);
+    root.style.setProperty('--accent-green',      tokens.color.accent.green);
+    root.style.setProperty('--green-glow',        tokens.color.accent.greenGlow);
 
     // Glass
     root.style.setProperty('--glass-bg',        tokens.color.glass.bg);
@@ -52,6 +59,17 @@
     // Fonts
     root.style.setProperty('--sans', tokens.typography.sans.fontFamily);
     root.style.setProperty('--mono', tokens.typography.mono.fontFamily);
+
+    // Typography scale + tracking (v2 views)
+    root.style.setProperty('--ts-xs',     tokens.typography.scale.xs);
+    root.style.setProperty('--ts-sm',     tokens.typography.scale.sm);
+    root.style.setProperty('--ts-md',     tokens.typography.scale.md);
+    root.style.setProperty('--ts-lg',     tokens.typography.scale.lg);
+    root.style.setProperty('--ts-xl',     tokens.typography.scale.xl);
+    root.style.setProperty('--ts-xxl',    tokens.typography.scale.xxl);
+    root.style.setProperty('--tr-kicker', tokens.typography.tracking.kicker);
+    root.style.setProperty('--tr-label',  tokens.typography.tracking.label);
+    root.style.setProperty('--tr-body',   tokens.typography.tracking.body);
 
     // Spacing
     root.style.setProperty('--spacing-xxs', `${tokens.spacing.xxs}px`);
@@ -112,12 +130,15 @@
       const endpoints = get(endpointStore);
 
       const payload: PersistedSettings = {
-        version: 4,
+        version: 5,
         endpoints: endpoints.map(ep => ({ url: ep.url, enabled: ep.enabled })),
         settings,
         ui: {
           expandedCards: [...ui.expandedCards],
           activeView: ui.activeView,
+          focusedEndpointId: ui.focusedEndpointId,
+          liveOptions: { split: ui.liveOptions.split, timeRange: ui.liveOptions.timeRange },
+          terminalFilters: [...ui.terminalFilters],
         },
       };
       saveSettings(payload);

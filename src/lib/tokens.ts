@@ -42,6 +42,28 @@ const primitive = {
   green:     '#86efac',
   greenGlow: 'rgba(134,239,172,.5)',
 
+  // Accent glows (33-alpha) and tones (darker variants) — health classifier styles
+  cyanGlow:  'rgba(103,232,249,.33)',
+  cyanTone:  '#3aa7b8',
+  pinkGlow:  'rgba(249,168,212,.33)',
+  pinkTone:  '#b0628a',
+  amberGlow: 'rgba(251,191,36,.33)',
+  amberTone: '#b38410',
+
+  // SVG primitives for chronograph dial + scope canvas (Phase 2+3)
+  svgGridLineMajor: 'rgba(255,255,255,.06)',
+  svgTickMinor:     'rgba(255,255,255,.18)',
+  svgTickMajor:     'rgba(255,255,255,.50)',
+  svgHandStroke:    '#ffffff',
+  svgDialRim:       'rgba(255,255,255,.14)',
+  svgOrbitTrack:    'rgba(255,255,255,.06)',
+  svgOrbitEdge:     'rgba(255,255,249,.10)',
+
+  // Tooltip surface extensions (existing bg stays)
+  tooltipBorder:  'rgba(255,255,255,.10)',
+  tooltipText:    'rgba(255,255,255,.95)',
+  tooltipTextDim: 'rgba(255,255,255,.55)',
+
   // Tier2 phase palette (opacity-attenuated primitives for waterfall segments)
   tier2Dns:      'rgba(134,239,172,.7)',   // green   — DNS resolution
   tier2Tcp:      'rgba(103,232,249,.7)',   // cyan    — TCP connect
@@ -140,12 +162,16 @@ export const tokens = {
       cyan20:     primitive.cyan20,
       cyan12:     primitive.cyan12,
       cyan06:     primitive.cyan06,
+      cyanGlow:   primitive.cyanGlow,
+      cyanTone:   primitive.cyanTone,
       pink:       primitive.pink,
       pinkBright: primitive.pinkBright,
       pink40:     primitive.pink40,
       pink20:     primitive.pink20,
       pink12:     primitive.pink12,
       pink06:     primitive.pink06,
+      pinkGlow:   primitive.pinkGlow,
+      pinkTone:   primitive.pinkTone,
       cyan25:           primitive.cyan25,
       cyanBgSubtle:     primitive.cyan15,
       cyanBorderSubtle: primitive.cyan25,
@@ -154,6 +180,9 @@ export const tokens = {
       pinkBorderSubtle: primitive.pink25,
       green:      primitive.green,
       greenGlow:  primitive.greenGlow,
+      amber:      primitive.amber,
+      amberGlow:  primitive.amberGlow,
+      amberTone:  primitive.amberTone,
     },
 
     glow: {
@@ -187,11 +216,21 @@ export const tokens = {
     },
 
     tooltip: {
-      bg: primitive.tooltipBg,
+      bg:      primitive.tooltipBg,
+      border:  primitive.tooltipBorder,
+      text:    primitive.tooltipText,
+      textDim: primitive.tooltipTextDim,
     },
 
     svg: {
       gridLine:        primitive.gridLine,
+      gridLineMajor:   primitive.svgGridLineMajor,
+      tickMinor:       primitive.svgTickMinor,
+      tickMajor:       primitive.svgTickMajor,
+      handStroke:      primitive.svgHandStroke,
+      dialRim:         primitive.svgDialRim,
+      orbitTrack:      primitive.svgOrbitTrack,
+      orbitEdge:       primitive.svgOrbitEdge,
       futureZone:      primitive.futureZone,
       nowDotCyan:      primitive.nowDotCyan,
       nowDotPink:      primitive.nowDotPink,
@@ -268,6 +307,20 @@ export const tokens = {
     caption: { size: 9,  weight: 400, opacity: 0.5,  letterSpacing: '0.04em' },
     label:   { size: 11, weight: 500, opacity: 0.58, letterSpacing: '0.06em' },
     body:    { size: 14, weight: 400, opacity: 0.94, letterSpacing: '0' },
+    // Named scale for v2 views — chip labels → overview triptych values
+    scale: {
+      xs:  '9px',    // chip labels, metadata kickers
+      sm:  '10px',   // rail url, axis labels, severity chips
+      md:  '11.5px', // rail label, segment labels
+      lg:  '14px',   // rail metric, sub-metric numbers
+      xl:  '18px',   // verdict title
+      xxl: '32px',   // overview triptych values
+    },
+    tracking: {
+      kicker: '0.18em',
+      label:  '0.08em',
+      body:   '0',
+    },
   },
 
   spacing: {
@@ -296,6 +349,12 @@ export const tokens = {
     btnHover:        200,
     domThrottle:     100,
     copiedFeedback: 2000,
+    // v2 motion primitives (dial + scope)
+    handLerp:          0.15,  // per-frame lerp factor for dial hand interpolation
+    pulseRim:           400,  // dial rim pulse on threshold cross
+    orbitPulse:        1400,  // orbit pip pulse when endpoint is over threshold
+    traceRepaint:        16,  // scope canvas repaint throttle (~60fps)
+    networkQualityThrottle: 250, // derived-store debounce for networkQualityStore
     // Legacy — timeline-data-pipeline.ts and statistics store still reference these
     progressiveDisclosure: 250,
     sonarPingFast: 300,
