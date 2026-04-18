@@ -23,11 +23,15 @@ const VALID_TERMINAL_EVENTS = new Set<TerminalEventType>([
 ]);
 
 function clampHealthThreshold(value: unknown, timeout: number): number {
-  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
-    return DEFAULT_HEALTH_THRESHOLD;
-  }
-  if (value >= timeout) return Math.max(1, timeout - 1);
-  return value;
+  const safeTimeout = Number.isFinite(timeout) && timeout > 1
+    ? timeout
+    : DEFAULT_SETTINGS.timeout;
+  const candidate =
+    typeof value === 'number' && Number.isFinite(value) && value > 0
+      ? value
+      : DEFAULT_HEALTH_THRESHOLD;
+  if (candidate >= safeTimeout) return safeTimeout - 1;
+  return candidate;
 }
 
 function sanitizeActiveView(raw: unknown): ActiveView {
@@ -184,12 +188,12 @@ function parseFocusedEndpointId(raw: unknown): string | null {
 function parseLiveOptions(raw: unknown): { split: boolean; timeRange: LiveTimeRange } {
   const defaults = { split: false, timeRange: '5m' as LiveTimeRange };
   if (raw === null || typeof raw !== 'object') return defaults;
-  const r = raw as Record<string, unknown>;
-  const timeRange = VALID_TIME_RANGES.has(r['timeRange'] as LiveTimeRange)
-    ? (r['timeRange'] as LiveTimeRange)
+  const rawOpts = raw as Record<string, unknown>;
+  const timeRange = VALID_TIME_RANGES.has(rawOpts['timeRange'] as LiveTimeRange)
+    ? (rawOpts['timeRange'] as LiveTimeRange)
     : defaults.timeRange;
   return {
-    split: typeof r['split'] === 'boolean' ? r['split'] : defaults.split,
+    split: typeof rawOpts['split'] === 'boolean' ? rawOpts['split'] : defaults.split,
     timeRange,
   };
 }
@@ -347,60 +351,69 @@ function normalizeV4(record: Record<string, unknown>): PersistedSettings | null 
   }
 }
 
+/** Parse an array of persisted endpoint entries, dropping malformed rows. */
+function parseEndpoints(raw: unknown): { url: string; enabled: boolean }[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((e): e is Record<string, unknown> => e !== null && typeof e === 'object')
+    .map((e) => ({
+      url: typeof e['url'] === 'string' ? e['url'] : '',
+      enabled: typeof e['enabled'] === 'boolean' ? e['enabled'] : true,
+    }));
+}
+
+/** Read the persisted settings object, defaulting unknown fields to DEFAULT_SETTINGS. */
+function parseV5Settings(rawSettings: Record<string, unknown>) {
+  const rawTimeout = rawSettings['timeout'];
+  const timeout =
+    typeof rawTimeout === 'number' && Number.isFinite(rawTimeout) && rawTimeout > 1
+      ? rawTimeout
+      : DEFAULT_SETTINGS.timeout;
+  const rawRegion: unknown = rawSettings['region'];
+  const region: Region | undefined = isValidRegion(rawRegion) ? rawRegion : undefined;
+
+  return {
+    timeout,
+    delay: typeof rawSettings['delay'] === 'number' ? rawSettings['delay'] : DEFAULT_SETTINGS.delay,
+    burstRounds: typeof rawSettings['burstRounds'] === 'number' ? rawSettings['burstRounds'] : DEFAULT_SETTINGS.burstRounds,
+    monitorDelay: typeof rawSettings['monitorDelay'] === 'number' ? rawSettings['monitorDelay'] : DEFAULT_SETTINGS.monitorDelay,
+    cap: typeof rawSettings['cap'] === 'number' ? rawSettings['cap'] : DEFAULT_SETTINGS.cap,
+    corsMode:
+      rawSettings['corsMode'] === 'cors' || rawSettings['corsMode'] === 'no-cors'
+        ? rawSettings['corsMode']
+        : DEFAULT_SETTINGS.corsMode,
+    healthThreshold: clampHealthThreshold(rawSettings['healthThreshold'], timeout),
+    ...(region !== undefined ? { region } : {}),
+  };
+}
+
+/** Parse the persisted UI object for a v5 payload. */
+function parseV5Ui(rawUi: Record<string, unknown>): PersistedSettings['ui'] {
+  const expandedCards = Array.isArray(rawUi['expandedCards'])
+    ? (rawUi['expandedCards'] as unknown[]).filter((x): x is string => typeof x === 'string')
+    : [];
+
+  return {
+    expandedCards,
+    activeView: sanitizeActiveView(rawUi['activeView']),
+    focusedEndpointId: parseFocusedEndpointId(rawUi['focusedEndpointId']),
+    liveOptions: parseLiveOptions(rawUi['liveOptions']),
+    terminalFilters: parseTerminalFilters(rawUi['terminalFilters']),
+  };
+}
+
+function readObjectField(record: Record<string, unknown>, key: string): Record<string, unknown> {
+  const value = record[key];
+  return value !== null && typeof value === 'object' ? (value as Record<string, unknown>) : {};
+}
+
 function normalizeV5(record: Record<string, unknown>): PersistedSettings | null {
   try {
-    const rawEndpoints = Array.isArray(record['endpoints']) ? record['endpoints'] : [];
-    const endpoints = rawEndpoints
-      .filter((e): e is Record<string, unknown> => e !== null && typeof e === 'object')
-      .map((e) => ({
-        url: typeof e['url'] === 'string' ? e['url'] : '',
-        enabled: typeof e['enabled'] === 'boolean' ? e['enabled'] : true,
-      }));
-
-    const rawSettings =
-      record['settings'] !== null && typeof record['settings'] === 'object'
-        ? (record['settings'] as Record<string, unknown>)
-        : {};
-
-    const rawRegion: unknown = rawSettings['region'];
-    const region: Region | undefined = isValidRegion(rawRegion) ? rawRegion : undefined;
-
-    const timeout = typeof rawSettings['timeout'] === 'number' ? rawSettings['timeout'] : DEFAULT_SETTINGS.timeout;
-
-    const settings = {
-      timeout,
-      delay: typeof rawSettings['delay'] === 'number' ? rawSettings['delay'] : DEFAULT_SETTINGS.delay,
-      burstRounds: typeof rawSettings['burstRounds'] === 'number' ? rawSettings['burstRounds'] : DEFAULT_SETTINGS.burstRounds,
-      monitorDelay: typeof rawSettings['monitorDelay'] === 'number' ? rawSettings['monitorDelay'] : DEFAULT_SETTINGS.monitorDelay,
-      cap: typeof rawSettings['cap'] === 'number' ? rawSettings['cap'] : DEFAULT_SETTINGS.cap,
-      corsMode:
-        rawSettings['corsMode'] === 'cors' || rawSettings['corsMode'] === 'no-cors'
-          ? rawSettings['corsMode']
-          : DEFAULT_SETTINGS.corsMode,
-      healthThreshold: clampHealthThreshold(rawSettings['healthThreshold'], timeout),
-      ...(region !== undefined ? { region } : {}),
-    };
-
-    const rawUi =
-      record['ui'] !== null && typeof record['ui'] === 'object'
-        ? (record['ui'] as Record<string, unknown>)
-        : {};
-
-    const expandedCards = Array.isArray(rawUi['expandedCards'])
-      ? (rawUi['expandedCards'] as unknown[]).filter((x): x is string => typeof x === 'string')
-      : [];
-
     return {
       version: 5,
-      endpoints,
-      settings,
-      ui: {
-        expandedCards,
-        activeView: sanitizeActiveView(rawUi['activeView']),
-        focusedEndpointId: parseFocusedEndpointId(rawUi['focusedEndpointId']),
-        liveOptions: parseLiveOptions(rawUi['liveOptions']),
-        terminalFilters: parseTerminalFilters(rawUi['terminalFilters']),
-      },
+      endpoints: parseEndpoints(record['endpoints']),
+      settings: parseV5Settings(readObjectField(record, 'settings')),
+      ui: parseV5Ui(readObjectField(record, 'ui')),
     };
   } catch {
     return null;

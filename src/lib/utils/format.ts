@@ -21,7 +21,7 @@ export function fmt(ms: number | null | undefined): string {
   if (ms < 1)     return ms.toFixed(2);
   if (ms < 10)    return ms.toFixed(1);
   if (ms < 10_000) return Math.round(ms).toLocaleString('en-US');
-  return (ms / 1000).toFixed(1) + 's';
+  return `${(ms / 1000).toFixed(1)}s`;
 }
 
 /**
@@ -37,7 +37,7 @@ export function fmtParts(ms: number | null | undefined): { num: string; unit: st
 
 /** Ratio in 0..1 → rounded integer percent with `%` suffix. */
 export function fmtPct(ratio: number): string {
-  return Math.round(ratio * 100) + '%';
+  return `${Math.round(ratio * 100)}%`;
 }
 
 /** Integer with locale thousands separator. */

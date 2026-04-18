@@ -110,12 +110,12 @@ describe('HEALTH_STYLES — every bucket has a style entry', () => {
 
   it('each style exposes color, glow, label, tone', () => {
     for (const key of ['healthy', 'degraded', 'unhealthy', 'unknown'] as const) {
-      const s = HEALTH_STYLES[key];
-      expect(typeof s.color).toBe('string');
-      expect(typeof s.glow).toBe('string');
-      expect(typeof s.label).toBe('string');
-      expect(typeof s.tone).toBe('string');
-      expect(s.label.length).toBeGreaterThan(0);
+      const style = HEALTH_STYLES[key];
+      expect(typeof style.color).toBe('string');
+      expect(typeof style.glow).toBe('string');
+      expect(typeof style.label).toBe('string');
+      expect(typeof style.tone).toBe('string');
+      expect(style.label.length).toBeGreaterThan(0);
     }
   });
 });

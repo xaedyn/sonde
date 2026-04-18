@@ -121,6 +121,17 @@ describe('persistence v4 → v5 migration', () => {
     expect(migrated.settings.healthThreshold).toBeGreaterThan(0);
   });
 
+  it('maintains threshold < timeout even when persisted timeout is tiny', () => {
+    // Regression: if timeout <= DEFAULT_HEALTH_THRESHOLD (120), the old fallback
+    // returned 120 unconditionally and violated the invariant.
+    const payload = baseV4Payload();
+    (payload['settings'] as Record<string, unknown>)['timeout'] = 80;
+    delete (payload['settings'] as Record<string, unknown>)['healthThreshold'];
+    const migrated = migrateSettings(payload) as PersistedSettings;
+    expect(migrated.settings.healthThreshold).toBeLessThan(migrated.settings.timeout);
+    expect(migrated.settings.healthThreshold).toBeGreaterThan(0);
+  });
+
   it('maintains DEFAULT_SETTINGS shape invariant', () => {
     // Guards against accidental drop of healthThreshold from defaults.
     expect(DEFAULT_SETTINGS.healthThreshold).toBe(DEFAULT_HEALTH_THRESHOLD);

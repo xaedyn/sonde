@@ -77,7 +77,7 @@ export function networkQuality(
   stats: readonly (EndpointStatistics | null | undefined)[],
   threshold: number,
 ): number | null {
-  const ready = stats.filter((s): s is EndpointStatistics => !!s && s.ready);
+  const ready = stats.filter((s): s is EndpointStatistics => s != null && s.ready);
   if (ready.length === 0) return null;
 
   let total = 0;
