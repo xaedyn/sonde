@@ -129,11 +129,17 @@ export function computeEndpointStatistics(
     }
   }
 
-  // ── Tier 2 averages ───────────────────────────────────────────────────
+  // ── Tier 2 averages + p95 ─────────────────────────────────────────────
   let tier2Averages: EndpointStatistics['tier2Averages'];
+  let tier2P95:      EndpointStatistics['tier2P95'];
   if (tier2Samples.length > 0) {
     const avg = (field: 'dnsLookup' | 'tcpConnect' | 'tlsHandshake' | 'ttfb' | 'contentTransfer') =>
       tier2Samples.reduce((sum, s) => sum + s.tier2[field], 0) / tier2Samples.length;
+
+    const p95Of = (field: 'dnsLookup' | 'tcpConnect' | 'tlsHandshake' | 'ttfb' | 'contentTransfer') => {
+      const sortedField = tier2Samples.map(s => s.tier2[field]).sort((a, b) => a - b);
+      return percentileSorted(sortedField, 95);
+    };
 
     tier2Averages = {
       dnsLookup: avg('dnsLookup'),
@@ -141,6 +147,13 @@ export function computeEndpointStatistics(
       tlsHandshake: avg('tlsHandshake'),
       ttfb: avg('ttfb'),
       contentTransfer: avg('contentTransfer'),
+    };
+    tier2P95 = {
+      dnsLookup: p95Of('dnsLookup'),
+      tcpConnect: p95Of('tcpConnect'),
+      tlsHandshake: p95Of('tlsHandshake'),
+      ttfb: p95Of('ttfb'),
+      contentTransfer: p95Of('contentTransfer'),
     };
   }
 
@@ -153,6 +166,7 @@ export function computeEndpointStatistics(
     ci95,
     connectionReuseDelta,
     tier2Averages,
+    tier2P95,
     ready,
   };
 }
@@ -230,11 +244,19 @@ export function computeEndpointStatisticsFromBuffer(
     }
   }
 
-  // ── Tier 2 averages ───────────────────────────────────────────────────
+  // ── Tier 2 averages + p95 ─────────────────────────────────────────────
   let tier2Averages: EndpointStatistics['tier2Averages'];
+  let tier2P95:      EndpointStatistics['tier2P95'];
   if (tier2Samples.length > 0) {
     const avg = (field: 'dnsLookup' | 'tcpConnect' | 'tlsHandshake' | 'ttfb' | 'contentTransfer') =>
       tier2Samples.reduce((accum, sample) => accum + (sample.tier2?.[field] ?? 0), 0) / tier2Samples.length;
+
+    const p95Of = (field: 'dnsLookup' | 'tcpConnect' | 'tlsHandshake' | 'ttfb' | 'contentTransfer') => {
+      const sortedField = tier2Samples
+        .map(s => s.tier2?.[field] ?? 0)
+        .sort((a, b) => a - b);
+      return percentileSorted(sortedField, 95);
+    };
 
     tier2Averages = {
       dnsLookup: avg('dnsLookup'),
@@ -242,6 +264,13 @@ export function computeEndpointStatisticsFromBuffer(
       tlsHandshake: avg('tlsHandshake'),
       ttfb: avg('ttfb'),
       contentTransfer: avg('contentTransfer'),
+    };
+    tier2P95 = {
+      dnsLookup: p95Of('dnsLookup'),
+      tcpConnect: p95Of('tcpConnect'),
+      tlsHandshake: p95Of('tlsHandshake'),
+      ttfb: p95Of('ttfb'),
+      contentTransfer: p95Of('contentTransfer'),
     };
   }
 
@@ -254,6 +283,7 @@ export function computeEndpointStatisticsFromBuffer(
     ci95,
     connectionReuseDelta,
     tier2Averages,
+    tier2P95,
     ready,
   };
 }

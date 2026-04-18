@@ -3,10 +3,12 @@
 // and panel visibility. No side effects; all state is local to this module.
 
 import { writable } from 'svelte/store';
-import type { UIState } from '../types';
+import type { LiveTimeRange, TerminalEventType, UIState } from '../types';
 
 const initialState = (): UIState => ({
-  activeView: 'split',
+  // 'overview' is the v2 default; v4 persisted payloads are migrated in
+  // persistence.ts so 'split'/'timeline'/'heatmap' never land here directly.
+  activeView: 'overview',
   expandedCards: new Set<string>(),
   hoverTarget: null,
   selectedTarget: null,
@@ -20,6 +22,12 @@ const initialState = (): UIState => ({
   laneHoverY: null,
   heatmapTooltip: null,
   showEndpoints: false,
+  focusedEndpointId: null,
+  liveOptions: {
+    split: false,
+    timeRange: '5m',
+  },
+  terminalFilters: new Set<TerminalEventType>(),
 });
 
 function createUiStore() {
@@ -75,6 +83,32 @@ function createUiStore() {
     },
     toggleEndpoints(): void {
       update((s) => ({ ...s, showEndpoints: !s.showEndpoints }));
+    },
+    setFocusedEndpoint(id: string | null): void {
+      update((s) => ({ ...s, focusedEndpointId: id }));
+    },
+    toggleFocusedEndpoint(id: string): void {
+      update((s) => ({
+        ...s,
+        focusedEndpointId: s.focusedEndpointId === id ? null : id,
+      }));
+    },
+    setLiveSplit(split: boolean): void {
+      update((s) => ({ ...s, liveOptions: { ...s.liveOptions, split } }));
+    },
+    setLiveTimeRange(range: LiveTimeRange): void {
+      update((s) => ({ ...s, liveOptions: { ...s.liveOptions, timeRange: range } }));
+    },
+    toggleTerminalFilter(type: TerminalEventType): void {
+      update((s) => {
+        const next = new Set(s.terminalFilters);
+        if (next.has(type)) next.delete(type);
+        else next.add(type);
+        return { ...s, terminalFilters: next };
+      });
+    },
+    clearTerminalFilters(): void {
+      update((s) => ({ ...s, terminalFilters: new Set<TerminalEventType>() }));
     },
     reset(): void {
       set(initialState());

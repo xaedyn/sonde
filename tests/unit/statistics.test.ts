@@ -202,6 +202,37 @@ describe('computeEndpointStatistics', () => {
     expect(stats.tier2Averages?.tcpConnect).toBeCloseTo(22.5, 5);
   });
 
+  it('computes tier2P95 alongside tier2Averages (nearest-rank on each phase)', () => {
+    const samples: MeasurementSample[] = Array.from({ length: 20 }, (_, i) => ({
+      round: i + 1,
+      latency: 100 + i,
+      status: 'ok' as const,
+      timestamp: 1000 + i,
+      tier2: {
+        total: 100 + i,
+        dnsLookup:   i + 1,    // 1..20
+        tcpConnect:  2 * i,    // 0..38
+        tlsHandshake: i,       // 0..19
+        ttfb:        40 + i,   // 40..59
+        contentTransfer: 5,
+      },
+    }));
+    const stats = computeEndpointStatistics('ep1', samples);
+    expect(stats.tier2P95).toBeDefined();
+    // nearest-rank p95 of 20 values → index ceil(0.95*20)-1 = 18
+    expect(stats.tier2P95?.dnsLookup).toBe(19);       // sorted[18] of 1..20
+    expect(stats.tier2P95?.tcpConnect).toBe(36);      // sorted[18] of 0,2,4,…,38
+    expect(stats.tier2P95?.tlsHandshake).toBe(18);    // sorted[18] of 0..19
+    expect(stats.tier2P95?.ttfb).toBe(58);            // sorted[18] of 40..59
+    expect(stats.tier2P95?.contentTransfer).toBe(5);  // all identical
+  });
+
+  it('omits tier2P95 when no tier2 samples exist', () => {
+    const stats = computeEndpointStatistics('ep1', makeSamples([100, 90, 80]));
+    expect(stats.tier2Averages).toBeUndefined();
+    expect(stats.tier2P95).toBeUndefined();
+  });
+
   it('includes the endpointId in the result', () => {
     const stats = computeEndpointStatistics('my-endpoint', makeSamples([50]));
     expect(stats.endpointId).toBe('my-endpoint');
