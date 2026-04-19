@@ -76,6 +76,15 @@
         {:else if activeView === 'atlas'}
           <AtlasView />
         {:else}
+          <!--
+            Fallback: overview renders here as the default. 'strata' and
+            'terminal' are still in the ActiveView union (disabled tabs in
+            ViewSwitcher, tracked by issues #50 and #51) — if either leaks
+            in via a hand-edited payload or future dev tooling, we show the
+            Overview rather than a blank stub. ViewSwitcher's disabled-state
+            guard prevents production paths from reaching this branch for
+            those two views.
+          -->
           <OverviewView />
         {/if}
       </main>

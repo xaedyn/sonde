@@ -29,7 +29,7 @@ import type { Region } from '../regional-defaults';
 
 const STORAGE_KEY = 'chronoscope_settings'; // skipcq: JS-0860 — localStorage key, not a credential
 const LEGACY_STORAGE_KEY = 'chronoscope_v2_settings'; // skipcq: JS-0860 — localStorage key, not a credential
-const CURRENT_VERSION = 7;
+export const CURRENT_VERSION = 7;
 
 const V6_OVERVIEW_MODES: ReadonlySet<OverviewMode> = new Set<OverviewMode>(['classic', 'enriched']);
 
