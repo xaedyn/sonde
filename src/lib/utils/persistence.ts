@@ -259,7 +259,7 @@ function stepV8toV9(v8: LegacyPersistedSettings): PersistedSettings {
   let activeView: ActiveView;
   if (incoming === 'atlas') {
     console.debug(
-      `[Chronoscope] v9 migration: activeView 'atlas' renamed to 'diagnose'.`,
+      "[Chronoscope] v9 migration: activeView 'atlas' renamed to 'diagnose'.",
     );
     activeView = 'diagnose';
   } else if (V9_VIEWS.has(incoming)) {
