@@ -4,6 +4,46 @@ Accumulating log of watch-items surfaced during phased delivery but deferred
 for later attention. Each entry names the phase it came from, the signal, and
 the condition under which it becomes actionable.
 
+## Phase 4 decisions
+
+- **verdict.ts reuse landed without new branches.** `AtlasView` consumes
+  `PHASE_LABELS` and the `Tier2Phase` vocabulary directly; the new
+  `phaseHypothesis()` entry point sits alongside `computeCausalVerdict`
+  in the same file without touching the existing decision tree. Single-
+  endpoint phase-dominance and network-wide causal verdict share the
+  phase vocabulary but are otherwise independent functions — the split
+  kept `computeCausalVerdict`'s 7 branches untouched.
+- **Rail is the only endpoint picker.** AtlasView empty-state (no
+  `focusedEndpointId`) directs users back to the rail rather than
+  rendering its own picker. Consistent with the Phase 1 non-negotiable
+  that the rail is the single source of endpoint selection.
+- **No spec drift.** Plan called for per-phase waterfall + P50/P95 toggle
+  + anomaly callout when a phase dominates + recent-samples strip + rail-
+  only picker + Atlas tab enabled. All shipped. The verdict card was an
+  opportunistic reuse — `phaseHypothesis()` output is surfaced as a
+  Verdict + Evidence section instead of a bespoke anomaly card.
+- **CR finding that generalized.** Pair-dominance verdicts returned
+  `verdictPhase: 'mixed'`, so consumers that did `verdictPhase === phase`
+  silently dropped the visual emphasis on both cited phases. Fixed by
+  adding `dominantPhases: readonly Tier2Phase[]` to `PhaseHypothesis`,
+  populated as `[]` / `[top]` / `[top, second]` for the three branches,
+  consumed via `includes()`. **Pattern to watch for in future verdict
+  types:** when a discriminant value collapses multiple concrete states
+  into one (`'mixed'`), pair it with an explicit set so UI emphasis
+  can key on membership rather than equality.
+- **P95 empty-state was lying.** Toggling to P95 before `tier2P95` was
+  populated emptied the view with "Awaiting tier-2 samples…" — even
+  when P50 data was right there. Branched the copy: when `mode === 'p95'`
+  and `tier2Averages` exists, surfaces "P95 phase breakdown not yet
+  available" with a hint to switch back to P50. Same rule applies to
+  any future mode-gated empty state: distinguish "no data at all" from
+  "no data in this mode."
+- **PATTERNS.md §2 + §3 honored without new entries.** Atlas motion
+  (chip hovers, bar-segment brightness) is `@media (prefers-reduced-
+  motion: reduce)` gated; the hero bar itself has no JS-driven
+  animation. `monitoredEndpointsStore` is the only endpoint source.
+  No new cross-phase rules surfaced.
+
 ## Phase 3 decisions
 
 - **SVG polylines over Canvas2D.** Spec recommended Canvas2D for
