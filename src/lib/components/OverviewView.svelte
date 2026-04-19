@@ -6,7 +6,7 @@
 <!-- The classic Overview mode was retired in v8 — see stepV7toV8 in            -->
 <!-- persistence.ts for the migration.                                          -->
 <script lang="ts">
-  import { onDestroy } from 'svelte';
+  import { onDestroy, untrack } from 'svelte';
   import { measurementStore } from '$lib/stores/measurements';
   import { statisticsStore } from '$lib/stores/statistics';
   import { settingsStore } from '$lib/stores/settings';
@@ -71,7 +71,7 @@
     return worstEp;
   });
 
-  // ── Derived data for the enriched cards ───────────────────────────────────
+  // ── Derived data for the dial / strip / feed cards ───────────────────────
   // Samples slice per endpoint, materialized once per render for the racing
   // strip sparkline. 40-sample tail is enough for the spec. Using toArray()
   // copies out of the ring buffer — acceptable at N<=20 endpoints.
@@ -182,18 +182,21 @@
   let baselineTimer: ReturnType<typeof setInterval> | null = null;
   $effect(() => {
     // Kick immediately so the first render has something to work with, then
-    // recompute every 5s.
-    recomputeBaseline();
+    // recompute every 5s. Both calls run inside `untrack` because
+    // recomputeBaseline reads `monitored` and `measurements` — without it,
+    // the effect re-runs on every measurement update, clearing and recreating
+    // the interval before its 5s fire window, defeating the cadence entirely.
+    untrack(() => recomputeBaseline());
     if (baselineTimer !== null) clearInterval(baselineTimer);
-    baselineTimer = setInterval(recomputeBaseline, BASELINE_REFRESH_MS);
+    baselineTimer = setInterval(() => untrack(() => recomputeBaseline()), BASELINE_REFRESH_MS);
   });
   onDestroy(() => {
     if (baselineTimer !== null) clearInterval(baselineTimer);
   });
 
-  // Causal verdict (Enriched). Only rows with `ready` stats feed the tree —
-  // unready endpoints haven't contributed enough samples for phase dominance
-  // to be meaningful.
+  // Causal verdict. Only rows with `ready` stats feed the tree — unready
+  // endpoints haven't contributed enough samples for phase dominance to be
+  // meaningful.
   const verdictRows: readonly VerdictRow[] = $derived.by(() => {
     const rows: VerdictRow[] = [];
     for (const ep of monitored) {
@@ -244,10 +247,9 @@
   }
 
   // Rerender clock for the event feed's relative-time labels. Ticks every
-  // second while enriched is active so labels age monotonically regardless of
-  // measurement cadence — a round-counter-driven clock would freeze "N s ago"
-  // between rounds or after lifecycle stops. The ticker is torn down when
-  // mode flips back to classic and on component destroy.
+  // second so labels age monotonically regardless of measurement cadence —
+  // a round-counter-driven clock would freeze "N s ago" between rounds or
+  // after lifecycle stops. Torn down on component destroy.
   let nowTick = $state(Date.now());
   let nowTimer: ReturnType<typeof setInterval> | null = null;
   $effect(() => {

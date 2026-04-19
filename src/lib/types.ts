@@ -293,6 +293,10 @@ export interface SharePayload {
 // ── Persistence schema ─────────────────────────────────────────────────────
 // v5 adds `healthThreshold` (settings) and `focusedEndpointId`, `liveOptions`,
 // `terminalFilters` (ui). v6 adds `settings.overviewMode` (classic | enriched).
+// v7 retires the Lanes view family (collapses 'lanes'/'timeline'/'heatmap'/
+// 'split' activeView values to 'overview'). v8 retires
+// `settings.overviewMode` — the Classic dial was dropped; Overview is a
+// single layout now.
 // Older versions migrate forward via persistence.ts. Sets serialize as arrays
 // on disk; `ui.terminalFilters` round-trips accordingly.
 export interface PersistedSettings {

@@ -116,11 +116,23 @@
   const BASELINE_R = OUTER_R - 48;
   const baselineArc = $derived.by(() => {
     if (baseline === null) return null;
-    const startAng = latToAng(baseline.p25);
-    const endAng = latToAng(baseline.p75);
+    // Defensive sanitization: a bad upstream baseline producer (or a corner
+    // case like every sample sharing a single latency value) could feed us
+    // non-finite values, an inverted p25/p75, or a degenerate p25===p75 that
+    // arcPath would render as nothing. Fix in place: clamp to [0, MAX_MS],
+    // swap if reversed, and inflate by 0.5 ms each side when collapsed so
+    // the band is always visible.
+    if (!Number.isFinite(baseline.p25) || !Number.isFinite(baseline.p75) || !Number.isFinite(baseline.median)) {
+      return null;
+    }
+    let p25 = Math.max(0, Math.min(MAX_MS, baseline.p25));
+    let p75 = Math.max(0, Math.min(MAX_MS, baseline.p75));
+    if (p25 > p75) [p25, p75] = [p75, p25];
+    if (p25 === p75) { p25 = Math.max(0, p25 - 0.5); p75 = Math.min(MAX_MS, p75 + 0.5); }
+    const median = Math.max(0, Math.min(MAX_MS, baseline.median));
     return {
-      d: arcPath(CX, CY, BASELINE_R, startAng, endAng),
-      medianAng: latToAng(baseline.median),
+      d: arcPath(CX, CY, BASELINE_R, latToAng(p25), latToAng(p75)),
+      medianAng: latToAng(median),
     };
   });
   // Small tick at the baseline's median angle, 6px long radially inward.
@@ -148,6 +160,13 @@
   const qualityTraceD = $derived.by(() => {
     if (!scoreHistory || scoreHistory.length < TRACE_MIN_POINTS) return null;
     const n = scoreHistory.length;
+    // Defensive: Math.max(0, Math.min(100, NaN)) === NaN, which would render
+    // an invalid `d` attribute. Skip the whole trace if any sample is
+    // non-finite — the upstream producer in OverviewView only pushes when
+    // `score !== null`, so this is belt-and-suspenders.
+    for (let i = 0; i < n; i++) {
+      if (!Number.isFinite(scoreHistory[i])) return null;
+    }
     let d = '';
     for (let i = 0; i < n; i++) {
       const x = TRACE_X + (n === 1 ? TRACE_W / 2 : (i / (n - 1)) * TRACE_W);

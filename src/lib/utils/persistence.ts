@@ -290,19 +290,26 @@ function stepV6toV7(v6: LegacyPersistedSettings): LegacyPersistedSettings {
 // otherwise defaults to 'classic'. Any garbage type coerces to 'classic' so
 // the app never reads an invalid mode.
 function stepV5toV6(v5: LegacyPersistedSettings, rawRecord: Record<string, unknown>): LegacyPersistedSettings {
+  // Only seed overviewMode when the raw payload actually carried it.
+  // Pre-v6 payloads (v1–v4) never had this field — synthesizing a default
+  // would later cause stepV7toV8 to emit a "classic retired" breadcrumb for
+  // users who never saw the Classic dial in the first place. Genuine v5/v6
+  // payloads with a forward-written or persisted mode still flow through.
   const rawSettings =
     rawRecord['settings'] !== null && typeof rawRecord['settings'] === 'object'
       ? (rawRecord['settings'] as Record<string, unknown>)
       : {};
   const raw = rawSettings['overviewMode'];
-  const overviewMode: LegacyOverviewMode =
+  const persistedMode: LegacyOverviewMode | undefined =
     typeof raw === 'string' && V6_OVERVIEW_MODES.has(raw)
       ? (raw as LegacyOverviewMode)
-      : 'classic';
+      : undefined;
   return {
     ...v5,
     version: 6,
-    settings: { ...v5.settings, overviewMode },
+    settings: persistedMode === undefined
+      ? v5.settings
+      : { ...v5.settings, overviewMode: persistedMode },
   };
 }
 
