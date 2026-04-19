@@ -101,6 +101,15 @@
   $effect(() => {
     const target = targetAng;
     const lerp = tokens.timing.handLerp;
+    // Reduced-motion users get the target snap — no smooth lerp. Covers the
+    // third motion surface alongside the CSS rim pulse and the SVG <animate>
+    // pip ring.
+    if (prefersReducedMotion) {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      rafId = null;
+      displayAng = target;
+      return;
+    }
     const stepFn = (): void => {
       const diff = target - displayAng;
       if (Math.abs(diff) < 0.1) {
