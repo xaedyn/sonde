@@ -315,7 +315,15 @@ describe('v2 foundation tokens (Phase 0)', () => {
   it('exposes v2 motion primitives', () => {
     expect(tokens.timing.handLerp).toBe(0.15);
     expect(tokens.timing.pulseRim).toBe(400);
+    expect(tokens.timing.pulseDialGlow).toBe(900);
     expect(tokens.timing.orbitPulse).toBe(1400);
     expect(tokens.timing.traceRepaint).toBe(16);
+  });
+
+  it('pulseDialGlow > pulseRim so the glow completes after the rim-color swap', () => {
+    // Invariant: the outer drop-shadow glow must visibly outlast the inner
+    // rim stroke transition. If they ever invert, the rim would snap back
+    // while the glow is still expanding — visually jarring.
+    expect(tokens.timing.pulseDialGlow).toBeGreaterThan(tokens.timing.pulseRim);
   });
 });

@@ -8,17 +8,30 @@ import { endpointStore } from './endpoints';
 import { statisticsStore } from './statistics';
 import { settingsStore } from './settings';
 import { networkQuality } from '../utils/classify';
+import type { Endpoint } from '../types';
 
 /**
- * Aggregate 0–100 score across all enabled endpoints — null until at least one
+ * Endpoints currently being measured — i.e. `enabled === true`. Cross-phase
+ * invariant: any user-facing aggregate (score, dial median, dial orbit ring,
+ * triptych counts, racing-strip rows, event derivation, baseline window…) MUST
+ * derive from this set, not from the raw `endpointStore`. The raw store is
+ * still appropriate for chrome that explicitly lists every endpoint regardless
+ * of status (e.g. the EndpointRail). See PATTERNS.md §3.
+ */
+export const monitoredEndpointsStore: Readable<readonly Endpoint[]> = derived(
+  endpointStore,
+  ($endpoints) => $endpoints.filter((ep) => ep.enabled),
+);
+
+/**
+ * Aggregate 0–100 score across monitored endpoints — null until at least one
  * endpoint's statistics are `ready`. Subscribed by Topbar status and the
  * chronograph dial's main hand.
  */
 export const networkQualityStore: Readable<number | null> = derived(
-  [endpointStore, statisticsStore, settingsStore],
-  ([$endpoints, $stats, $settings]) => {
-    const readyStats = $endpoints
-      .filter((e) => e.enabled)
+  [monitoredEndpointsStore, statisticsStore, settingsStore],
+  ([$monitored, $stats, $settings]) => {
+    const readyStats = $monitored
       .map((e) => $stats[e.id])
       .filter((s) => s !== undefined);
     return networkQuality(readyStats, $settings.healthThreshold);

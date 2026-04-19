@@ -89,6 +89,58 @@ export function networkQuality(
   return Math.round(total / ready.length);
 }
 
+// ─── Verdict vs networkLevel — DELIBERATE ASYMMETRY ────────────────────────
+// The two classifiers below intentionally bucket the same score differently:
+//
+//   overviewVerdict (3 buckets)  answers  "how is the user's experience?"
+//   networkLevel    (4 buckets)  answers  "what alerting action is warranted?"
+//
+// They CAN disagree at boundaries — e.g. score 80 yields verdict='healthy'
+// (the dial reads "Healthy") while networkLevel='warning' (the topbar pill
+// reads "WARNING"). That is by design: the dial is an at-a-glance human
+// summary that compresses warning + early degraded into one bucket; the pill
+// is a live alerting indicator that needs the extra granularity to
+// distinguish "watch this" from "acknowledge this".
+//
+// Do not unify the two without an explicit product call. If you add a third
+// classifier (e.g. routing, paging), document its bucketing rationale here
+// alongside these two.
+//
+export type OverviewVerdict = 'unknown' | 'healthy' | 'degraded' | 'unhealthy';
+
+export interface VerdictStyle {
+  readonly color:  string;
+  readonly glow:   string;
+  readonly label:  string;
+  readonly kicker: string;
+}
+
+/**
+ * Coarse 3-bucket label for the Overview dial and diagnosis strip. The topbar
+ * status pill uses `networkLevel()` for 4-bucket severity; this is intentionally
+ * coarser because the user-facing verdict should compress to "everything's fine
+ * / something's off / things are bad" without the warning/degraded split the
+ * pill uses for alerting.
+ *
+ *   null    → unknown   (Awaiting samples)
+ *   ≥ 80    → healthy
+ *   ≥ 50    → degraded
+ *   <  50   → unhealthy
+ */
+export function overviewVerdict(score: number | null): OverviewVerdict {
+  if (score === null) return 'unknown';
+  if (score >= 80) return 'healthy';
+  if (score >= 50) return 'degraded';
+  return 'unhealthy';
+}
+
+export const VERDICT_STYLES: Record<OverviewVerdict, VerdictStyle> = {
+  unknown:   { color: 'var(--t4)',           glow: 'transparent',              label: 'Awaiting samples', kicker: '···' },
+  healthy:   { color: 'var(--accent-cyan)',  glow: 'var(--accent-cyan-glow)',  label: 'Healthy',          kicker: 'HEALTHY' },
+  degraded:  { color: 'var(--accent-amber)', glow: 'var(--accent-amber-glow)', label: 'Degraded',         kicker: 'DEGRADED' },
+  unhealthy: { color: 'var(--accent-pink)',  glow: 'var(--accent-pink-glow)',  label: 'Unhealthy',        kicker: 'CRITICAL' },
+};
+
 export type NetworkLevel = 'unknown' | 'healthy' | 'warning' | 'degraded' | 'critical';
 
 /**

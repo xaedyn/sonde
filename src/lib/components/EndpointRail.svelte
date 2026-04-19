@@ -50,7 +50,7 @@
 >
   <div class="rail-header">
     <span class="rail-title">Endpoints</span>
-    <span class="rail-count" aria-label="{endpoints.length} endpoints monitored">{endpoints.length}</span>
+    <span class="rail-count" aria-label="{endpoints.length} {endpoints.length === 1 ? 'endpoint' : 'endpoints'} listed">{endpoints.length}</span>
   </div>
 
   <div class="rail-list">

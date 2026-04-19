@@ -3,8 +3,10 @@ import {
   classify,
   networkQuality,
   networkLevel,
+  overviewVerdict,
   HEALTH_STYLES,
   LEVEL_STYLES,
+  VERDICT_STYLES,
 } from '../../src/lib/utils/classify';
 import type { EndpointStatistics } from '../../src/lib/types';
 
@@ -145,5 +147,38 @@ describe('LEVEL_STYLES', () => {
   });
   it('keeps the "unknown" label distinguishable for screen readers', () => {
     expect(LEVEL_STYLES.unknown.label).toBe('No data');
+  });
+});
+
+describe('overviewVerdict()', () => {
+  it('returns "unknown" for null score', () => {
+    expect(overviewVerdict(null)).toBe('unknown');
+  });
+  it('returns "healthy" at 80 and above', () => {
+    expect(overviewVerdict(100)).toBe('healthy');
+    expect(overviewVerdict(80)).toBe('healthy');
+  });
+  it('returns "degraded" between 50 and 79', () => {
+    expect(overviewVerdict(79)).toBe('degraded');
+    expect(overviewVerdict(50)).toBe('degraded');
+  });
+  it('returns "unhealthy" below 50', () => {
+    expect(overviewVerdict(49)).toBe('unhealthy');
+    expect(overviewVerdict(0)).toBe('unhealthy');
+  });
+});
+
+describe('VERDICT_STYLES', () => {
+  it('defines an entry for every verdict including kicker text', () => {
+    for (const v of ['unknown', 'healthy', 'degraded', 'unhealthy'] as const) {
+      expect(VERDICT_STYLES[v].color).toBeTruthy();
+      expect(VERDICT_STYLES[v].label).toBeTruthy();
+      expect(VERDICT_STYLES[v].kicker).toBeTruthy();
+    }
+  });
+  it('uses CSS custom properties rather than raw hex', () => {
+    for (const v of ['healthy', 'degraded', 'unhealthy'] as const) {
+      expect(VERDICT_STYLES[v].color).toMatch(/^var\(--/);
+    }
   });
 });

@@ -393,10 +393,11 @@ export const tokens = {
     loadingRingDuration:  1800,
 
     // v2 motion primitives.
-    handLerp:     0.15,   // dial hand smoothing factor (per-frame)
-    pulseRim:      400,   // ms — dial rim pulse on threshold cross
-    orbitPulse:   1400,   // ms — orbit pip pulse when over threshold
-    traceRepaint:   16,   // ms — scope canvas repaint throttle
+    handLerp:        0.15,   // dial hand smoothing factor (per-frame)
+    pulseRim:         400,   // ms — inner-rim stroke color swap on threshold cross
+    pulseDialGlow:    900,   // ms — outer drop-shadow flash window; shared by CSS keyframe duration and JS pulse-window timer so the two can't drift
+    orbitPulse:      1400,   // ms — orbit pip radius pulse when over threshold
+    traceRepaint:      16,   // ms — scope canvas repaint throttle
   },
 
   easing: {

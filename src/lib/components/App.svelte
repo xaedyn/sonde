@@ -112,15 +112,27 @@
     root.style.setProperty('--tooltip-text',         tokens.color.tooltip.text);
     root.style.setProperty('--tooltip-text-dim',     tokens.color.tooltip.textDim);
 
+    // v2 SVG primitives (dial, orbit ring, scope)
+    root.style.setProperty('--svg-grid-cyan',  tokens.color.svg.gridLineCyan);
+    root.style.setProperty('--svg-grid-major', tokens.color.svg.gridLineMajor);
+    root.style.setProperty('--svg-tick-minor', tokens.color.svg.tickMinor);
+    root.style.setProperty('--svg-tick-major', tokens.color.svg.tickMajor);
+    root.style.setProperty('--svg-hand-stroke', tokens.color.svg.handStroke);
+    root.style.setProperty('--svg-dial-rim',   tokens.color.svg.dialRim);
+    root.style.setProperty('--svg-orbit-track', tokens.color.svg.orbitTrack);
+    root.style.setProperty('--svg-orbit-edge', tokens.color.svg.orbitEdge);
+    root.style.setProperty('--svg-threshold',  tokens.color.svg.thresholdStroke);
+
     // v2 rail surfaces
     root.style.setProperty('--glass-bg-rail-hover',    tokens.color.glass.bgRailHover);
     root.style.setProperty('--glass-bg-rail-selected', tokens.color.glass.bgRailSelected);
 
     // v2 motion primitives
-    root.style.setProperty('--timing-hand-lerp',     String(tokens.timing.handLerp));
-    root.style.setProperty('--timing-pulse-rim',     `${tokens.timing.pulseRim}ms`);
-    root.style.setProperty('--timing-orbit-pulse',   `${tokens.timing.orbitPulse}ms`);
-    root.style.setProperty('--timing-trace-repaint', `${tokens.timing.traceRepaint}ms`);
+    root.style.setProperty('--timing-hand-lerp',        String(tokens.timing.handLerp));
+    root.style.setProperty('--timing-pulse-rim',        `${tokens.timing.pulseRim}ms`);
+    root.style.setProperty('--timing-pulse-dial-glow',  `${tokens.timing.pulseDialGlow}ms`);
+    root.style.setProperty('--timing-orbit-pulse',      `${tokens.timing.orbitPulse}ms`);
+    root.style.setProperty('--timing-trace-repaint',    `${tokens.timing.traceRepaint}ms`);
 
     // Legacy properties (Settings/Share drawers not yet redesigned)
     root.style.setProperty('--surface-raised',   tokens.color.surface.raised);

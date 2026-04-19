@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { get } from 'svelte/store';
-import { networkQualityStore } from '../../src/lib/stores/derived';
+import { networkQualityStore, monitoredEndpointsStore } from '../../src/lib/stores/derived';
 import { endpointStore } from '../../src/lib/stores/endpoints';
 import { measurementStore } from '../../src/lib/stores/measurements';
 import { settingsStore } from '../../src/lib/stores/settings';
@@ -52,5 +52,43 @@ describe('networkQualityStore', () => {
     // Raise threshold so p50 falls into the healthy half.
     settingsStore.update((s) => ({ ...s, healthThreshold: 250 }));
     expect(get(networkQualityStore)).toBe(100);
+  });
+});
+
+describe('monitoredEndpointsStore', () => {
+  beforeEach(() => {
+    endpointStore.setEndpoints([]);
+    measurementStore.reset();
+    settingsStore.set({ ...DEFAULT_SETTINGS });
+  });
+
+  it('is empty when the endpoint store is empty', () => {
+    expect(get(monitoredEndpointsStore)).toEqual([]);
+  });
+
+  it('passes through enabled endpoints in declaration order', () => {
+    const a = endpointStore.addEndpoint('https://a.example', 'a');
+    const b = endpointStore.addEndpoint('https://b.example', 'b');
+    endpointStore.updateEndpoint(a, { enabled: true });
+    endpointStore.updateEndpoint(b, { enabled: true });
+    const result = get(monitoredEndpointsStore);
+    expect(result.map((e) => e.id)).toEqual([a, b]);
+  });
+
+  it('excludes disabled endpoints — the cross-phase invariant', () => {
+    const on  = endpointStore.addEndpoint('https://on.example',  'on');
+    const off = endpointStore.addEndpoint('https://off.example', 'off');
+    endpointStore.updateEndpoint(on,  { enabled: true });
+    endpointStore.updateEndpoint(off, { enabled: false });
+    const result = get(monitoredEndpointsStore);
+    expect(result.map((e) => e.id)).toEqual([on]);
+  });
+
+  it('reacts when an endpoint flips enabled→disabled', () => {
+    const id = endpointStore.addEndpoint('https://x.example', 'x');
+    endpointStore.updateEndpoint(id, { enabled: true });
+    expect(get(monitoredEndpointsStore)).toHaveLength(1);
+    endpointStore.updateEndpoint(id, { enabled: false });
+    expect(get(monitoredEndpointsStore)).toHaveLength(0);
   });
 });
