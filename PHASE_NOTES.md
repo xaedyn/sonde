@@ -4,6 +4,40 @@ Accumulating log of watch-items surfaced during phased delivery but deferred
 for later attention. Each entry names the phase it came from, the signal, and
 the condition under which it becomes actionable.
 
+## Phase 2 decisions
+
+- **Classic Overview only.** Phase 2 ships the minimal chronograph dial + diagnosis
+  strip + metrics triptych. Phase 2.5 layers on the Enriched additions (baseline
+  arc, 60s quality trace, racing strip, event feed, breathing chrome, within-band
+  label) — gated by an `overviewMode: 'classic' | 'enriched'` setting so both
+  dials render from the same data.
+- **Verdict vs networkLevel asymmetry** (3-bucket dial label vs 4-bucket topbar
+  pill) is deliberate — documented at the call site in `src/lib/utils/classify.ts`
+  and formalized as a cross-phase pattern in `PATTERNS.md`. Do not unify without
+  a product call.
+- **Drill destination currently `'lanes'`.** `OverviewView` `handleDrill` and
+  `EndpointRail` `handleDoubleClick`/`handleKeydown` all route focus-change + view
+  switch to `'lanes'` because Atlas isn't built yet. Swap to `'atlas'` in Phase 4;
+  comments flag the TODO in both files.
+- **Three motion surfaces gated on prefers-reduced-motion.** The chronograph dial
+  has CSS rim pulse, SVG `<animate>` pip ring, and rAF-driven hand lerp — all
+  gated via a single `prefersReducedMotion` boolean driven by a live `matchMedia`
+  listener. Formalized as PATTERNS.md §2.
+- **`monitoredEndpointsStore` is now the only entry point for user-facing
+  aggregates.** Added to `src/lib/stores/derived.ts` in the fix commit during
+  code review; `networkQualityStore` refactored to consume it so the enabled-only
+  invariant lives in one place. Any Phase 2.5+ derivation feeding a displayed
+  metric must iterate this store, not the raw `endpointStore`. Formalized as
+  PATTERNS.md §3.
+- **PAUSED badge is lifecycle-scoped** — shows only for `stopped`/`completed`,
+  never `idle` or `starting`. Prop on `ChronographDial` is `paused: boolean`,
+  computed in `OverviewView`.
+- **PATTERNS.md added at repo root** (`7554cd7`). Bootstrapped with three rules
+  generalizing out of the CR review on PR #46: merge `$effect`s that share
+  writable state, gate every motion surface on `prefers-reduced-motion`, route
+  user-facing aggregates through `monitoredEndpointsStore`. Future adversarial
+  self-review passes on MEDIUM/HIGH-risk PRs consult it as a checklist.
+
 ## Phase 1 decisions
 
 - **Lanes stayed enabled** in `ViewSwitcher` (only 4 of 5 non-Overview tabs
