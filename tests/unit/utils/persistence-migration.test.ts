@@ -13,8 +13,8 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('migrateSettings — full chain through v8', () => {
-  it('v3 → v8: region from detectRegion(), healthThreshold default, overviewMode dropped', () => {
+describe('migrateSettings — full chain through v9', () => {
+  it('v3 → v9: region from detectRegion(), healthThreshold default, overviewMode dropped', () => {
     const v3 = {
       version: 3,
       endpoints: [{ url: 'https://example.com', enabled: true }],
@@ -31,7 +31,7 @@ describe('migrateSettings — full chain through v8', () => {
     expect(result?.ui.activeView).toBe('overview');
   });
 
-  it('v4 → v8 (four hops): preserves region, seeds healthThreshold, drops overviewMode', () => {
+  it('v4 → v9 (five hops): preserves region, seeds healthThreshold, drops overviewMode', () => {
     const v4 = {
       version: 4,
       endpoints: [{ url: 'https://example.com', enabled: true }],
@@ -45,7 +45,7 @@ describe('migrateSettings — full chain through v8', () => {
     expect('overviewMode' in (result?.settings ?? {})).toBe(false);
   });
 
-  it('v4 payload with invalid region string strips the field on the way to v8', () => {
+  it('v4 payload with invalid region string strips the field on the way to v9', () => {
     const v4 = {
       version: 4,
       endpoints: [],
@@ -68,7 +68,7 @@ describe('migrateSettings — full chain through v8', () => {
     expect(result?.settings.region).toBeUndefined();
   });
 
-  it('v5 → v8 (three hops): preserves modern v5 fields, drops overviewMode', () => {
+  it('v5 → v9 (four hops): preserves modern v5 fields, drops overviewMode', () => {
     const v5 = {
       version: 5,
       endpoints: [{ url: 'https://example.com', enabled: true }],
@@ -96,7 +96,7 @@ describe('migrateSettings — full chain through v8', () => {
     expect(result?.ui.expandedCards).toEqual(['a']);
   });
 
-  it('v2 → v8 (chain): old delay becomes monitorDelay, region from detectRegion()', () => {
+  it('v2 → v9 (chain): old delay becomes monitorDelay, region from detectRegion()', () => {
     const v2 = {
       version: 2,
       endpoints: [{ url: 'https://example.com', enabled: true }],
@@ -111,7 +111,7 @@ describe('migrateSettings — full chain through v8', () => {
     expect('overviewMode' in (result?.settings ?? {})).toBe(false);
   });
 
-  it('v1 → v8: minimal payload inflates with full defaults', () => {
+  it('v1 → v9: minimal payload inflates with full defaults', () => {
     const v1 = {
       version: 1,
       endpoints: [{ url: 'https://example.com' }],
@@ -139,7 +139,7 @@ describe('migrateSettings — full chain through v8', () => {
 // The Lanes family was retired at stepV6toV7. These assertions verify that a
 // returning Lanes user lands on Overview regardless of how deep the chain is.
 describe('migrateSettings — Phase 7 v6→v7 hop coverage', () => {
-  it('v4 → v8 (four hops, activeView=split): collapses Lanes alias to overview', () => {
+  it('v4 → v9 (five hops, activeView=split): collapses Lanes alias to overview', () => {
     const v4 = {
       version: 4,
       endpoints: [{ url: 'https://example.com', enabled: true }],
@@ -148,7 +148,7 @@ describe('migrateSettings — Phase 7 v6→v7 hop coverage', () => {
     };
     const result = migrateSettings(v4);
     expect(result?.version).toBe(9);
-    // v4's 'split' → v5's 'lanes' → v7's 'overview' → v8 still 'overview'.
+    // v4's 'split' → v5's 'lanes' → v7's 'overview' → v9 still 'overview'.
     expect(result?.ui.activeView).toBe('overview');
     expect(result?.settings.region).toBe('north-america');
     expect(result?.settings.healthThreshold).toBe(120);
@@ -156,7 +156,7 @@ describe('migrateSettings — Phase 7 v6→v7 hop coverage', () => {
     expect(result?.ui.expandedCards).toEqual(['card-a']);
   });
 
-  it('v5 → v8 (three hops, activeView=lanes): collapses Lanes to overview', () => {
+  it('v5 → v9 (four hops, activeView=lanes): collapses Lanes to overview', () => {
     const v5 = {
       version: 5,
       endpoints: [{ url: 'https://example.com', enabled: true }],
@@ -182,7 +182,7 @@ describe('migrateSettings — Phase 7 v6→v7 hop coverage', () => {
     expect(result?.ui.liveOptions).toEqual({ split: false, timeRange: '1m' });
   });
 
-  it('v5 → v8 preserves non-Lanes activeView (live stays live)', () => {
+  it('v5 → v9 preserves non-Lanes activeView (live stays live)', () => {
     const v5 = {
       version: 5,
       endpoints: [],
@@ -194,7 +194,7 @@ describe('migrateSettings — Phase 7 v6→v7 hop coverage', () => {
     expect(result?.ui.activeView).toBe('live');
   });
 
-  it('v6 → v8 (two hops, activeView=lanes): collapses Lanes to overview', () => {
+  it('v6 → v9 (three hops, activeView=lanes): collapses Lanes to overview', () => {
     const v6 = {
       version: 6,
       endpoints: [{ url: 'https://example.com', enabled: true }],
@@ -222,7 +222,7 @@ describe('migrateSettings — Phase 7 v6→v7 hop coverage', () => {
     expect(result?.ui.terminalFilters).toEqual(['timeout']);
   });
 
-  it('v6 → v8: deprecated timeline/heatmap/split also collapse (not just "lanes")', () => {
+  it('v6 → v9: deprecated timeline/heatmap/split also collapse (not just "lanes")', () => {
     for (const view of ['timeline', 'heatmap', 'split'] as const) {
       const v6 = {
         version: 6,
@@ -253,7 +253,7 @@ describe('migrateSettings — Phase 7 v6→v7 hop coverage', () => {
     }
   });
 
-  it('v6 → v8: modern Overview payload does NOT log the Lanes retirement breadcrumb', () => {
+  it('v6 → v9: modern Overview payload does NOT log the Lanes retirement breadcrumb', () => {
     const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => undefined);
     try {
       const v6 = {
@@ -280,7 +280,7 @@ describe('migrateSettings — Phase 7 v6→v7 hop coverage', () => {
 // pass-through shape. Classic dial retired; there's only one Overview layout
 // now, so the toggle was removed from Settings.
 describe('migrateSettings — v7→v8 hop coverage', () => {
-  it('v7 → v8 (one hop): drops overviewMode, preserves everything else', () => {
+  it('v7 → v9 (two hops): drops overviewMode, preserves everything else', () => {
     const v7 = {
       version: 7,
       endpoints: [{ url: 'https://example.com', enabled: true }],

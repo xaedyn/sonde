@@ -161,7 +161,7 @@ export interface EndpointStatistics {
     contentTransfer: number;
   };
   // Per-phase p95 — fed by the same cadence as tier2Averages. Needed for
-  // Atlas view's P50/P95 toggle. Optional to mirror tier2Averages semantics
+  // Diagnose view's P50/P95 toggle. Optional to mirror tier2Averages semantics
   // (absent when no tier-2 samples have been captured yet).
   readonly tier2P95?: {
     dnsLookup: number;

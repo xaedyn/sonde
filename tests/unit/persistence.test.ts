@@ -20,7 +20,7 @@ describe('persistence', () => {
     expect(loadPersistedSettings()).toBeNull();
   });
 
-  it('round-trips v3 settings into current v8 shape', () => {
+  it('round-trips v3 settings into current v9 shape', () => {
     const settings = {
       version: 3,
       endpoints: [{ url: 'https://example.com', enabled: true }],
@@ -58,7 +58,7 @@ describe('persistence', () => {
     expect(localStorageMock.getItem('chronoscope_settings')).not.toBeNull();
   });
 
-  it('migrates v1 data all the way to v8', () => {
+  it('migrates v1 data all the way to v9', () => {
     const v1Data = { version: 1, endpoints: [{ url: 'https://example.com' }] };
     const migrated = migrateSettings(v1Data);
     expect(migrated?.version).toBe(9);
@@ -69,7 +69,7 @@ describe('persistence', () => {
     expect(migrated?.ui.activeView).toBe('overview');
   });
 
-  it('migrates v2 data to v8 with old delay as monitorDelay', () => {
+  it('migrates v2 data to v9 with old delay as monitorDelay', () => {
     const v2Data = {
       version: 2,
       endpoints: [{ url: 'https://example.com', enabled: true }],
@@ -82,11 +82,11 @@ describe('persistence', () => {
     expect(migrated?.settings.burstRounds).toBe(50);
     expect(migrated?.settings.delay).toBe(0);
     expect(migrated?.settings.healthThreshold).toBe(120);
-    // v2 'split' → v5 'lanes' → v7 'overview' → v8 still 'overview'.
+    // v2 'split' → v5 'lanes' → v7 'overview' → v9 still 'overview'.
     expect(migrated?.ui.activeView).toBe('overview');
   });
 
-  describe('v4 → v5 → v6 → v7 → v8 migration (chain)', () => {
+  describe('v4 → v9 migration (chain)', () => {
     it('seeds healthThreshold default on a real v4 payload', () => {
       const v4: unknown = {
         version: 4,
@@ -159,7 +159,7 @@ describe('persistence', () => {
     });
   });
 
-  describe('v5 → v8 migration', () => {
+  describe('v5 → v9 migration', () => {
     it('preserves modern v5 fields and strips overviewMode at v8', () => {
       const v5: unknown = {
         version: 5,

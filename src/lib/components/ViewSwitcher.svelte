@@ -1,8 +1,9 @@
 <!-- src/lib/components/ViewSwitcher.svelte -->
 <!-- Five-tab view picker. Sits below the topbar, above the main content area. -->
-<!-- Overview / Live / Atlas are shipped; Strata / Terminal stay               -->
+<!-- Overview / Live / Diagnose are shipped; Strata / Terminal stay            -->
 <!-- disabled-with-tooltip until their prototypes land (issues #50, #51).      -->
-<!-- The Lanes tab was retired in Phase 7.                                     -->
+<!-- The Lanes tab was retired in Phase 7. Atlas was renamed to Diagnose at    -->
+<!-- v9 to align with the v2 prototype vocabulary.                             -->
 <script lang="ts">
   import { uiStore } from '$lib/stores/ui';
   import type { ActiveView } from '$lib/types';

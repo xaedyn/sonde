@@ -621,8 +621,10 @@ function normalizeV8(record: Record<string, unknown>): LegacyPersistedSettings |
 function normalizeV9(record: Record<string, unknown>): PersistedSettings | null {
   try {
     const rawUi = asRecord(record['ui']) ?? {};
-    const view = readActiveView(rawUi, V9_VIEWS);
-    const activeView: ActiveView = V9_VIEWS.has(view) ? (view as ActiveView) : 'overview';
+    // readActiveView returns either a value in V9_VIEWS or the literal
+    // 'overview' (also in V9_VIEWS), so the result is always in the union —
+    // the `as ActiveView` cast carries the narrowing TS can't prove.
+    const activeView = readActiveView(rawUi, V9_VIEWS) as ActiveView;
     return {
       version: 9,
       endpoints: readEndpointsField(record),
