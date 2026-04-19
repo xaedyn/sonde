@@ -4,6 +4,57 @@ Accumulating log of watch-items surfaced during phased delivery but deferred
 for later attention. Each entry names the phase it came from, the signal, and
 the condition under which it becomes actionable.
 
+## Phase 7 decisions
+
+- **Migration hops all green before any deletion landed.** Non-negotiable
+  honored: v4→v7 (three hops), v5→v7, v6→v7, v7 pass-through, plus
+  stray-Lanes-on-v7 coerce, debug-log fires for Lanes-family input,
+  no log for modern input, and an explicit assertion that hypothetical
+  Lanes-era Settings fields (`timelineZoom`, `heatmapResolution`,
+  `laneDensity`) are structurally dropped by the `readSettingsField`
+  allowlist. 18/18 migration tests pass; first deletion commit was layered
+  on top of that green baseline.
+- **`LegacyActiveView` + `LegacyPersistedSettings` intermediate types.**
+  Kept legacy view strings contained to the migration chain so the public
+  `ActiveView` union could narrow cleanly to
+  `overview | live | atlas | strata | terminal` without casts leaking to
+  consumers. Only `stepV6toV7` crosses from legacy → narrow.
+- **Debug-log policy.** `stepV6toV7` logs at `console.debug` when a
+  Lanes-family view collapses to 'overview'. Quiet for modern payloads
+  (no false breadcrumbs). Chose debug level over warn because this is an
+  expected one-time transition per user, not an error.
+- **CR finding: `CURRENT_VERSION` was hardcoded in App.svelte's fallback
+  payload writer.** `App.svelte:177` had `version: 6` while
+  `persistence.ts` moved `CURRENT_VERSION` to 7 — fresh installs would
+  have written a legacy schema needing re-migration. Fixed by exporting
+  `CURRENT_VERSION` from `persistence.ts` and referencing it at the call
+  site. **Pattern generalized (but not yet added to PATTERNS.md):** when
+  a schema version bump lands, grep `version:\s*<N>` across `src/` before
+  merging — any non-migration-code hit is a bug. Could formalize as
+  PATTERNS.md §4 on the next phase that bumps the schema.
+- **Bundle delta (net subtraction, non-negotiable satisfied):**
+  - JS: 76.32 KB → 62.32 KB gzip — **−14.00 KB** (−45.97 KB raw)
+  - CSS: 13.24 KB → 10.17 KB gzip — **−3.07 KB** (−17.68 KB raw)
+  - Combined: **−17.07 KB gzip** (−63.65 KB raw)
+  - 21 files removed (−7,592 LoC); 567/567 tests, typecheck clean, lint clean.
+- **No README to update.** The repo has no top-level README.md; only
+  `PATTERNS.md` and `PHASE_NOTES.md`. Neither referenced Lanes in
+  user-facing text (Phase 7 updated the comment banners inside retired
+  files, not documentation). `handoff/` docs are historical design
+  records left intact.
+- **Deferred CR nitpicks.** `tokens.ts` banner + `tokens.lane` namespace
+  rename (touches 5 consumer files) left for a follow-up cleanup PR;
+  `color-mix-fallbacks.test.ts` regex robustness also deferred. `Layout.svelte`
+  `strata`/`terminal` fallthrough retained as defense-in-depth with an
+  intent-explaining comment — ViewSwitcher's disabled guard is the
+  primary control; the fallthrough is the backstop.
+- **`tokens.lane` rename is the biggest follow-up watch-item** —
+  post-Phase-7 the group holds only `chartWindow` + shell-chrome
+  (topbar/rail/x-axis/footer heights), so the name is misleading. When a
+  future cleanup PR lands the rename, migrate consumers in `App.svelte`,
+  `LiveView.svelte`, `ScopeCanvas.svelte`, `FooterBar.svelte`, and this
+  file in one commit.
+
 ## Phase 4 decisions
 
 - **verdict.ts reuse landed without new branches.** `AtlasView` consumes
