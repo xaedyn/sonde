@@ -15,6 +15,7 @@
   import ViewSwitcher from './ViewSwitcher.svelte';
   import OverviewView from './OverviewView.svelte';
   import LiveView from './LiveView.svelte';
+  import AtlasView from './AtlasView.svelte';
   import LanesView from './LanesView.svelte';
   import XAxisBar from './XAxisBar.svelte';
   import FooterBar from './FooterBar.svelte';
@@ -108,6 +109,8 @@
           </div>
         {:else if activeView === 'live'}
           <LiveView />
+        {:else if activeView === 'atlas'}
+          <AtlasView />
         {:else}
           <OverviewView />
         {/if}

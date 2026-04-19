@@ -99,8 +99,7 @@
 
   function handleClassicDrill(): void {
     if (worst) uiStore.setFocusedEndpoint(worst.id);
-    // Phase 2 fallback: drill to Lanes since Atlas (Phase 4) isn't built yet.
-    uiStore.setActiveView('lanes');
+    uiStore.setActiveView('atlas');
   }
 
   // ── Enriched-only spine ────────────────────────────────────────────────────
@@ -282,8 +281,7 @@
 
   function handleEnrichedDrill(epId: string): void {
     uiStore.setFocusedEndpoint(epId);
-    // Phase 2.5 fallback: drill to Lanes until Atlas (Phase 4) ships.
-    uiStore.setActiveView('lanes');
+    uiStore.setActiveView('atlas');
   }
 
   function handleEventDrill(epId: string): void {

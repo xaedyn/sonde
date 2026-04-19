@@ -76,9 +76,8 @@
 
   function handleClick(event: MouseEvent, ep: Endpoint): void {
     uiStore.setFocusedEndpoint(ep.id);
-    // Click → Live (Phase 3); Shift+click → Lanes for now (Atlas is Phase 4).
-    // Flip the shift-branch to 'atlas' once it ships.
-    uiStore.setActiveView(event.shiftKey ? 'lanes' : 'live');
+    // Click → Live; Shift+click → Atlas (diagnose).
+    uiStore.setActiveView(event.shiftKey ? 'atlas' : 'live');
   }
 </script>
 
@@ -88,7 +87,7 @@
       <h3 class="racing-title">Per-endpoint comparison</h3>
       <p class="racing-sub">Live latencies on shared axis</p>
     </div>
-    <p class="racing-hint">Click → Live · ⇧ → Lanes</p>
+    <p class="racing-hint">Click → Live · ⇧ → Atlas</p>
   </header>
 
   <div class="racing-axis" aria-hidden="true">

@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { computeCausalVerdict, PHASE_LABELS, type VerdictRow } from '../../src/lib/utils/verdict';
+import {
+  computeCausalVerdict,
+  phaseHypothesis,
+  PHASE_LABELS,
+  type PhaseBreakdown,
+  type VerdictRow,
+} from '../../src/lib/utils/verdict';
 import type { Endpoint, EndpointStatistics } from '../../src/lib/types';
 
 // ── Fixture helpers ─────────────────────────────────────────────────────────
@@ -240,5 +246,61 @@ describe('PHASE_LABELS', () => {
     expect(PHASE_LABELS.tls).toBe('TLS handshake');
     expect(PHASE_LABELS.ttfb).toBe('TTFB');
     expect(PHASE_LABELS.transfer).toBe('Transfer');
+  });
+});
+
+// ── phaseHypothesis (Atlas single-endpoint diagnosis) ──────────────────────
+function mkPhases(over: Partial<PhaseBreakdown>): PhaseBreakdown {
+  return { dns: 0, tcp: 0, tls: 0, ttfb: 0, transfer: 0, ...over };
+}
+
+describe('phaseHypothesis()', () => {
+  it('returns "Awaiting tier-2 samples." when total is zero', () => {
+    const v = phaseHypothesis(mkPhases({}));
+    expect(v.verdictPhase).toBe('mixed');
+    expect(v.text).toBe('Awaiting tier-2 samples.');
+    expect(v.dominantPct).toBe(0);
+    expect(v.dominantPhases).toEqual([]);
+  });
+
+  it('flags a single-phase bottleneck when top > 60% of total', () => {
+    // TTFB is 180 of 254 total ≈ 71%.
+    const v = phaseHypothesis(mkPhases({ dns: 8, tcp: 22, tls: 34, ttfb: 180, transfer: 10 }));
+    expect(v.verdictPhase).toBe('ttfb');
+    expect(v.text).toBe('Slow TTFB — 71% of total time.');
+    expect(v.dominantPct).toBeCloseTo(0.708, 2);
+    expect(v.dominantPhases).toEqual(['ttfb']);
+  });
+
+  it('flags top-pair dominance when top+2 > 80% of total', () => {
+    // dns=120, ttfb=80, rest=5+5+10 → top+2 = 200/220 ≈ 91%.
+    const v = phaseHypothesis(mkPhases({ dns: 120, tcp: 5, tls: 5, ttfb: 80, transfer: 10 }));
+    expect(v.verdictPhase).toBe('mixed');
+    expect(v.text).toBe('DNS and TTFB dominate — 91% together.');
+    expect(v.dominantPct).toBeGreaterThan(0.8);
+    // Both cited phases must be in the emphasis set so the UI can highlight
+    // them via membership; verdictPhase === 'mixed' is not enough on its own.
+    expect(v.dominantPhases).toEqual(['dns', 'ttfb']);
+  });
+
+  it('falls through to "No single phase dominates" when spread is flat', () => {
+    const v = phaseHypothesis(mkPhases({ dns: 20, tcp: 20, tls: 20, ttfb: 20, transfer: 20 }));
+    expect(v.verdictPhase).toBe('mixed');
+    expect(v.text).toBe('No single phase dominates — investigate overall network conditions.');
+    expect(v.dominantPct).toBe(0);
+    expect(v.dominantPhases).toEqual([]);
+  });
+
+  it('ties break deterministically by declared phase order (dns wins dns=tcp)', () => {
+    const v = phaseHypothesis(mkPhases({ dns: 70, tcp: 70, tls: 5, ttfb: 5, transfer: 5 }));
+    // Top pair = dns + tcp = 140/155 ≈ 90% → pair branch cites DNS first.
+    expect(v.text).toContain('DNS and TCP handshake dominate');
+  });
+
+  it('single-phase totals report that phase at 100%', () => {
+    const v = phaseHypothesis(mkPhases({ ttfb: 250 }));
+    expect(v.verdictPhase).toBe('ttfb');
+    expect(v.text).toBe('Slow TTFB — 100% of total time.');
+    expect(v.dominantPct).toBe(1);
   });
 });
