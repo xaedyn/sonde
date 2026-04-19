@@ -75,7 +75,7 @@
         <span
           class="rail-pip"
           style:background={style.color}
-          style:box-shadow="0 0 8px {style.color}"
+          style:box-shadow="0 0 8px {style.glow}"
           aria-hidden="true"
         ></span>
         <span class="rail-row-body">
