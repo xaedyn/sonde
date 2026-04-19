@@ -4,9 +4,9 @@
 // bucket does X land in?" it lives here; if it answers "why is X in that
 // bucket?" it lives in verdict.ts.
 //
-// classify.ts owns: classify(), networkQuality(), networkLevel(),
-// overviewVerdict(), and the three style maps (HEALTH_STYLES, LEVEL_STYLES,
-// VERDICT_STYLES). No store imports; callers pass stats + threshold explicitly.
+// classify.ts owns: classify(), networkQuality(), overviewVerdict(), and the
+// two style maps (HEALTH_STYLES, VERDICT_STYLES). No store imports; callers
+// pass stats + threshold explicitly.
 
 import type { EndpointStatistics } from '../types';
 
@@ -94,23 +94,6 @@ export function networkQuality(
   return Math.round(total / ready.length);
 }
 
-// ─── Verdict vs networkLevel — DELIBERATE ASYMMETRY ────────────────────────
-// The two classifiers below intentionally bucket the same score differently:
-//
-//   overviewVerdict (3 buckets)  answers  "how is the user's experience?"
-//   networkLevel    (4 buckets)  answers  "what alerting action is warranted?"
-//
-// They CAN disagree at boundaries — e.g. score 80 yields verdict='healthy'
-// (the dial reads "Healthy") while networkLevel='warning' (the topbar pill
-// reads "WARNING"). That is by design: the dial is an at-a-glance human
-// summary that compresses warning + early degraded into one bucket; the pill
-// is a live alerting indicator that needs the extra granularity to
-// distinguish "watch this" from "acknowledge this".
-//
-// Do not unify the two without an explicit product call. If you add a third
-// classifier (e.g. routing, paging), document its bucketing rationale here
-// alongside these two.
-//
 export type OverviewVerdict = 'unknown' | 'healthy' | 'degraded' | 'unhealthy';
 
 export interface VerdictStyle {
@@ -121,11 +104,7 @@ export interface VerdictStyle {
 }
 
 /**
- * Coarse 3-bucket label for the Overview dial and diagnosis strip. The topbar
- * status pill uses `networkLevel()` for 4-bucket severity; this is intentionally
- * coarser because the user-facing verdict should compress to "everything's fine
- * / something's off / things are bad" without the warning/degraded split the
- * pill uses for alerting.
+ * Coarse 3-bucket label for the Overview dial and diagnosis strip.
  *
  *   null    → unknown   (Awaiting samples)
  *   ≥ 80    → healthy
@@ -146,38 +125,3 @@ export const VERDICT_STYLES: Record<OverviewVerdict, VerdictStyle> = {
   unhealthy: { color: 'var(--accent-pink)',  glow: 'var(--accent-pink-glow)',  label: 'Unhealthy',        kicker: 'CRITICAL' },
 };
 
-export type NetworkLevel = 'unknown' | 'healthy' | 'warning' | 'degraded' | 'critical';
-
-/**
- * Map a 0–100 networkQuality score to a named pill state for the topbar.
- * Buckets are spaced so mixes of classify() outcomes land in distinct pills
- * even though the underlying aggregate emits {100, 60, 20} for uniform fleets.
- *
- *   null   → unknown
- *   ≥ 90   → healthy
- *   ≥ 60   → warning
- *   ≥ 30   → degraded
- *   <  30  → critical
- */
-export function networkLevel(score: number | null): NetworkLevel {
-  if (score === null) return 'unknown';
-  if (score >= 90) return 'healthy';
-  if (score >= 60) return 'warning';
-  if (score >= 30) return 'degraded';
-  return 'critical';
-}
-
-export interface LevelStyle {
-  readonly color: string;
-  readonly glow:  string;
-  readonly label: string;
-}
-
-// CSS-var-backed palette so every level chip agrees with bridgeTokensToCss.
-export const LEVEL_STYLES: Record<NetworkLevel, LevelStyle> = {
-  unknown:  { color: 'var(--t4)',                glow: 'transparent',              label: 'No data'  },
-  healthy:  { color: 'var(--accent-green)',      glow: 'var(--green-glow)',        label: 'Healthy'  },
-  warning:  { color: 'var(--accent-amber)',      glow: 'var(--accent-amber-glow)', label: 'Warning'  },
-  degraded: { color: 'var(--accent-amber-tone)', glow: 'var(--accent-amber-glow)', label: 'Degraded' },
-  critical: { color: 'var(--accent-pink)',       glow: 'var(--accent-pink-glow)',  label: 'Critical' },
-};
