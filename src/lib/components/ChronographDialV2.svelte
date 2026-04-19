@@ -467,7 +467,7 @@
         x={CX} y={CY + 108}
         text-anchor="middle" font-size="9.5"
         font-family={tokens.typography.mono.fontFamily}
-        fill={bandLabel === 'WITHIN BAND' ? 'var(--t4)' : bandLabelColor}
+        fill={bandLabel === null || bandLabel === 'WITHIN BAND' ? 'var(--t4)' : bandLabelColor}
         letter-spacing="0.18em"
       >LIVE {fmt(liveMedian).toUpperCase()}{bandLabel !== null ? ` · ${bandLabel}` : ''}</text>
 

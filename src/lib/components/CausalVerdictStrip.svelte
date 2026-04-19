@@ -207,6 +207,14 @@
   @media (max-width: 767px) {
     .verdict { grid-template-columns: 1fr; }
     .verdict-metrics { flex-wrap: wrap; gap: 14px; }
-    .verdict-drill { grid-column: 1; justify-content: center; }
+    .verdict-drill {
+      /* Reset the desktop placement (grid-column: 2; grid-row: 2;
+         justify-self: end) so the button sits under the metrics row
+         and stretches center rather than hugging the right edge. */
+      grid-column: 1;
+      grid-row: auto;
+      justify-self: stretch;
+      justify-content: center;
+    }
   }
 </style>

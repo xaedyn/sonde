@@ -198,7 +198,11 @@
   .racing-rows { display: flex; flex-direction: column; gap: 4px; }
   .racing-row {
     display: grid;
-    grid-template-columns: 180px 1fr 78px;
+    /* Stats column uses max-content so the inline "live · p95" pair never
+       wraps and the track shrinks instead of the numbers. 78 px was
+       correct for the earlier stacked layout; after flipping to a single
+       row (cf. .racing-stats) we'd overflow at 120+ ms. */
+    grid-template-columns: 180px minmax(0, 1fr) max-content;
     align-items: center;
     gap: 12px;
     padding: 6px 8px;
@@ -235,6 +239,10 @@
 
   .racing-track {
     position: relative;
+    /* Isolate so the `.racing-band`'s `mix-blend-mode: screen` (below)
+       blends against the track's own gradient rather than whatever sits
+       behind the component in the composite layer tree. */
+    isolation: isolate;
     height: 28px;
     border-radius: 4px;
     overflow: hidden;
@@ -286,13 +294,16 @@
   }
 
   /* Stats column: live value + p95 on ONE baseline, p95 pinned right. Matches
-     v2 prototype .v2-racing-stats horizontal layout. */
+     v2 prototype .v2-racing-stats horizontal layout. `nowrap` keeps the pair
+     together even when their combined width grows past the track's
+     max-content cap. */
   .racing-stats {
     display: flex;
     flex-direction: row;
     align-items: baseline;
     justify-content: flex-end;
     gap: 6px;
+    white-space: nowrap;
     font-family: var(--mono);
     font-variant-numeric: tabular-nums;
   }
