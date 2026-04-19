@@ -213,19 +213,15 @@ export const DEFAULT_SETTINGS: Settings = {
 };
 
 // ── UI store ───────────────────────────────────────────────────────────────
-// v2 view union. Old labels ('timeline' | 'heatmap' | 'split') are kept so
-// persisted settings can round-trip through migration; they're rewritten to
-// 'lanes' by the v4→v5 migration in persistence.ts.
+// v2 view union — post-Phase-7 shape. The Lanes family ('lanes' | 'timeline'
+// | 'heatmap' | 'split') has been retired. Persisted payloads carrying any of
+// those values collapse to 'overview' via stepV6toV7 in persistence.ts.
 export type ActiveView =
   | 'overview'
   | 'live'
   | 'atlas'
   | 'strata'
-  | 'terminal'
-  | 'lanes'
-  | 'timeline'
-  | 'heatmap'
-  | 'split';
+  | 'terminal';
 
 export type LiveTimeRange = '1m' | '5m' | '15m' | '1h' | '24h';
 
@@ -259,10 +255,6 @@ export interface UIState {
   showShare: boolean;
   showKeyboardHelp: boolean;
   isSharedView: boolean;
-  laneHoverRound: number | null;
-  laneHoverX: number | null;
-  laneHoverY: number | null;
-  heatmapTooltip: { text: string; x: number; y: number } | null;
   showEndpoints: boolean;
 
   // Globally focused endpoint — drives rail selection and per-view focus.
@@ -278,23 +270,6 @@ export interface UIState {
 
   // Terminal view filter set. Empty = show all event types.
   terminalFilters: Set<TerminalEventType>;
-}
-
-// ── Lane hover ─────────────────────────────────────────────────────────────
-export interface LaneHoverState {
-  readonly round: number;
-  readonly x: number;  // clientX position of hover line
-}
-
-// ── Heatmap strip ──────────────────────────────────────────────────────────
-export interface HeatmapCellData {
-  readonly startRound: number;
-  readonly endRound: number;
-  readonly worstLatency: number;
-  readonly worstStatus: SampleStatus;
-  readonly startElapsed: number;
-  readonly endElapsed: number;
-  readonly color: string;
 }
 
 // ── Share payload ──────────────────────────────────────────────────────────
@@ -326,7 +301,7 @@ export interface SharePayload {
 // Older versions migrate forward via persistence.ts. Sets serialize as arrays
 // on disk; `ui.terminalFilters` round-trips accordingly.
 export interface PersistedSettings {
-  version: 2 | 3 | 4 | 5 | 6;
+  version: 2 | 3 | 4 | 5 | 6 | 7;
   endpoints: { url: string; enabled: boolean }[];
   settings: Settings;
   ui: {
@@ -341,74 +316,3 @@ export interface PersistedSettings {
   };
 }
 
-// ── Render data ────────────────────────────────────────────────────────────
-export interface ScatterPoint {
-  readonly x: number;
-  readonly y: number;
-  readonly latency: number;
-  readonly status: SampleStatus;
-  readonly endpointId: string;
-  readonly round: number;
-  readonly color: string;
-  readonly errorMessage?: string;
-}
-
-export interface HeatmapCell {
-  readonly col: number;
-  readonly row: number;
-  readonly color: string;
-  readonly latency: number;
-  readonly status: SampleStatus;
-  readonly endpointId: string;
-  readonly round: number;
-}
-
-export interface SonarPing {
-  readonly id: string;
-  readonly x: number;
-  readonly y: number;
-  readonly color: string;
-  readonly tier: 'fast' | 'medium' | 'slow' | 'timeout';
-  startTime: number;
-}
-
-// ── Pipeline output types ─────────────────────────────────────────────────
-
-export interface Gridline {
-  readonly ms: number;
-  readonly normalizedY: number;
-  readonly label: string;
-}
-
-export interface YRange {
-  readonly min: number;
-  readonly max: number;
-  readonly isLog: boolean;
-  readonly gridlines: readonly Gridline[];
-}
-
-export interface XTick {
-  readonly round: number;
-  readonly normalizedX: number;
-  readonly label: string;
-}
-
-export interface RibbonData {
-  /** P25 path: [round, normalizedY][] — bottom edge of ribbon band */
-  readonly p25Path: readonly (readonly [number, number])[];
-  /** P50 path: [round, normalizedY][] — median line */
-  readonly p50Path: readonly (readonly [number, number])[];
-  /** P75 path: [round, normalizedY][] — top edge of ribbon band */
-  readonly p75Path: readonly (readonly [number, number])[];
-}
-
-export interface FrameData {
-  readonly pointsByEndpoint: ReadonlyMap<string, readonly ScatterPoint[]>;
-  readonly ribbonsByEndpoint: ReadonlyMap<string, RibbonData>;
-  readonly yRange: YRange;
-  readonly yRangesByEndpoint: ReadonlyMap<string, YRange>;
-  readonly xTicks: readonly XTick[];
-  readonly maxRound: number;
-  readonly freezeEvents: readonly FreezeEvent[];
-  readonly hasData: boolean;
-}

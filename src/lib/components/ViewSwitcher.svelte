@@ -1,7 +1,8 @@
 <!-- src/lib/components/ViewSwitcher.svelte -->
-<!-- Six-tab view picker. Sits below the topbar, above the main content area. -->
-<!-- Phase 1 ships only Overview + Lanes as enabled tabs; the four "in-flight" -->
-<!-- views are present-but-disabled so the chrome shape is final.              -->
+<!-- Five-tab view picker. Sits below the topbar, above the main content area. -->
+<!-- Overview / Live / Atlas are shipped; Strata / Terminal stay               -->
+<!-- disabled-with-tooltip until their prototypes land (issues #50, #51).      -->
+<!-- The Lanes tab was retired in Phase 7.                                     -->
 <script lang="ts">
   import { uiStore } from '$lib/stores/ui';
   import type { ActiveView } from '$lib/types';
@@ -15,28 +16,19 @@
   }
 
   // Visible label list. Order matches the prototype's left-to-right reading.
-  // Lanes stays enabled in Phase 1 so the legacy Glass Lanes view remains
-  // reachable until Phase 7 retires it (per the v2 redesign non-negotiable
-  // "keep all 6 legacy views working until Phase 7").
   const VIEWS: readonly ViewDef[] = [
-    { id: 'overview', key: '1', label: 'Overview', hint: 'At a glance',         enabled: true  },
-    { id: 'live',     key: '2', label: 'Live',     hint: 'Real-time scope',     enabled: true  },
-    { id: 'atlas',    key: '3', label: 'Atlas',    hint: 'Phase breakdown',     enabled: true  },
-    { id: 'strata',   key: '4', label: 'Strata',   hint: 'Distribution',        enabled: false },
-    { id: 'terminal', key: '5', label: 'Terminal', hint: 'Event log',           enabled: false },
-    { id: 'lanes',    key: '6', label: 'Lanes',    hint: 'Glass lanes · legacy',enabled: true  },
+    { id: 'overview', key: '1', label: 'Overview', hint: 'At a glance',     enabled: true  },
+    { id: 'live',     key: '2', label: 'Live',     hint: 'Real-time scope', enabled: true  },
+    { id: 'atlas',    key: '3', label: 'Atlas',    hint: 'Phase breakdown', enabled: true  },
+    { id: 'strata',   key: '4', label: 'Strata',   hint: 'Distribution',    enabled: false },
+    { id: 'terminal', key: '5', label: 'Terminal', hint: 'Event log',       enabled: false },
   ];
 
   const DISABLED_TOOLTIP = 'Prototype in progress — not yet available.';
 
   const activeView = $derived($uiStore.activeView);
 
-  // Deprecated activeView strings (timeline/heatmap/split) all render through
-  // the Lanes view, so highlight the Lanes tab when those land here.
   function isActive(id: ActiveView): boolean {
-    if (id === 'lanes') {
-      return activeView === 'lanes' || activeView === 'timeline' || activeView === 'heatmap' || activeView === 'split';
-    }
     return activeView === id;
   }
 
@@ -69,7 +61,7 @@
     </button>
   {/each}
   <div class="view-switcher-trailing" aria-hidden="true">
-    <span class="kbd">⌨ 1·2·3·4·5·6</span>
+    <span class="kbd">⌨ 1·2·3·4·5</span>
   </div>
 </nav>
 

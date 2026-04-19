@@ -16,7 +16,6 @@ import type {
 } from '../../src/lib/types';
 import { DEFAULT_SETTINGS } from '../../src/lib/types';
 import { REGIONAL_DEFAULTS } from '../../src/lib/regional-defaults';
-import type { FrameData, RibbonData, XTick, YRange, Gridline, HeatmapCellData } from '../../src/lib/types';
 
 describe('types', () => {
   it('TestLifecycleState is a valid discriminated union', () => {
@@ -96,7 +95,7 @@ describe('types', () => {
 
   it('UIState has showKeyboardHelp field', () => {
     const state: UIState = {
-      activeView: 'timeline',
+      activeView: 'overview',
       expandedCards: new Set(),
       hoverTarget: null,
       selectedTarget: null,
@@ -105,13 +104,17 @@ describe('types', () => {
       showShare: false,
       showKeyboardHelp: false,
       isSharedView: false,
+      showEndpoints: false,
+      focusedEndpointId: null,
+      liveOptions: { split: false, timeRange: '5m' },
+      terminalFilters: new Set(),
     };
     expect(state.showKeyboardHelp).toBe(false);
   });
 
   it('UIState includes shared view fields', () => {
     const state: UIState = {
-      activeView: 'timeline',
+      activeView: 'overview',
       expandedCards: new Set(),
       hoverTarget: null,
       selectedTarget: null,
@@ -120,6 +123,10 @@ describe('types', () => {
       showShare: false,
       showKeyboardHelp: false,
       isSharedView: false,
+      showEndpoints: false,
+      focusedEndpointId: null,
+      liveOptions: { split: false, timeRange: '5m' },
+      terminalFilters: new Set(),
     };
     expect(state.isSharedView).toBe(false);
   });
@@ -185,50 +192,3 @@ describe('types — timingFallback additions', () => {
   });
 });
 
-describe('HeatmapCellData type', () => {
-  it('HeatmapCellData interface has all required fields', () => {
-    const cell: HeatmapCellData = {
-      startRound: 1, endRound: 5, worstLatency: 142, worstStatus: 'ok',
-      startElapsed: 1000, endElapsed: 5000, color: '#67e8f9',
-    };
-    expect(cell.startRound).toBe(1);
-    expect(cell.endRound).toBe(5);
-  });
-});
-
-describe('pipeline types', () => {
-  it('Gridline interface has ms, normalizedY, and label', () => {
-    const g: Gridline = { ms: 100, normalizedY: 0.5, label: '100ms' };
-    expect(g.ms).toBe(100);
-    expect(g.normalizedY).toBe(0.5);
-    expect(g.label).toBe('100ms');
-  });
-
-  it('YRange interface has min, max, isLog, and gridlines', () => {
-    const yr: YRange = { min: 1, max: 1000, isLog: false, gridlines: [] };
-    expect(yr.isLog).toBe(false);
-  });
-
-  it('XTick interface has round, normalizedX, and label', () => {
-    const t: XTick = { round: 10, normalizedX: 0.5, label: '10' };
-    expect(t.round).toBe(10);
-  });
-
-  it('RibbonData interface has p25Path, p50Path, p75Path', () => {
-    const r: RibbonData = { p25Path: [[1, 0.2]], p50Path: [[1, 0.5]], p75Path: [[1, 0.8]] };
-    expect(r.p50Path).toHaveLength(1);
-  });
-
-  it('FrameData interface has all required fields', () => {
-    const fd: FrameData = {
-      pointsByEndpoint: new Map(),
-      ribbonsByEndpoint: new Map(),
-      yRange: { min: 1, max: 1000, isLog: false, gridlines: [] },
-      xTicks: [],
-      maxRound: 0,
-      freezeEvents: [],
-      hasData: false,
-    };
-    expect(fd.hasData).toBe(false);
-  });
-});

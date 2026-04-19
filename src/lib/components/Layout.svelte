@@ -1,13 +1,13 @@
 <!-- src/lib/components/Layout.svelte -->
 <!-- v2 shell. Topbar (top) | { Rail (264px) | { ViewSwitcher + main content } } | FooterBar (bottom). -->
-<!-- Routes activeView to OverviewView (Phase 1 stub) or the legacy LanesView   -->
-<!-- (which still hosts Glass Lanes + XAxisBar) for the deprecated splits.     -->
+<!-- Routes activeView to OverviewView / LiveView / AtlasView. The legacy Lanes  -->
+<!-- family was retired in Phase 7 — the v6→v7 migration rewrites 'lanes' /      -->
+<!-- 'timeline' / 'heatmap' / 'split' to 'overview' so nothing reaches here.     -->
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { get } from 'svelte/store';
-  import { measurementStore, incrementalTimestampTracker } from '$lib/stores/measurements';
+  import { measurementStore } from '$lib/stores/measurements';
   import { endpointStore } from '$lib/stores/endpoints';
-  import { settingsStore } from '$lib/stores/settings';
   import { uiStore } from '$lib/stores/ui';
   import { tokens } from '$lib/tokens';
   import Topbar from './Topbar.svelte';
@@ -16,10 +16,7 @@
   import OverviewView from './OverviewView.svelte';
   import LiveView from './LiveView.svelte';
   import AtlasView from './AtlasView.svelte';
-  import LanesView from './LanesView.svelte';
-  import XAxisBar from './XAxisBar.svelte';
   import FooterBar from './FooterBar.svelte';
-  import CrossLaneHover from './CrossLaneHover.svelte';
 
   let { onStart, onStop }: {
     onStart?: () => void;
@@ -35,29 +32,7 @@
     setTimeout(() => { announcerText = msg; }, 50);
   }
 
-  const CHART_WINDOW = tokens.lane.chartWindow; // 60
-  const configuredCap = $derived($settingsStore.cap > 0 ? $settingsStore.cap : Infinity);
-  const currentRound = $derived($measurementStore.roundCounter);
-
-  const visibleSpan  = $derived(Math.min(CHART_WINDOW, configuredCap || CHART_WINDOW));
-  const visibleStart = $derived(Math.max(1, currentRound - visibleSpan + 1));
-  const visibleEnd   = $derived(Math.max(visibleSpan, currentRound));
-
-  const sampleTimestamps: readonly number[] = $derived.by(() => {
-    void $measurementStore.roundCounter; // reactive subscription trigger
-    return incrementalTimestampTracker.timestamps;
-  });
-
-  // Map activeView → which content renderer to mount. The deprecated
-  // 'timeline'/'heatmap'/'split' values still arrive from non-migrated tabs;
-  // they all flow through the legacy lanes path until Phase 7 removes them.
   const activeView = $derived($uiStore.activeView);
-  const showLegacyLanes = $derived(
-    activeView === 'lanes'
-      || activeView === 'timeline'
-      || activeView === 'heatmap'
-      || activeView === 'split'
-  );
 
   onMount(() => {
     unsubLifecycle = measurementStore.subscribe((state) => {
@@ -96,22 +71,20 @@
       <ViewSwitcher />
 
       <main id="main-content" class="shell-main" tabindex="-1">
-        {#if showLegacyLanes}
-          <div class="legacy-stack">
-            <LanesView {visibleStart} {visibleEnd} />
-            <XAxisBar
-              startRound={visibleStart}
-              endRound={visibleEnd}
-              {currentRound}
-              startedAt={$measurementStore.startedAt}
-              {sampleTimestamps}
-            />
-          </div>
-        {:else if activeView === 'live'}
+        {#if activeView === 'live'}
           <LiveView />
         {:else if activeView === 'atlas'}
           <AtlasView />
         {:else}
+          <!--
+            Fallback: overview renders here as the default. 'strata' and
+            'terminal' are still in the ActiveView union (disabled tabs in
+            ViewSwitcher, tracked by issues #50 and #51) — if either leaks
+            in via a hand-edited payload or future dev tooling, we show the
+            Overview rather than a blank stub. ViewSwitcher's disabled-state
+            guard prevents production paths from reaching this branch for
+            those two views.
+          -->
           <OverviewView />
         {/if}
       </main>
@@ -120,10 +93,6 @@
 
   <FooterBar />
 </div>
-
-{#if showLegacyLanes}
-  <CrossLaneHover {visibleStart} {visibleEnd} />
-{/if}
 
 <div
   id="chronoscope-announcer"
@@ -185,13 +154,6 @@
     min-height: 0;
   }
   .shell-main:focus { outline: none; }
-
-  .legacy-stack {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-  }
 
   .sr-only {
     position: absolute; width: 1px; height: 1px;

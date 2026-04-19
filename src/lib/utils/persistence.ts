@@ -1,10 +1,19 @@
 // src/lib/utils/persistence.ts
 // Versioned localStorage persistence with forward-only migration support.
 //
-// Migration chain: v1 → v2 → v3 → v4 → v5 → v6 (current). Each normalizeVN
-// shapes a payload at version N; migrateSettings threads older payloads
-// through the chain up to CURRENT_VERSION. Never re-read a newer version in
-// an older build.
+// Migration chain: v1 → v2 → v3 → v4 → v5 → v6 → v7 (current). Each
+// normalizeVN shapes a payload at version N; migrateSettings threads older
+// payloads through the chain up to CURRENT_VERSION. Never re-read a newer
+// version in an older build.
+//
+// Phase 7 (v6 → v7): retires the Lanes family of views. Any persisted
+// `activeView` in {'lanes', 'timeline', 'heatmap', 'split'} collapses to
+// 'overview'. The underlying Lanes components and routes are deleted at the
+// same time, so the migration is the only thing stopping a returning user
+// from landing on a no-op view. No Lanes-specific Settings fields exist in
+// this codebase (no timelineZoom / heatmapResolution / etc.), so no Settings
+// coercion is needed — any such fields in a payload would already be
+// dropped by readSettingsField's allowlist.
 
 import { DEFAULT_SETTINGS } from '../types';
 import { detectRegion, isValidRegion } from '../regional-defaults';
@@ -20,18 +29,44 @@ import type { Region } from '../regional-defaults';
 
 const STORAGE_KEY = 'chronoscope_settings'; // skipcq: JS-0860 — localStorage key, not a credential
 const LEGACY_STORAGE_KEY = 'chronoscope_v2_settings'; // skipcq: JS-0860 — localStorage key, not a credential
-const CURRENT_VERSION = 6;
+export const CURRENT_VERSION = 7;
 
 const V6_OVERVIEW_MODES: ReadonlySet<OverviewMode> = new Set<OverviewMode>(['classic', 'enriched']);
 
 // v2-era labels that v5 rewrites to 'lanes' (the legacy escape hatch).
+// Retained here because the v4→v5 step still performs that rewrite — v7
+// then collapses 'lanes' itself in stepV6toV7 below.
 const LEGACY_VIEWS: ReadonlySet<string> = new Set(['timeline', 'heatmap', 'split']);
 
-const V5_VIEWS: ReadonlySet<ActiveView> = new Set<ActiveView>([
+// Views valid at the v5/v6 boundary (pre-Phase-7). Includes 'lanes' plus the
+// three deprecated aliases since those survived in storage until the v7 step.
+const V5_VIEWS: ReadonlySet<string> = new Set([
   'overview', 'live', 'atlas', 'strata', 'terminal', 'lanes',
-  // Deprecated but still valid on the union until Phase 7 removes them.
   'timeline', 'heatmap', 'split',
 ]);
+
+// Views valid at v7 (post-Phase-7). Lanes and its aliases are retired.
+// Typed as string-set so the legacy intermediate activeView can be tested
+// for membership without casts; all five values are still in ActiveView.
+const V7_VIEWS: ReadonlySet<string> = new Set<ActiveView>([
+  'overview', 'live', 'atlas', 'strata', 'terminal',
+]);
+
+// Views v7 treats as "legacy Lanes family" — rewritten to 'overview' on
+// migration. A returning Lanes user lands on Overview rather than a stub.
+const V7_LEGACY_LANES_VIEWS: ReadonlySet<string> = new Set([
+  'lanes', 'timeline', 'heatmap', 'split',
+]);
+
+// Intermediate activeView type used inside the pre-v7 chain. The public
+// ActiveView union no longer contains the Lanes family, but stages v4→v5,
+// v5→v6, and the v6 shape may still carry those strings until stepV6toV7
+// collapses them. Keeping this as a file-local widening avoids leaking the
+// legacy strings into PersistedSettings consumers.
+type LegacyActiveView = ActiveView | 'lanes' | 'timeline' | 'heatmap' | 'split';
+interface LegacyPersistedSettings extends Omit<PersistedSettings, 'ui'> {
+  readonly ui: Omit<PersistedSettings['ui'], 'activeView'> & { activeView: LegacyActiveView };
+}
 
 const V5_TIME_RANGES: ReadonlySet<LiveTimeRange> = new Set<LiveTimeRange>([
   '1m', '5m', '15m', '1h', '24h',
@@ -80,37 +115,46 @@ export function migrateSettings(data: unknown): PersistedSettings | null {
   const record = data as Record<string, unknown>;
   const version = typeof record['version'] === 'number' ? record['version'] : 0;
 
-  if (version === CURRENT_VERSION) return normalizeV6(record);
+  if (version === CURRENT_VERSION) return normalizeV7(record);
+
+  if (version === 6) {
+    const v6 = normalizeV6(record);
+    return v6 ? stepV6toV7(v6) : null;
+  }
 
   if (version === 5) {
     const v5 = normalizeV5(record);
-    return v5 ? stepV5toV6(v5, record) : null;
+    if (!v5) return null;
+    const v6 = stepV5toV6(v5, record);
+    return stepV6toV7(v6);
   }
 
   if (version === 4) {
     const v4 = normalizeV4(record);
     if (!v4) return null;
     const v5 = stepV4toV5(v4, record);
-    return stepV5toV6(v5, record);
+    const v6 = stepV5toV6(v5, record);
+    return stepV6toV7(v6);
   }
 
   if (version === 3) {
     const v3 = normalizeV3(record);
     if (!v3) return null;
-    const v4: PersistedSettings = {
+    const v4: LegacyPersistedSettings = {
       ...v3,
       version: 4,
       settings: { ...v3.settings, region: detectRegion() },
     };
     const v5 = stepV4toV5(v4, record);
-    return stepV5toV6(v5, record);
+    const v6 = stepV5toV6(v5, record);
+    return stepV6toV7(v6);
   }
 
   if (version === 2) {
     const v2 = normalizeV2(record);
     if (!v2) return null;
     const oldDelay = v2.settings.delay;
-    const v3: PersistedSettings = {
+    const v3: LegacyPersistedSettings = {
       ...v2,
       version: 3,
       settings: {
@@ -120,13 +164,14 @@ export function migrateSettings(data: unknown): PersistedSettings | null {
         monitorDelay: oldDelay >= 0 ? oldDelay : DEFAULT_SETTINGS.monitorDelay,
       },
     };
-    const v4: PersistedSettings = {
+    const v4: LegacyPersistedSettings = {
       ...v3,
       version: 4,
       settings: { ...v3.settings, region: detectRegion() },
     };
     const v5 = stepV4toV5(v4, record);
-    return stepV5toV6(v5, record);
+    const v6 = stepV5toV6(v5, record);
+    return stepV6toV7(v6);
   }
 
   if (version === 1) {
@@ -138,14 +183,15 @@ export function migrateSettings(data: unknown): PersistedSettings | null {
         enabled: typeof e['enabled'] === 'boolean' ? e['enabled'] : true,
       }));
 
-    const v4: PersistedSettings = {
+    const v4: LegacyPersistedSettings = {
       version: 4,
       endpoints,
       settings: { ...DEFAULT_SETTINGS, region: detectRegion() },
-      ui: { expandedCards: [], activeView: 'split' as ActiveView },
+      ui: { expandedCards: [], activeView: 'overview' },
     };
     const v5 = stepV4toV5(v4, record);
-    return stepV5toV6(v5, record);
+    const v6 = stepV5toV6(v5, record);
+    return stepV6toV7(v6);
   }
 
   // Unknown version — return null (triggers first-install path). We deliberately
@@ -154,12 +200,39 @@ export function migrateSettings(data: unknown): PersistedSettings | null {
   return null;
 }
 
+// ── v6 → v7 step ─────────────────────────────────────────────────────────────
+// Retires the Lanes family. Any activeView in {'lanes','timeline','heatmap',
+// 'split'} becomes 'overview'. Anything already in V7_VIEWS passes through.
+// Anything unknown also becomes 'overview' (same coercion policy as earlier
+// steps). Debug-logs the conversion so a returning Lanes user's session
+// leaves a breadcrumb without being noisy for modern payloads.
+function stepV6toV7(v6: LegacyPersistedSettings): PersistedSettings {
+  const incoming = v6.ui.activeView;
+  let activeView: ActiveView = 'overview';
+  if (V7_VIEWS.has(incoming as ActiveView)) {
+    activeView = incoming as ActiveView;
+  } else if (V7_LEGACY_LANES_VIEWS.has(incoming)) {
+    // Intentional data loss: a user on a Lanes-family view lands on Overview
+    // in v7 because the Lanes view has been removed from the app. No
+    // Lanes-specific Settings fields exist in this codebase, so there is
+    // nothing else to drop. Log at debug so support can correlate if needed.
+    console.debug(
+      `[Chronoscope] Phase 7 migration: activeView '${incoming}' retired; reset to 'overview'.`,
+    );
+  }
+  return {
+    ...v6,
+    version: 7,
+    ui: { ...v6.ui, activeView },
+  };
+}
+
 // ── v5 → v6 step ─────────────────────────────────────────────────────────────
 // Seeds Settings.overviewMode. Accepts a forward-written overviewMode if
 // present (e.g. a future patch or a debug tool wrote one into a v5 payload);
 // otherwise defaults to 'classic'. Any garbage type coerces to 'classic' so
 // the app never reads an invalid mode.
-function stepV5toV6(v5: PersistedSettings, rawRecord: Record<string, unknown>): PersistedSettings {
+function stepV5toV6(v5: LegacyPersistedSettings, rawRecord: Record<string, unknown>): LegacyPersistedSettings {
   const rawSettings =
     rawRecord['settings'] !== null && typeof rawRecord['settings'] === 'object'
       ? (rawRecord['settings'] as Record<string, unknown>)
@@ -179,20 +252,21 @@ function stepV5toV6(v5: PersistedSettings, rawRecord: Record<string, unknown>): 
 // ── v4 → v5 step ─────────────────────────────────────────────────────────────
 // Seeds healthThreshold + new UI fields, rewrites deprecated activeView values
 // to 'lanes', and coerces unknown activeView strings to the v5 default.
-function stepV4toV5(v4: PersistedSettings, rawRecord: Record<string, unknown>): PersistedSettings {
+function stepV4toV5(v4: LegacyPersistedSettings, rawRecord: Record<string, unknown>): LegacyPersistedSettings {
   const rawUi =
     rawRecord['ui'] !== null && typeof rawRecord['ui'] === 'object'
       ? (rawRecord['ui'] as Record<string, unknown>)
       : {};
 
-  // activeView: read from the raw payload so normalizeV4's 'split' fallback
-  // doesn't mask unknown strings — those should become the v5 default
-  // ('overview'), not be silently rewritten to 'lanes'.
+  // activeView: read from the raw payload so normalizeV4's placeholder doesn't
+  // mask unknown strings — those should become the v5 default ('overview'),
+  // not be silently rewritten to 'lanes'. 'lanes' here is an intermediate
+  // LegacyActiveView; stepV6toV7 collapses it to 'overview' at the v7 boundary.
   const rawView = typeof rawUi['activeView'] === 'string' ? rawUi['activeView'] : '';
-  const activeView: ActiveView = LEGACY_VIEWS.has(rawView)
+  const activeView: LegacyActiveView = LEGACY_VIEWS.has(rawView)
     ? 'lanes'
-    : V5_VIEWS.has(rawView as ActiveView)
-      ? (rawView as ActiveView)
+    : V5_VIEWS.has(rawView)
+      ? (rawView as LegacyActiveView)
       : 'overview';
 
   // focusedEndpointId — v4 never had this. Accept a string if present; else null.
@@ -289,9 +363,12 @@ function readExpandedCards(rawUi: Record<string, unknown>): string[] {
     : [];
 }
 
-function readActiveView(rawUi: Record<string, unknown>): ActiveView {
+function readActiveView(
+  rawUi: Record<string, unknown>,
+  validViews: ReadonlySet<string>,
+): LegacyActiveView {
   const raw = rawUi['activeView'];
-  if (typeof raw === 'string' && V5_VIEWS.has(raw as ActiveView)) return raw as ActiveView;
+  if (typeof raw === 'string' && validViews.has(raw)) return raw as LegacyActiveView;
   return 'overview';
 }
 
@@ -317,7 +394,7 @@ function readTerminalFilters(rawUi: Record<string, unknown>): TerminalEventType[
   );
 }
 
-function normalizeV5(record: Record<string, unknown>): PersistedSettings | null {
+function normalizeV5(record: Record<string, unknown>): LegacyPersistedSettings | null {
   try {
     const rawUi = asRecord(record['ui']) ?? {};
     return {
@@ -326,7 +403,8 @@ function normalizeV5(record: Record<string, unknown>): PersistedSettings | null 
       settings: readSettingsField(record),
       ui: {
         expandedCards:     readExpandedCards(rawUi),
-        activeView:        readActiveView(rawUi),
+        // v5 accepts the Lanes family; the v7 step collapses them later.
+        activeView:        readActiveView(rawUi, V5_VIEWS),
         focusedEndpointId: readFocusedEndpointId(rawUi),
         liveOptions:       readLiveOptions(rawUi),
         terminalFilters:   readTerminalFilters(rawUi),
@@ -339,8 +417,9 @@ function normalizeV5(record: Record<string, unknown>): PersistedSettings | null 
 
 // v6 shape mirrors v5 exactly on the ui side; the only delta is Settings gains
 // `overviewMode` — already handled by readSettingsField so this is a thin
-// wrapper that tags the version.
-function normalizeV6(record: Record<string, unknown>): PersistedSettings | null {
+// wrapper that tags the version. Still accepts the Lanes view family; the
+// v7 step retires it.
+function normalizeV6(record: Record<string, unknown>): LegacyPersistedSettings | null {
   try {
     const rawUi = asRecord(record['ui']) ?? {};
     return {
@@ -349,7 +428,35 @@ function normalizeV6(record: Record<string, unknown>): PersistedSettings | null 
       settings: readSettingsField(record),
       ui: {
         expandedCards:     readExpandedCards(rawUi),
-        activeView:        readActiveView(rawUi),
+        activeView:        readActiveView(rawUi, V5_VIEWS),
+        focusedEndpointId: readFocusedEndpointId(rawUi),
+        liveOptions:       readLiveOptions(rawUi),
+        terminalFilters:   readTerminalFilters(rawUi),
+      },
+    };
+  } catch {
+    return null;
+  }
+}
+
+// v7 mirrors v6 on the Settings side; the only delta is the narrower view set
+// (V7_VIEWS, which excludes the Lanes family). A fresh v7 payload shouldn't
+// contain 'lanes'/'timeline'/'heatmap'/'split'; if one does (e.g. a hand-edited
+// payload or a future escape-hatch), readActiveView coerces to 'overview'.
+function normalizeV7(record: Record<string, unknown>): PersistedSettings | null {
+  try {
+    const rawUi = asRecord(record['ui']) ?? {};
+    // readActiveView returns LegacyActiveView; narrow to ActiveView by
+    // re-checking V7_VIEWS membership. TS can't prove the constraint transitively.
+    const view = readActiveView(rawUi, V7_VIEWS);
+    const activeView: ActiveView = V7_VIEWS.has(view) ? (view as ActiveView) : 'overview';
+    return {
+      version: 7,
+      endpoints: readEndpointsField(record),
+      settings: readSettingsField(record),
+      ui: {
+        expandedCards:     readExpandedCards(rawUi),
+        activeView,
         focusedEndpointId: readFocusedEndpointId(rawUi),
         liveOptions:       readLiveOptions(rawUi),
         terminalFilters:   readTerminalFilters(rawUi),
@@ -365,7 +472,7 @@ function normalizeV6(record: Record<string, unknown>): PersistedSettings | null 
 // them forward. healthThreshold defaults are seeded here so downstream steps
 // can treat Settings as fully-formed.
 
-function normalizeV2(record: Record<string, unknown>): PersistedSettings | null {
+function normalizeV2(record: Record<string, unknown>): LegacyPersistedSettings | null {
   try {
     const rawEndpoints = Array.isArray(record['endpoints']) ? record['endpoints'] : [];
     const endpoints = rawEndpoints
@@ -403,10 +510,10 @@ function normalizeV2(record: Record<string, unknown>): PersistedSettings | null 
       ? (rawUi['expandedCards'] as unknown[]).filter((x): x is string => typeof x === 'string')
       : [];
 
-    const activeView: ActiveView =
-      rawUi['activeView'] === 'timeline' || rawUi['activeView'] === 'heatmap' || rawUi['activeView'] === 'split'
-        ? rawUi['activeView']
-        : 'split';
+    // Placeholder — stepV4toV5 re-reads the raw payload to derive the real
+    // v5 activeView, so this value is never read downstream. 'overview' is
+    // in-union post-Phase-7.
+    const activeView: ActiveView = 'overview';
 
     return { version: 2, endpoints, settings, ui: { expandedCards, activeView } };
   } catch {
@@ -414,7 +521,7 @@ function normalizeV2(record: Record<string, unknown>): PersistedSettings | null 
   }
 }
 
-function normalizeV3(record: Record<string, unknown>): PersistedSettings | null {
+function normalizeV3(record: Record<string, unknown>): LegacyPersistedSettings | null {
   try {
     const rawEndpoints = Array.isArray(record['endpoints']) ? record['endpoints'] : [];
     const endpoints = rawEndpoints
@@ -452,10 +559,9 @@ function normalizeV3(record: Record<string, unknown>): PersistedSettings | null 
       ? (rawUi['expandedCards'] as unknown[]).filter((x): x is string => typeof x === 'string')
       : [];
 
-    const activeView: ActiveView =
-      rawUi['activeView'] === 'timeline' || rawUi['activeView'] === 'heatmap' || rawUi['activeView'] === 'split'
-        ? rawUi['activeView']
-        : 'split';
+    // Placeholder — stepV4toV5 re-reads the raw payload to derive the real
+    // v5 activeView, so this value is never read downstream.
+    const activeView: ActiveView = 'overview';
 
     return { version: 3, endpoints, settings, ui: { expandedCards, activeView } };
   } catch {
@@ -463,7 +569,7 @@ function normalizeV3(record: Record<string, unknown>): PersistedSettings | null 
   }
 }
 
-function normalizeV4(record: Record<string, unknown>): PersistedSettings | null {
+function normalizeV4(record: Record<string, unknown>): LegacyPersistedSettings | null {
   try {
     const rawEndpoints = Array.isArray(record['endpoints']) ? record['endpoints'] : [];
     const endpoints = rawEndpoints
@@ -511,10 +617,9 @@ function normalizeV4(record: Record<string, unknown>): PersistedSettings | null 
       ? (rawUi['expandedCards'] as unknown[]).filter((x): x is string => typeof x === 'string')
       : [];
 
-    const activeView: ActiveView =
-      rawUi['activeView'] === 'timeline' || rawUi['activeView'] === 'heatmap' || rawUi['activeView'] === 'split'
-        ? rawUi['activeView']
-        : 'split';
+    // Placeholder — stepV4toV5 re-reads the raw payload to derive the real
+    // v5 activeView, so this value is never read downstream.
+    const activeView: ActiveView = 'overview';
 
     return { version: 4, endpoints, settings, ui: { expandedCards, activeView } };
   } catch {

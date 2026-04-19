@@ -3,7 +3,7 @@
   import { measurementStore } from '$lib/stores/measurements';
   import { settingsStore } from '$lib/stores/settings';
   import { tokens } from '$lib/tokens';
-  import { formatElapsed } from '$lib/renderers/timeline-data-pipeline';
+  import { formatElapsed } from '$lib/utils/format';
   import LatencyLegend from './LatencyLegend.svelte';
 
   let lifecycle = $derived($measurementStore.lifecycle);

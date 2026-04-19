@@ -20,10 +20,6 @@ describe('tokens', () => {
   });
 
   it('exposes all timing tokens as numbers (ms)', () => {
-    expect(tokens.timing.sonarPingFast).toBe(300);
-    expect(tokens.timing.sonarPingMedium).toBe(500);
-    expect(tokens.timing.sonarPingSlow).toBe(800);
-    expect(tokens.timing.sonarPingTimeout).toBe(1200);
     expect(tokens.timing.fadeIn).toBe(200);
     expect(tokens.timing.progressiveDisclosure).toBe(250);
     expect(tokens.timing.domThrottle).toBe(100);
@@ -46,12 +42,7 @@ describe('tokens', () => {
     expect(tokens.easingFn.decelerate(1)).toBe(1);
   });
 
-  it('exposes canvas config tokens', () => {
-    expect(tokens.canvas.pointRadius).toBe(4);
-    expect(tokens.canvas.heatmapCellSize).toBe(8);
-    expect(tokens.canvas.sonarPing.fast.finalRadius).toBe(12);
-    expect(tokens.canvas.sonarPing.timeout.finalRadius).toBe(48);
-  });
+  // canvas.* and sonarPing were retired in Phase 7 alongside the Lanes family.
 });
 
 describe('Glass token additions', () => {
@@ -100,52 +91,9 @@ describe('heatmap tokens', () => {
   });
 });
 
-describe('adaptive lanes tokens', () => {
-  it('exposes tokens.lane.minHeight as 120 (AC3: minimum readable lane height)', () => {
-    expect(tokens.lane.minHeight).toBe(120);
-  });
-
-  it('exposes tokens.lane.compactHeaderHeight as 28', () => {
-    expect(tokens.lane.compactHeaderHeight).toBe(28);
-  });
-
-  it('exposes tokens.lane.compactThreshold as 4 (AC2: compact triggers at 4 endpoints)', () => {
-    expect(tokens.lane.compactThreshold).toBe(4);
-  });
-
-  it('exposes tokens.lane.maxEndpoints as 10 (AC4: hard cap)', () => {
-    expect(tokens.lane.maxEndpoints).toBe(10);
-  });
-});
-
-describe('new pipeline tokens', () => {
-  it('exposes canvas.ribbon tokens', () => {
-    expect(tokens.canvas.ribbon.fillOpacity).toBe(0.15);
-    expect(tokens.canvas.ribbon.medianOpacity).toBe(0.6);
-    expect(tokens.canvas.ribbon.medianLineWidth).toBe(1.5);
-    expect(Array.isArray(tokens.canvas.ribbon.medianLineDash)).toBe(true);
-  });
-
-  it('exposes canvas.emptyState tokens', () => {
-    expect(tokens.canvas.emptyState.sweepPeriod).toBe(4000);
-    expect(tokens.canvas.emptyState.sweepLineOpacity).toBe(0.25);
-    expect(tokens.canvas.emptyState.ringOpacity).toBe(0.08);
-    expect(tokens.canvas.emptyState.textOpacity).toBe(0.5);
-  });
-
-  it('exposes canvas.xAxis tokens', () => {
-    expect(tokens.canvas.xAxis.minLabelSpacing).toBe(60);
-    expect(tokens.canvas.xAxis.labelOffsetY).toBe(4);
-    expect(tokens.canvas.xAxis.paddingBottom).toBe(32);
-  });
-
-  it('exposes canvas.yAxis tokens', () => {
-    expect(tokens.canvas.yAxis.rollingWindowSize).toBe(20);
-    expect(tokens.canvas.yAxis.percentileClampLow).toBe(2);
-    expect(tokens.canvas.yAxis.percentileClampHigh).toBe(98);
-    expect(tokens.canvas.yAxis.logScaleThreshold).toBe(50);
-  });
-});
+// adaptive-lanes tokens (minHeight / compactHeaderHeight / compactThreshold /
+// maxEndpoints) and the canvas.* ribbon / emptyState / xAxis / yAxis groups
+// were all retired in Phase 7 alongside the Lanes / Timeline / Heatmap views.
 
 describe('ux-polish tokens', () => {
   it('exports cyan15 and cyan25 primitive-backed accent tokens (AC-1)', () => {
@@ -167,11 +115,8 @@ describe('ux-polish tokens', () => {
     expect(tokens.breakpoints.small).toBe(480);
   });
 
-  it('exports statTransition, dotEntrance, dotExit timing tokens (AC-4)', () => {
-    expect(tokens.timing.statTransition).toBe(200);
-    expect(tokens.timing.dotEntrance).toBe(200);
-    expect(tokens.timing.dotExit).toBe(150);
-  });
+  // statTransition / dotEntrance / dotExit retired in Phase 7 — none of the
+  // surviving views (Overview, Live, Atlas) consumed them.
 
   it('exports glass.statsBorder token', () => {
     expect(tokens.color.glass.statsBorder).toBe('rgba(255,255,255,.04)');

@@ -14,34 +14,8 @@ function read(name: string): string {
 }
 
 describe('color-mix() CSS fallbacks', () => {
-  it('Lane.svelte: .lane::after background has rgba() fallback before color-mix()', () => {
-    const src = read('Lane.svelte');
-    const styleStart = src.indexOf('<style>');
-    const styleEnd = src.indexOf('</style>');
-    const css = src.slice(styleStart, styleEnd);
-
-    const colorMixIdx = css.indexOf('color-mix(in srgb, var(--ep-color) 3%');
-    expect(colorMixIdx).toBeGreaterThan(-1);
-
-    const fallbackIdx = css.indexOf('rgba(255,255,255,0.015)');
-    expect(fallbackIdx).toBeGreaterThan(-1);
-    expect(fallbackIdx).toBeLessThan(colorMixIdx);
-  });
-
-  it('Lane.svelte: .now-label text-shadow has plain fallback before color-mix()', () => {
-    const src = read('Lane.svelte');
-    const styleStart = src.indexOf('<style>');
-    const styleEnd = src.indexOf('</style>');
-    const css = src.slice(styleStart, styleEnd);
-
-    const colorMixIdx = css.indexOf('color-mix(in srgb, var(--ep-color) 50%');
-    expect(colorMixIdx).toBeGreaterThan(-1);
-
-    const fallbackPattern = 'text-shadow: 0 0 8px var(--ep-color), 0 0 16px var(--ep-color);';
-    const fallbackIdx = css.indexOf(fallbackPattern);
-    expect(fallbackIdx).toBeGreaterThan(-1);
-    expect(fallbackIdx).toBeLessThan(colorMixIdx);
-  });
+  // Lane.svelte assertions were removed alongside Phase 7's Lanes view retirement.
+  // The remaining assertions cover EndpointRow + LoadingAnimation which still ship.
 
   it('EndpointRow.svelte: .dot box-shadow has plain fallback before color-mix()', () => {
     const src = read('EndpointRow.svelte');

@@ -11,7 +11,7 @@
   import { MeasurementEngine } from '$lib/engine/measurement-engine';
   import { detectRegion } from '$lib/regional-defaults';
   import { applyPersistedSettings } from '$lib/utils/apply-persisted-settings';
-  import { loadPersistedSettings, saveSettings } from '$lib/utils/persistence';
+  import { loadPersistedSettings, saveSettings, CURRENT_VERSION } from '$lib/utils/persistence';
   import { initHashRouter } from '$lib/share/hash-router';
   import { initShortcuts } from '$lib/utils/shortcuts';
   import type { PersistedSettings } from '$lib/types';
@@ -174,7 +174,7 @@
       const endpoints = get(endpointStore);
 
       const payload: PersistedSettings = {
-        version: 6,
+        version: CURRENT_VERSION,
         endpoints: endpoints.map(ep => ({ url: ep.url, enabled: ep.enabled })),
         settings,
         ui: {

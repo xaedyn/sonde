@@ -20,7 +20,7 @@ describe('persistence', () => {
     expect(loadPersistedSettings()).toBeNull();
   });
 
-  it('round-trips v3 settings into current v6 shape', () => {
+  it('round-trips v3 settings into current v7 shape', () => {
     const settings = {
       version: 3,
       endpoints: [{ url: 'https://example.com', enabled: true }],
@@ -29,7 +29,7 @@ describe('persistence', () => {
     };
     saveSettings(settings as unknown as PersistedSettings);
     const loaded = loadPersistedSettings();
-    expect(loaded?.version).toBe(6);
+    expect(loaded?.version).toBe(7);
     expect(loaded?.endpoints[0]?.url).toBe('https://example.com');
     expect(loaded?.settings.burstRounds).toBe(50);
     expect(loaded?.settings.monitorDelay).toBe(1000);
@@ -53,15 +53,15 @@ describe('persistence', () => {
     };
     localStorageMock.setItem('chronoscope_v2_settings', JSON.stringify(settings));
     const loaded = loadPersistedSettings();
-    expect(loaded?.version).toBe(6);
+    expect(loaded?.version).toBe(7);
     expect(localStorageMock.getItem('chronoscope_v2_settings')).toBeNull();
     expect(localStorageMock.getItem('chronoscope_settings')).not.toBeNull();
   });
 
-  it('migrates v1 data all the way to v6', () => {
+  it('migrates v1 data all the way to v7', () => {
     const v1Data = { version: 1, endpoints: [{ url: 'https://example.com' }] };
     const migrated = migrateSettings(v1Data);
-    expect(migrated?.version).toBe(6);
+    expect(migrated?.version).toBe(7);
     expect(migrated?.settings.burstRounds).toBe(50);
     expect(migrated?.settings.monitorDelay).toBe(1000);
     expect(migrated?.settings.healthThreshold).toBe(120);
@@ -69,7 +69,7 @@ describe('persistence', () => {
     expect(migrated?.ui.activeView).toBe('overview');
   });
 
-  it('migrates v2 data to v6 with old delay as monitorDelay', () => {
+  it('migrates v2 data to v7 with old delay as monitorDelay', () => {
     const v2Data = {
       version: 2,
       endpoints: [{ url: 'https://example.com', enabled: true }],
@@ -77,16 +77,17 @@ describe('persistence', () => {
       ui: { expandedCards: [], activeView: 'split' },
     };
     const migrated = migrateSettings(v2Data);
-    expect(migrated?.version).toBe(6);
+    expect(migrated?.version).toBe(7);
     expect(migrated?.settings.monitorDelay).toBe(500);
     expect(migrated?.settings.burstRounds).toBe(50);
     expect(migrated?.settings.delay).toBe(0);
     expect(migrated?.settings.healthThreshold).toBe(120);
     expect(migrated?.settings.overviewMode).toBe('classic');
-    expect(migrated?.ui.activeView).toBe('lanes');
+    // v2 'split' → v5 'lanes' → v7 'overview'.
+    expect(migrated?.ui.activeView).toBe('overview');
   });
 
-  describe('v4 → v5 → v6 migration (chain)', () => {
+  describe('v4 → v5 → v6 → v7 migration (chain)', () => {
     it('seeds healthThreshold default + overviewMode on a real v4 payload', () => {
       const v4: unknown = {
         version: 4,
@@ -103,13 +104,14 @@ describe('persistence', () => {
         ui: { expandedCards: ['ep-1'], activeView: 'split' },
       };
       const migrated = migrateSettings(v4);
-      expect(migrated?.version).toBe(6);
+      expect(migrated?.version).toBe(7);
       expect(migrated?.settings.healthThreshold).toBe(120);
       expect(migrated?.settings.overviewMode).toBe('classic');
       expect(migrated?.settings.region).toBe('north-america');
     });
 
-    it('rewrites deprecated activeView values to "lanes"', () => {
+    it('rewrites deprecated activeView values through Lanes to "overview" (v7 collapse)', () => {
+      // v4→v5 rewrites the trio to 'lanes'; v6→v7 collapses 'lanes' to 'overview'.
       for (const view of ['timeline', 'heatmap', 'split'] as const) {
         const v4 = {
           version: 4,
@@ -118,7 +120,7 @@ describe('persistence', () => {
           ui: { expandedCards: [], activeView: view },
         };
         const migrated = migrateSettings(v4);
-        expect(migrated?.ui.activeView).toBe('lanes');
+        expect(migrated?.ui.activeView).toBe('overview');
       }
     });
 
@@ -158,7 +160,7 @@ describe('persistence', () => {
     });
   });
 
-  describe('v5 → v6 migration', () => {
+  describe('v5 → v7 migration', () => {
     it('seeds overviewMode=classic on a real v5 payload, preserves everything else', () => {
       const v5: unknown = {
         version: 5,
@@ -177,7 +179,7 @@ describe('persistence', () => {
         },
       };
       const migrated = migrateSettings(v5);
-      expect(migrated?.version).toBe(6);
+      expect(migrated?.version).toBe(7);
       expect(migrated?.settings.overviewMode).toBe('classic');
       // Existing v5 fields survive intact.
       expect(migrated?.settings.healthThreshold).toBe(180);
@@ -223,10 +225,10 @@ describe('persistence', () => {
     });
   });
 
-  describe('v6 pass-through', () => {
-    it('round-trips a v6 payload unchanged (already current)', () => {
-      const v6: PersistedSettings = {
-        version: 6,
+  describe('v7 pass-through', () => {
+    it('round-trips a v7 payload unchanged (already current)', () => {
+      const v7: PersistedSettings = {
+        version: 7,
         endpoints: [{ url: 'https://a.example', enabled: true }],
         settings: {
           timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000,
@@ -241,12 +243,12 @@ describe('persistence', () => {
           terminalFilters: ['timeout', 'error'],
         },
       };
-      saveSettings(v6);
+      saveSettings(v7);
       const loaded = loadPersistedSettings();
-      expect(loaded).toEqual(v6);
+      expect(loaded).toEqual(v7);
     });
 
-    it('accepts both valid overviewMode values', () => {
+    it('accepts both valid overviewMode values through the v6→v7 step', () => {
       for (const mode of ['classic', 'enriched'] as const) {
         const v6: PersistedSettings = {
           version: 6,
@@ -263,9 +265,9 @@ describe('persistence', () => {
       }
     });
 
-    it('rejects a corrupted v6 overviewMode by falling back to "classic"', () => {
+    it('rejects a corrupted overviewMode by falling back to "classic" (v7 still guards)', () => {
       const bad = {
-        version: 6,
+        version: 7,
         endpoints: [],
         settings: {
           timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000,

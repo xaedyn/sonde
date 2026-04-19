@@ -6,8 +6,9 @@ import { writable } from 'svelte/store';
 import type { LiveTimeRange, TerminalEventType, UIState } from '../types';
 
 const initialState = (): UIState => ({
-  // 'overview' is the v2 default; v4 persisted payloads are migrated in
-  // persistence.ts so 'split'/'timeline'/'heatmap' never land here directly.
+  // 'overview' is the v2 default. Phase 7 migration (v6→v7) collapses any
+  // persisted Lanes-family view ('lanes'/'timeline'/'heatmap'/'split') to
+  // 'overview' before reaching here, so only the five current views land.
   activeView: 'overview',
   expandedCards: new Set<string>(),
   hoverTarget: null,
@@ -17,10 +18,6 @@ const initialState = (): UIState => ({
   showShare: false,
   showKeyboardHelp: false,
   isSharedView: false,
-  laneHoverRound: null,
-  laneHoverX: null,
-  laneHoverY: null,
-  heatmapTooltip: null,
   showEndpoints: false,
   focusedEndpointId: null,
   liveOptions: {
@@ -68,18 +65,6 @@ function createUiStore() {
     },
     clearSharedView(): void {
       update((s) => ({ ...s, isSharedView: false }));
-    },
-    setLaneHover(round: number, x: number, y: number): void {
-      update((s) => ({ ...s, laneHoverRound: round, laneHoverX: x, laneHoverY: y }));
-    },
-    clearLaneHover(): void {
-      update((s) => ({ ...s, laneHoverRound: null, laneHoverX: null, laneHoverY: null }));
-    },
-    setHeatmapTooltip(text: string, x: number, y: number): void {
-      update((s) => ({ ...s, heatmapTooltip: { text, x, y } }));
-    },
-    clearHeatmapTooltip(): void {
-      update((s) => ({ ...s, heatmapTooltip: null }));
     },
     toggleEndpoints(): void {
       update((s) => ({ ...s, showEndpoints: !s.showEndpoints }));

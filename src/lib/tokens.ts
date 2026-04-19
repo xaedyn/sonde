@@ -63,9 +63,6 @@ const primitive = {
   glassBorder:    'rgba(255,255,255,.07)',
   glassHighlight: 'rgba(255,255,255,.12)',
 
-  // Lane surface (slightly darker glass)
-  laneBg: 'rgba(255,255,255,.025)',
-
   // Topbar
   topbarBg: 'rgba(255,255,255,.025)',
 
@@ -222,10 +219,6 @@ export const tokens = {
       statsBorder:  'rgba(255,255,255,.04)',
     },
 
-    lane: {
-      bg: primitive.laneBg,
-    },
-
     topbar: {
       bg: primitive.topbarBg,
     },
@@ -380,17 +373,9 @@ export const tokens = {
     btnHover:        200,
     domThrottle:     100,
     copiedFeedback: 2000,
-    // Legacy — timeline-data-pipeline.ts and statistics store still reference these
-    progressiveDisclosure: 250,
-    sonarPingFast: 300,
-    sonarPingMedium: 500,
-    sonarPingSlow: 800,
-    sonarPingTimeout: 1200,
-    statTransition:  200,
-    dotEntrance:     200,
-    dotExit:         150,
-    loadingPulse:         2400,
-    loadingRingDuration:  1800,
+    progressiveDisclosure: 250,   // SummaryCard stagger
+    loadingPulse:         2400,   // LoadingAnimation
+    loadingRingDuration:  1800,   // LoadingAnimation
 
     // v2 motion primitives.
     handLerp:        0.15,   // dial hand smoothing factor (per-frame)
@@ -416,81 +401,20 @@ export const tokens = {
   shadow: {
     low:  '0 2px 8px rgba(0,0,0,.4)',
     high: '0 8px 32px rgba(0,0,0,.6)',
-    lane: '0 4px 30px rgba(0,0,0,.15)',
   },
 
-  // Lane layout constants
+  // Shell + sliding window constants. Phase 7 retired the Lanes family and
+  // its layout-algorithm tokens (gapPx / padding* / dotRadius / nowDotRadius /
+  // ringInitialR / compactThreshold / compactHeaderHeight / maxEndpoints /
+  // panelWidth / minHeight / chartPadding*). chartWindow still drives the
+  // Live scope window; topbarHeight / railWidth / xAxisHeight / footerHeight
+  // are the v2 shell chrome constants.
   lane: {
-    panelWidth:    250,   // px — left panel fixed width
-    gapPx:           8,   // gap between lane cards
-    paddingX:       10,   // horizontal padding of lanes container
-    paddingY:        8,   // top padding of lanes container
-    chartPaddingX:  18,   // left/right padding inside SVG chart area
-    chartPaddingY:  12,   // top/bottom
-    dotRadius:       3,
-    dotRadiusHover:  5.5,
-    nowDotRadius:    4,
-    ringInitialR:    7,
-    ringFinalR:     14,
-    chartWindow:    60,   // max visible rounds in SVG chart (sliding window)
-    topbarHeight:   58,   // px — bumped from 54 to match v2 prototype chrome
-    railWidth:     264,   // px — v2 persistent endpoint rail, fixed column width
+    chartWindow:    60,
+    topbarHeight:   58,
+    railWidth:     264,
     xAxisHeight:    30,
     footerHeight:   38,
-    minHeight:           120,   // px — minimum lane height before 2-col triggers (AC3)
-    compactHeaderHeight:  28,   // px — height of compact overlay header
-    compactThreshold:      4,   // endpoint count that triggers compact mode (AC2)
-    maxEndpoints:         10,   // hard cap on endpoint count (AC4)
-  },
-
-  // Kept for timeline-data-pipeline.ts (still used by LaneSvgChart)
-  canvas: {
-    yAxis: {
-      rollingWindowSize:   20,
-      percentileClampLow:   2,
-      percentileClampHigh: 98,
-      logScaleThreshold:   50,
-      linearHeadroomPct:  0.2,
-      minHeadroomMs:        5,
-      minVisibleRangeMs:   10,
-      targetGridlineCount:  5,
-    },
-    xAxis: {
-      minLabelSpacing: 60,
-      labelOffsetY:     4,
-      paddingBottom:   32,
-    },
-    ribbon: {
-      fillOpacity:     0.15,
-      medianOpacity:   0.6,
-      medianLineWidth: 1.5,
-      medianLineDash:  [4, 4] as readonly number[],
-    },
-    // Legacy — retained so effects-renderer.ts compiles without errors
-    sonarPing: {
-      fast:    { initialRadius: 3, finalRadius: 12, maxConcurrent: 5 },
-      medium:  { initialRadius: 3, finalRadius: 20, maxConcurrent: 5 },
-      slow:    { initialRadius: 3, finalRadius: 32, maxConcurrent: 3 },
-      timeout: { initialRadius: 3, finalRadius: 48, maxConcurrent: 1 },
-    },
-    pointRadius:      4,
-    pointRadiusHover: 6,
-    pointOutlineWidth: 1.5,
-    gridLineDash:     [4, 8] as readonly number[],
-    gridLineOpacity:  0.3,
-    axisLineOpacity:  0.6,
-    sweepLineOpacity: 0.15,
-    sweepLineGlowWidth: 4,
-    heatmapCellSize:  8,
-    haloRadius:      16,
-    haloOpacity:     0.3,
-    emptyState: {
-      sweepPeriod:     4000,
-      sweepLineOpacity: 0.25,
-      ringOpacity:     0.08,
-      textOpacity:     0.5,
-      trailAngleDeg:   60,
-    },
   },
 
   breakpoints: { small: 480, mobile: 375, tablet: 768, desktop: 1024, wide: 1440 },

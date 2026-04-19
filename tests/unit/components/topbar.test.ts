@@ -190,19 +190,8 @@ describe('Topbar', () => {
     expect(showRunStatus('stopping')).toBe(true);
   });
 
-  // ── Timing tokens ─────────────────────────────────────────────────────────
-
-  it('statTransition timing token is at least 100ms', () => {
-    expect(tokens.timing.statTransition).toBeGreaterThanOrEqual(100);
-  });
-
-  it('dotEntrance timing token is at least 100ms', () => {
-    expect(tokens.timing.dotEntrance).toBeGreaterThanOrEqual(100);
-  });
-
-  it('dotExit timing token is at least 100ms', () => {
-    expect(tokens.timing.dotExit).toBeGreaterThanOrEqual(100);
-  });
+  // statTransition / dotEntrance / dotExit removed in Phase 7 — the surviving
+  // views (Overview / Live / Atlas) don't consume them.
 
   it('btnHover timing token is at least 100ms', () => {
     expect(tokens.timing.btnHover).toBeGreaterThanOrEqual(100);

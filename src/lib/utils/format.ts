@@ -57,3 +57,34 @@ export function fmtPct(ratio: number): string {
 export function fmtCount(n: number): string {
   return n.toLocaleString();
 }
+
+/**
+ * Format an elapsed-time duration in milliseconds as a human-readable clock.
+ *
+ *   formatElapsed(0)        → "0:00"
+ *   formatElapsed(2500)     → "2.5s"
+ *   formatElapsed(45000)    → "0:45"
+ *   formatElapsed(125000)   → "2:05"
+ *   formatElapsed(3_725_000) → "1:02:05"
+ *
+ * Sub-10-second durations render with a decimal; 10s–1h renders as M:SS;
+ * ≥1h renders as H:MM:SS. Non-positive input coerces to "0:00".
+ */
+export function formatElapsed(ms: number): string {
+  if (ms <= 0) return '0:00';
+  const totalSec = Math.floor((ms / 1000) * 10) / 10;
+  if (totalSec < 10) {
+    return `${totalSec.toFixed(1)}s`;
+  }
+  const totalSecInt = Math.floor(totalSec);
+  const hours = Math.floor(totalSecInt / 3600);
+  const minutes = Math.floor((totalSecInt % 3600) / 60);
+  const seconds = totalSecInt % 60;
+  if (hours > 0) {
+    const mm = String(minutes).padStart(2, '0');
+    const ss = String(seconds).padStart(2, '0');
+    return `${hours}:${mm}:${ss}`;
+  }
+  const ss = String(seconds).padStart(2, '0');
+  return `${minutes}:${ss}`;
+}

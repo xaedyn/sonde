@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatElapsed } from '../../src/lib/renderers/timeline-data-pipeline';
+import { formatElapsed } from '../../src/lib/utils/format';
 
 describe('formatElapsed (AC7)', () => {
   it('formats 0ms as "0:00"', () => {
