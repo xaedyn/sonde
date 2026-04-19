@@ -21,10 +21,20 @@
 
   function handleDoubleClick(id: string): void {
     uiStore.setFocusedEndpoint(id);
+    // Drill to Lanes in Phase 1 — switch to 'live' once Phase 3 ships it.
     uiStore.setActiveView('lanes');
   }
 
-  function handleAddEndpoint(): void {
+  // Keyboard parity for drill: Enter falls through to native button click
+  // (toggle), Space drills to the detail view per the rail spec.
+  function handleKeydown(event: KeyboardEvent, id: string): void {
+    if (event.key === ' ' || event.key === 'Spacebar') {
+      event.preventDefault();
+      handleDoubleClick(id);
+    }
+  }
+
+  function handleManageEndpoints(): void {
     uiStore.toggleEndpoints();
   }
 
@@ -61,6 +71,7 @@
         aria-label="{ep.label}, {ep.url}, status: {style.label}"
         onclick={() => handleClick(ep.id)}
         ondblclick={() => handleDoubleClick(ep.id)}
+        onkeydown={(e) => handleKeydown(e, ep.id)}
       >
         <span
           class="rail-pip"
@@ -81,8 +92,8 @@
   </div>
 
   <div class="rail-footer">
-    <button type="button" class="rail-add" onclick={handleAddEndpoint}>
-      + Add endpoint
+    <button type="button" class="rail-add" onclick={handleManageEndpoints}>
+      Manage endpoints
     </button>
   </div>
 </nav>
