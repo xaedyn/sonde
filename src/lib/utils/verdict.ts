@@ -192,3 +192,67 @@ function mean(values: readonly number[]): number {
   for (const v of values) sum += v;
   return sum / values.length;
 }
+
+// ── Atlas phase-dominance hypothesis ───────────────────────────────────────
+// Single-endpoint diagnosis for AtlasView: given a 5-phase breakdown, name
+// the dominant phase (if any) in one sentence. Distinct from the network-wide
+// `computeCausalVerdict` above because this runs on one endpoint's tier2
+// averages, not across the fleet. Reuses PHASE_LABELS and Tier2Phase.
+//
+//   top > 60% of total  →  "Slow {phase} — N% of total time."
+//   top+2nd > 80%       →  "{A} and {B} dominate — N% together."
+//   neither              →  "No single phase dominates — investigate
+//                            overall network conditions."
+export interface PhaseBreakdown {
+  readonly dns: number;
+  readonly tcp: number;
+  readonly tls: number;
+  readonly ttfb: number;
+  readonly transfer: number;
+}
+
+export interface PhaseHypothesis {
+  readonly verdictPhase: Tier2Phase | 'mixed';
+  readonly text: string;
+  readonly dominantPct: number;
+}
+
+export function phaseHypothesis(phases: PhaseBreakdown): PhaseHypothesis {
+  const total = phases.dns + phases.tcp + phases.tls + phases.ttfb + phases.transfer;
+  if (total <= 0) {
+    return { verdictPhase: 'mixed', text: 'Awaiting tier-2 samples.', dominantPct: 0 };
+  }
+  const entries: [Tier2Phase, number][] = [
+    ['dns',      phases.dns],
+    ['tcp',      phases.tcp],
+    ['tls',      phases.tls],
+    ['ttfb',     phases.ttfb],
+    ['transfer', phases.transfer],
+  ];
+  // Sort descending by ms. Ties break by the declared order above (dns first),
+  // which is stable under Array.prototype.sort in modern V8/JSC.
+  entries.sort((a, b) => b[1] - a[1]);
+  const [topName, topMs] = entries[0];
+  const topPct = topMs / total;
+  if (topPct > 0.6) {
+    return {
+      verdictPhase: topName,
+      text: `Slow ${PHASE_LABELS[topName]} — ${Math.round(topPct * 100)}% of total time.`,
+      dominantPct: topPct,
+    };
+  }
+  const [secondName, secondMs] = entries[1];
+  const pairPct = (topMs + secondMs) / total;
+  if (pairPct > 0.8) {
+    return {
+      verdictPhase: 'mixed',
+      text: `${PHASE_LABELS[topName]} and ${PHASE_LABELS[secondName]} dominate — ${Math.round(pairPct * 100)}% together.`,
+      dominantPct: pairPct,
+    };
+  }
+  return {
+    verdictPhase: 'mixed',
+    text: 'No single phase dominates — investigate overall network conditions.',
+    dominantPct: 0,
+  };
+}
