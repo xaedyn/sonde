@@ -14,6 +14,7 @@
   import EndpointRail from './EndpointRail.svelte';
   import ViewSwitcher from './ViewSwitcher.svelte';
   import OverviewView from './OverviewView.svelte';
+  import LiveView from './LiveView.svelte';
   import LanesView from './LanesView.svelte';
   import XAxisBar from './XAxisBar.svelte';
   import FooterBar from './FooterBar.svelte';
@@ -105,6 +106,8 @@
               {sampleTimestamps}
             />
           </div>
+        {:else if activeView === 'live'}
+          <LiveView />
         {:else}
           <OverviewView />
         {/if}

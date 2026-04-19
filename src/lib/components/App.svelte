@@ -113,7 +113,8 @@
     root.style.setProperty('--tooltip-text-dim',     tokens.color.tooltip.textDim);
 
     // v2 SVG primitives (dial, orbit ring, scope)
-    root.style.setProperty('--svg-grid-cyan',  tokens.color.svg.gridLineCyan);
+    root.style.setProperty('--svg-grid-line', tokens.color.svg.gridLine);
+    root.style.setProperty('--svg-grid-cyan', tokens.color.svg.gridLineCyan);
     root.style.setProperty('--svg-grid-major', tokens.color.svg.gridLineMajor);
     root.style.setProperty('--svg-tick-minor', tokens.color.svg.tickMinor);
     root.style.setProperty('--svg-tick-major', tokens.color.svg.tickMajor);

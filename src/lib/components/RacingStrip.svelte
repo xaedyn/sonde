@@ -76,11 +76,9 @@
 
   function handleClick(event: MouseEvent, ep: Endpoint): void {
     uiStore.setFocusedEndpoint(ep.id);
-    // Phase 2.5 fallback: both taps route to Lanes because Live (Phase 3) and
-    // Atlas (Phase 4) aren't shipped yet. Keep the single-target wiring until
-    // the hint can honestly advertise `Click → Live · ⇧ → Diagnose`.
-    void event;
-    uiStore.setActiveView('lanes');
+    // Click → Live (Phase 3); Shift+click → Lanes for now (Atlas is Phase 4).
+    // Flip the shift-branch to 'atlas' once it ships.
+    uiStore.setActiveView(event.shiftKey ? 'lanes' : 'live');
   }
 </script>
 
@@ -90,7 +88,7 @@
       <h3 class="racing-title">Per-endpoint comparison</h3>
       <p class="racing-sub">Live latencies on shared axis</p>
     </div>
-    <p class="racing-hint">Click → Lanes</p>
+    <p class="racing-hint">Click → Live · ⇧ → Lanes</p>
   </header>
 
   <div class="racing-axis" aria-hidden="true">

@@ -288,8 +288,7 @@
 
   function handleEventDrill(epId: string): void {
     uiStore.setFocusedEndpoint(epId);
-    // Phase 2.5 fallback: drill to Lanes until Live (Phase 3) ships.
-    uiStore.setActiveView('lanes');
+    uiStore.setActiveView('live');
   }
 
   // Rerender clock for the event feed's relative-time labels. Ticks every

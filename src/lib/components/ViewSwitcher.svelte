@@ -20,7 +20,7 @@
   // "keep all 6 legacy views working until Phase 7").
   const VIEWS: readonly ViewDef[] = [
     { id: 'overview', key: '1', label: 'Overview', hint: 'At a glance',         enabled: true  },
-    { id: 'live',     key: '2', label: 'Live',     hint: 'Real-time scope',     enabled: false },
+    { id: 'live',     key: '2', label: 'Live',     hint: 'Real-time scope',     enabled: true  },
     { id: 'atlas',    key: '3', label: 'Atlas',    hint: 'Phase breakdown',     enabled: false },
     { id: 'strata',   key: '4', label: 'Strata',   hint: 'Distribution',        enabled: false },
     { id: 'terminal', key: '5', label: 'Terminal', hint: 'Event log',           enabled: false },

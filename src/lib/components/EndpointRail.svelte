@@ -21,8 +21,7 @@
 
   function handleDoubleClick(id: string): void {
     uiStore.setFocusedEndpoint(id);
-    // Drill to Lanes in Phase 1 — switch to 'live' once Phase 3 ships it.
-    uiStore.setActiveView('lanes');
+    uiStore.setActiveView('live');
   }
 
   // Keyboard parity for drill: Enter falls through to native button click
