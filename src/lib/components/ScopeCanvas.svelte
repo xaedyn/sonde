@@ -4,6 +4,7 @@
 <!-- on a shared 0–300ms Y axis, last 60 rounds on the X axis. Threshold    -->
 <!-- line, overflow chevrons, status-break gaps, hover crosshair tooltip.   -->
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import { tokens } from '$lib/tokens';
   import { fmt } from '$lib/utils/format';
   import type { Endpoint, MeasurementSample } from '$lib/types';
@@ -161,16 +162,18 @@
     return rows;
   });
 
-  // ── A11y: polite live-region that describes the current scope state. Throttled
-  // to once per 2s so the reader doesn't narrate every tick.
+  // ── A11y: polite live-region that describes the current scope state.
+  // Throttled to once per 2s so the reader doesn't narrate every tick.
+  // Trailing-edge semantics — if the throttle window is open, schedule the
+  // update rather than dropping it. Otherwise the first sample on mount
+  // can "stick" forever with SR saying "Awaiting samples." when real data
+  // has already arrived.
+  const LIVE_REGION_THROTTLE_MS = 2000;
   let liveRegionText = $state('');
   let liveThrottleTs = 0;
-  $effect(() => {
-    // Re-run whenever samples change; read but throttle output.
-    void samplesByEndpoint;
-    const now = Date.now();
-    if (now - liveThrottleTs < 2000) return;
-    liveThrottleTs = now;
+  let liveThrottleTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function buildLiveRegionText(): string {
     const parts: string[] = [];
     for (const ep of endpoints) {
       const samples = samplesByEndpoint[ep.id] ?? [];
@@ -182,7 +185,37 @@
         parts.push(`${ep.label} ${last.status}`);
       }
     }
-    liveRegionText = parts.length === 0 ? 'Awaiting samples.' : parts.join('. ');
+    return parts.length === 0 ? 'Awaiting samples.' : parts.join('. ');
+  }
+
+  function publishLiveRegionText(): void {
+    liveThrottleTs = Date.now();
+    liveRegionText = buildLiveRegionText();
+  }
+
+  $effect(() => {
+    // Re-run whenever the scope inputs change; publish now if we're past the
+    // throttle window, otherwise schedule a trailing-edge publish so the
+    // final state within a burst still lands in the live region.
+    void samplesByEndpoint;
+    void endpoints;
+    void threshold;
+    const now = Date.now();
+    const elapsed = now - liveThrottleTs;
+    if (elapsed >= LIVE_REGION_THROTTLE_MS) {
+      if (liveThrottleTimer !== null) { clearTimeout(liveThrottleTimer); liveThrottleTimer = null; }
+      publishLiveRegionText();
+      return;
+    }
+    if (liveThrottleTimer !== null) return; // already scheduled for the tail
+    liveThrottleTimer = setTimeout(() => {
+      liveThrottleTimer = null;
+      publishLiveRegionText();
+    }, LIVE_REGION_THROTTLE_MS - elapsed);
+  });
+
+  onDestroy(() => {
+    if (liveThrottleTimer !== null) clearTimeout(liveThrottleTimer);
   });
 
   const ariaLabel = $derived(
@@ -193,7 +226,23 @@
     onDrill?.(epId);
   }
 
-  const hasAnySample = $derived(traces.some((t) => t.d.length > 0));
+  function handleKeyTrace(event: KeyboardEvent, epId: string): void {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onDrill?.(epId);
+    }
+  }
+
+  function endpointLabel(epId: string): string {
+    return endpoints.find((e) => e.id === epId)?.label ?? epId;
+  }
+
+  // Include breaks (timeouts/errors) and overflow chevrons in the visibility
+  // check — a window with only bad samples has zero polyline data but still
+  // renders real chevrons, which shouldn't be covered by "AWAITING SAMPLES".
+  const hasAnySample = $derived(
+    traces.some((t) => t.d.length > 0 || t.breaks.length > 0 || t.overflow.length > 0),
+  );
 </script>
 
 <div class="scope-wrap" style:height="{height}px">
@@ -267,7 +316,11 @@
           stroke-linejoin="round"
           opacity={trace.dimmed ? 0.35 : 1}
           style:cursor="pointer"
+          role="button"
+          tabindex="0"
+          aria-label="Drill into {endpointLabel(trace.id)}"
           onclick={() => handleClickTrace(trace.id)}
+          onkeydown={(e) => handleKeyTrace(e, trace.id)}
         />
       {/if}
       {#each trace.overflow as o, i (i)}

@@ -89,16 +89,25 @@
       <div class="live-control" role="group" aria-label="Scope layout">
         <span class="live-control-label">Layout</span>
         <div class="live-segment">
+          <!--
+            Pressed state tracks `liveOptions.split` (the user's stashed
+            preference), not the current `mode`. In solo mode the scope is
+            always a single full-height canvas regardless of the toggle, so
+            we keep the toggle disabled + visually showing the stashed value
+            so clicks are advisory — the preference will apply on unfocus.
+          -->
           <button
             type="button" class="live-chip"
-            class:on={mode !== 'split'}
-            aria-pressed={mode !== 'split'}
+            class:on={!liveOptions.split}
+            aria-pressed={!liveOptions.split}
+            disabled={!!soloEndpoint}
             onclick={() => setSplit(false)}
           >Unified</button>
           <button
             type="button" class="live-chip"
-            class:on={mode === 'split'}
-            aria-pressed={mode === 'split'}
+            class:on={liveOptions.split}
+            aria-pressed={liveOptions.split}
+            disabled={!!soloEndpoint}
             onclick={() => setSplit(true)}
           >Split</button>
         </div>
@@ -112,7 +121,7 @@
             onclick={clearFocus}
             aria-label="Clear focus on {soloEndpoint.label}"
           >
-            Clear focus · ESC
+            Clear focus
           </button>
         </div>
       {/if}
