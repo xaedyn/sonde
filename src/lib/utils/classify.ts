@@ -89,6 +89,23 @@ export function networkQuality(
   return Math.round(total / ready.length);
 }
 
+// ─── Verdict vs networkLevel — DELIBERATE ASYMMETRY ────────────────────────
+// The two classifiers below intentionally bucket the same score differently:
+//
+//   overviewVerdict (3 buckets)  answers  "how is the user's experience?"
+//   networkLevel    (4 buckets)  answers  "what alerting action is warranted?"
+//
+// They CAN disagree at boundaries — e.g. score 80 yields verdict='healthy'
+// (the dial reads "Healthy") while networkLevel='warning' (the topbar pill
+// reads "WARNING"). That is by design: the dial is an at-a-glance human
+// summary that compresses warning + early degraded into one bucket; the pill
+// is a live alerting indicator that needs the extra granularity to
+// distinguish "watch this" from "acknowledge this".
+//
+// Do not unify the two without an explicit product call. If you add a third
+// classifier (e.g. routing, paging), document its bucketing rationale here
+// alongside these two.
+//
 export type OverviewVerdict = 'unknown' | 'healthy' | 'degraded' | 'unhealthy';
 
 export interface VerdictStyle {
