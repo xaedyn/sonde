@@ -81,15 +81,28 @@
     root.style.setProperty('--easing-decelerate',tokens.easing.decelerate);
 
     // v2 typography scale (--ts-*) + tracking (--tr-*)
-    root.style.setProperty('--ts-xs',  tokens.typography.scale.xs);
-    root.style.setProperty('--ts-sm',  tokens.typography.scale.sm);
-    root.style.setProperty('--ts-md',  tokens.typography.scale.md);
-    root.style.setProperty('--ts-lg',  tokens.typography.scale.lg);
-    root.style.setProperty('--ts-xl',  tokens.typography.scale.xl);
-    root.style.setProperty('--ts-xxl', tokens.typography.scale.xxl);
-    root.style.setProperty('--tr-kicker', tokens.typography.tracking.kicker);
-    root.style.setProperty('--tr-label',  tokens.typography.tracking.label);
-    root.style.setProperty('--tr-body',   tokens.typography.tracking.body);
+    root.style.setProperty('--ts-xs',   tokens.typography.scale.xs);
+    root.style.setProperty('--ts-sm',   tokens.typography.scale.sm);
+    root.style.setProperty('--ts-md',   tokens.typography.scale.md);
+    root.style.setProperty('--ts-base', tokens.typography.scale.base);
+    root.style.setProperty('--ts-lg',   tokens.typography.scale.lg);
+    root.style.setProperty('--ts-xl',   tokens.typography.scale.xl);
+    root.style.setProperty('--ts-2xl',  tokens.typography.scale.xl2);
+    root.style.setProperty('--ts-3xl',  tokens.typography.scale.xl3);
+    root.style.setProperty('--ts-xxl',  tokens.typography.scale.xxl);
+    root.style.setProperty('--tr-kicker',  tokens.typography.tracking.kicker);
+    root.style.setProperty('--tr-label',   tokens.typography.tracking.label);
+    root.style.setProperty('--tr-tight',   tokens.typography.tracking.tight);
+    root.style.setProperty('--tr-display', tokens.typography.tracking.display);
+    root.style.setProperty('--tr-body',    tokens.typography.tracking.body);
+
+    // v2 structural chrome + surface border (used by topbar/rail/switcher)
+    root.style.setProperty('--topbar-height',       `${tokens.lane.topbarHeight}px`);
+    root.style.setProperty('--rail-width',          `${tokens.lane.railWidth}px`);
+    root.style.setProperty('--border-dim',          tokens.color.surface.border.dim);
+    root.style.setProperty('--border-mid',          tokens.color.surface.border.mid);
+    root.style.setProperty('--border-bright',       tokens.color.surface.border.bright);
+    root.style.setProperty('--surface-topbar-bg',   tokens.color.surface.overlayDeep);
 
     // v2 surface + tooltip variants
     root.style.setProperty('--surface-dial-face',    tokens.color.surface.dialFace);

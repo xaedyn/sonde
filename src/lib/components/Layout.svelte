@@ -1,12 +1,19 @@
 <!-- src/lib/components/Layout.svelte -->
+<!-- v2 shell. Topbar (top) | { Rail (264px) | { ViewSwitcher + main content } } | FooterBar (bottom). -->
+<!-- Routes activeView to OverviewView (Phase 1 stub) or the legacy LanesView   -->
+<!-- (which still hosts Glass Lanes + XAxisBar) for the deprecated splits.     -->
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { get } from 'svelte/store';
   import { measurementStore, incrementalTimestampTracker } from '$lib/stores/measurements';
   import { endpointStore } from '$lib/stores/endpoints';
   import { settingsStore } from '$lib/stores/settings';
+  import { uiStore } from '$lib/stores/ui';
   import { tokens } from '$lib/tokens';
   import Topbar from './Topbar.svelte';
+  import EndpointRail from './EndpointRail.svelte';
+  import ViewSwitcher from './ViewSwitcher.svelte';
+  import OverviewView from './OverviewView.svelte';
   import LanesView from './LanesView.svelte';
   import XAxisBar from './XAxisBar.svelte';
   import FooterBar from './FooterBar.svelte';
@@ -30,17 +37,25 @@
   const configuredCap = $derived($settingsStore.cap > 0 ? $settingsStore.cap : Infinity);
   const currentRound = $derived($measurementStore.roundCounter);
 
-  // Sliding window: show at most CHART_WINDOW rounds
-  const visibleSpan = $derived(Math.min(CHART_WINDOW, configuredCap || CHART_WINDOW));
+  const visibleSpan  = $derived(Math.min(CHART_WINDOW, configuredCap || CHART_WINDOW));
   const visibleStart = $derived(Math.max(1, currentRound - visibleSpan + 1));
-  const visibleEnd = $derived(Math.max(visibleSpan, currentRound));
+  const visibleEnd   = $derived(Math.max(visibleSpan, currentRound));
 
-  // Earliest timestamp per round across all endpoints — O(1) read from incremental tracker.
-  // $measurementStore.roundCounter triggers reactive re-evaluation when new rounds arrive.
   const sampleTimestamps: readonly number[] = $derived.by(() => {
     void $measurementStore.roundCounter; // reactive subscription trigger
     return incrementalTimestampTracker.timestamps;
   });
+
+  // Map activeView → which content renderer to mount. The deprecated
+  // 'timeline'/'heatmap'/'split' values still arrive from non-migrated tabs;
+  // they all flow through the legacy lanes path until Phase 7 removes them.
+  const activeView = $derived($uiStore.activeView);
+  const showLegacyLanes = $derived(
+    activeView === 'lanes'
+      || activeView === 'timeline'
+      || activeView === 'heatmap'
+      || activeView === 'split'
+  );
 
   onMount(() => {
     unsubLifecycle = measurementStore.subscribe((state) => {
@@ -61,7 +76,7 @@
   onDestroy(() => { unsubLifecycle?.(); });
 </script>
 
-<a href="#lanes" class="skip-link">Skip to lanes</a>
+<a href="#main-content" class="skip-link">Skip to main content</a>
 
 <div class="bg" aria-hidden="true"></div>
 
@@ -71,12 +86,38 @@
   style:--t1={tokens.color.text.t1}
 >
   <Topbar {onStart} {onStop} />
-  <LanesView {visibleStart} {visibleEnd} />
-  <XAxisBar startRound={visibleStart} endRound={visibleEnd} {currentRound} startedAt={$measurementStore.startedAt} {sampleTimestamps} />
+
+  <div class="shell-body">
+    <EndpointRail />
+
+    <div class="shell-main-wrap">
+      <ViewSwitcher />
+
+      <main id="main-content" class="shell-main" tabindex="-1">
+        {#if showLegacyLanes}
+          <div class="legacy-stack">
+            <LanesView {visibleStart} {visibleEnd} />
+            <XAxisBar
+              startRound={visibleStart}
+              endRound={visibleEnd}
+              {currentRound}
+              startedAt={$measurementStore.startedAt}
+              {sampleTimestamps}
+            />
+          </div>
+        {:else}
+          <OverviewView />
+        {/if}
+      </main>
+    </div>
+  </div>
+
   <FooterBar />
 </div>
 
-<CrossLaneHover {visibleStart} {visibleEnd} />
+{#if showLegacyLanes}
+  <CrossLaneHover {visibleStart} {visibleEnd} />
+{/if}
 
 <div
   id="chronoscope-announcer"
@@ -89,7 +130,7 @@
 <style>
   .skip-link {
     position: absolute; top: -40px; left: 0; z-index: 9999;
-    padding: 8px 16px; background: #67e8f9; color: #0c0a14;
+    padding: 8px 16px; background: var(--accent-cyan); color: var(--bg-base);
     font-weight: 600; text-decoration: none;
     border-radius: 0 0 4px 0; transition: top 100ms ease;
   }
@@ -97,13 +138,53 @@
 
   .bg {
     position: fixed; inset: 0; z-index: 0;
-    background: #0e0c18;
+    background: var(--bg-base);
+  }
+  /* Subtle cyan/pink atmosphere — matches v2 prototype background pass.       */
+  .bg::before {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background:
+      radial-gradient(ellipse 70% 50% at 15% 0%,  rgba(103,232,249,.05), transparent 60%),
+      radial-gradient(ellipse 60% 45% at 90% 100%, rgba(249,168,212,.04), transparent 65%);
   }
 
   .app {
     position: relative; z-index: 1;
-    height: 100vh; display: flex; flex-direction: column;
-    overflow: hidden; color: var(--t1);
+    height: 100vh;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    color: var(--t1);
+  }
+
+  .shell-body {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+  }
+
+  .shell-main-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .shell-main {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .shell-main:focus { outline: none; }
+
+  .legacy-stack {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
   }
 
   .sr-only {
@@ -111,5 +192,4 @@
     padding: 0; margin: -1px; overflow: hidden;
     clip-path: inset(50%); white-space: nowrap; border: 0;
   }
-
 </style>

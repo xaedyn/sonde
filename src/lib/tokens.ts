@@ -331,19 +331,26 @@ export const tokens = {
     label:   { size: 11, weight: 500, opacity: 0.58, letterSpacing: '0.06em' },
     body:    { size: 14, weight: 400, opacity: 0.94, letterSpacing: '0' },
 
-    // v2 named scale — chip labels, rail url, rail metric, triptych values, verdict title.
+    // v2 named scale — aligned to the prototype (`v2/Chronoscope v2.html`), which
+    // is the pixel-fidelity source of truth. Half-pixel sizes from the earlier
+    // handoff spec were reconciled to the prototype's integer-px scale.
     scale: {
-      xs:  '9px',     // chip labels, metadata kickers
-      sm:  '10px',    // rail url, axis labels, severity chips
-      md:  '11.5px',  // rail label, segment labels
-      lg:  '14px',    // rail metric, sub-metric numbers
-      xl:  '18px',    // verdict title
-      xxl: '32px',    // overview triptych values
+      xs:   '10px',  // micro labels, all-caps only
+      sm:   '11px',  // mono metadata, urls
+      md:   '12px',  // controls, chip text
+      base: '13px',  // body copy, chips
+      lg:   '14px',  // rail metrics, brand name, sub-metric numbers
+      xl:   '17px',  // subsection titles, logo
+      xl2:  '20px',  // section titles
+      xl3:  '24px',  // page titles
+      xxl:  '32px',  // reserved for Overview triptych values
     },
     tracking: {
-      kicker: '0.18em',
-      label:  '0.08em',
-      body:   '0',
+      kicker:  '0.22em',
+      label:   '0.14em',
+      tight:   '-0.01em',
+      display: '-0.03em',
+      body:    '0',
     },
   },
 
@@ -425,7 +432,8 @@ export const tokens = {
     ringInitialR:    7,
     ringFinalR:     14,
     chartWindow:    60,   // max visible rounds in SVG chart (sliding window)
-    topbarHeight:   54,
+    topbarHeight:   58,   // px — bumped from 54 to match v2 prototype chrome
+    railWidth:     264,   // px — v2 persistent endpoint rail, fixed column width
     xAxisHeight:    30,
     footerHeight:   38,
     minHeight:           120,   // px — minimum lane height before 2-col triggers (AC3)

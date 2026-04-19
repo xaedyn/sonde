@@ -1,8 +1,12 @@
 <!-- src/lib/components/Topbar.svelte -->
+<!-- v2 chrome — pixel-aligned to v2/Chronoscope v2.html. Preserves every       -->
+<!-- existing control (endpoints / settings / share / start-stop) and adds the -->
+<!-- networkQualityStore-driven status pill required by the Phase 1 brief.     -->
 <script lang="ts">
   import { measurementStore } from '$lib/stores/measurements';
   import { uiStore } from '$lib/stores/ui';
-  import { tokens } from '$lib/tokens';
+  import { networkQualityStore } from '$lib/stores/derived';
+  import { LEVEL_STYLES, networkLevel } from '$lib/utils/classify';
   import type { TestLifecycleState } from '$lib/types';
 
   let { onStart, onStop }: {
@@ -10,145 +14,150 @@
     onStop?: () => void;
   } = $props();
 
-  let lifecycle: TestLifecycleState = $derived($measurementStore.lifecycle);
-  let roundCounter: number = $derived($measurementStore.roundCounter);
-  let isSharedView: boolean = $derived($uiStore.isSharedView);
+  const lifecycle: TestLifecycleState = $derived($measurementStore.lifecycle);
+  const roundCounter: number = $derived($measurementStore.roundCounter);
+  const isSharedView: boolean = $derived($uiStore.isSharedView);
 
-  let showRunStatus: boolean = $derived(
-    lifecycle === 'running' || lifecycle === 'starting' || lifecycle === 'stopping'
-  );
+  const isRunning = $derived(lifecycle === 'running');
+  const isTransitioning = $derived(lifecycle === 'starting' || lifecycle === 'stopping');
 
-  let runLabel: string = $derived.by(() => {
-    if (isSharedView) return 'Shared Results';
-    if (lifecycle === 'running') return `Round ${roundCounter}`;
-    if (lifecycle === 'starting') return 'Starting\u2026';
-    if (lifecycle === 'stopping') return 'Stopping\u2026';
-    return '';
+  const runText = $derived.by(() => {
+    if (lifecycle === 'running')  return 'Measuring';
+    if (lifecycle === 'starting') return 'Starting…';
+    if (lifecycle === 'stopping') return 'Stopping…';
+    return 'Halted';
   });
 
-  let isRunning: boolean = $derived(lifecycle === 'running');
-  let isTransitioning: boolean = $derived(lifecycle === 'starting' || lifecycle === 'stopping');
+  const tickText = $derived(`T+${String(roundCounter).padStart(4, '0')}`);
 
-  let startStopLabel: string = $derived.by(() => {
-    if (lifecycle === 'running') return 'Stop';
-    if (lifecycle === 'starting') return 'Starting\u2026';
-    if (lifecycle === 'stopping') return 'Stopping\u2026';
+  const startStopLabel = $derived.by(() => {
+    if (lifecycle === 'running') return 'Halt';
+    if (lifecycle === 'starting') return 'Starting…';
+    if (lifecycle === 'stopping') return 'Stopping…';
     return 'Start';
   });
-
-  let isStartButton: boolean = $derived(
-    lifecycle === 'idle' || lifecycle === 'stopped' || lifecycle === 'completed'
+  const isStartButton = $derived(
+    lifecycle === 'idle' || lifecycle === 'stopped' || lifecycle === 'completed',
   );
 
-  function handleStartStop(): void {
-    if (lifecycle === 'running') {
-      onStop?.();
-    } else if (lifecycle === 'idle' || lifecycle === 'stopped' || lifecycle === 'completed') {
-      onStart?.();
-    }
-  }
+  // Status pill — driven by networkQualityStore, mapped through networkLevel().
+  const score = $derived($networkQualityStore);
+  const level = $derived(networkLevel(score));
+  const pillStyle = $derived(LEVEL_STYLES[level]);
 
+  function handleStartStop(): void {
+    if (lifecycle === 'running') onStop?.();
+    else if (isStartButton) onStart?.();
+  }
   function handleRunOwn(): void {
     uiStore.clearSharedView();
     measurementStore.reset();
   }
-
-  function handleSettings(): void { uiStore.toggleSettings(); }
-  function handleShare(): void { uiStore.toggleShare(); }
+  function handleSettings():  void { uiStore.toggleSettings();  }
+  function handleShare():     void { uiStore.toggleShare();     }
   function handleEndpoints(): void { uiStore.toggleEndpoints(); }
 </script>
 
-<header
-  class="topbar"
-  style:--topbar-bg={tokens.color.topbar.bg}
-  style:--border-bright={tokens.color.surface.border.bright}
-  style:--t1={tokens.color.text.t1}
-  style:--t2={tokens.color.text.t2}
-  style:--t3={tokens.color.text.t3}
-  style:--glass-bg={tokens.color.glass.bg}
-  style:--glass-border={tokens.color.glass.border}
-  style:--glass-highlight={tokens.color.glass.highlight}
-  style:--accent-cyan={tokens.color.accent.cyan}
-  style:--accent-pink={tokens.color.accent.pink}
-  style:--accent-green={tokens.color.accent.green}
-  style:--green-glow={tokens.color.accent.greenGlow}
-  style:--cyan-bg-subtle={tokens.color.accent.cyanBgSubtle}
-  style:--cyan-border-subtle={tokens.color.accent.cyanBorderSubtle}
-  style:--cyan25={tokens.color.accent.cyan25}
-  style:--glow-cyan={tokens.color.glow.cyan}
-  style:--pink-bg-subtle={tokens.color.accent.pinkBgSubtle}
-  style:--pink-border-subtle={tokens.color.accent.pinkBorderSubtle}
-  style:--pink25={tokens.color.accent.pink25}
-  style:--glow-pink={tokens.color.glow.pink}
-  style:--mono={tokens.typography.mono.fontFamily}
-  style:--sans={tokens.typography.sans.fontFamily}
-  style:--topbar-height="{tokens.lane.topbarHeight}px"
-  style:--btn-radius="{tokens.radius.btn}px"
-  style:--timing-btn="{tokens.timing.btnHover}ms"
-  style:--timing-stat="{tokens.timing.statTransition}ms"
-  style:--timing-dot-enter="{tokens.timing.dotEntrance}ms"
-  style:--timing-dot-exit="{tokens.timing.dotExit}ms"
-  style:--easing-spring={tokens.easing.spring}
-  style:--breakpoint-small="{tokens.breakpoints.small}px"
->
-  <div class="logo" aria-label="Chronoscope">
-    <span class="logo-text">Chronoscope</span>
+<header class="topbar" data-level={level}>
+  <div class="brand">
+    <div class="brand-mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="22" height="22">
+        <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.2" />
+        <circle cx="12" cy="12" r="1.4" fill="currentColor" />
+        <line x1="12" y1="12" x2="12" y2="4.5"  stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+        <line x1="12" y1="12" x2="17" y2="15"   stroke="currentColor" stroke-width="1"   stroke-linecap="round" opacity="0.7" />
+      </svg>
+    </div>
+    <div class="brand-meta">
+      <div class="brand-name">Chronoscope</div>
+      <div class="brand-sub">HTTP latency diagnostic · v2</div>
+    </div>
   </div>
 
-  {#if showRunStatus}
-    <div class="run-status">
-      <div
-        class="pulse-dot"
-        class:dot-enter={isRunning}
-        class:dot-exit={!isRunning}
-        aria-hidden="true"
-      ></div>
-      <span class="run-label" aria-hidden="true">{runLabel}</span>
-    </div>
-  {/if}
+  <div class="topbar-divider brand-divider" aria-hidden="true"></div>
+
+  <div
+    class="status-pill"
+    role="status"
+    aria-live="polite"
+    aria-label="Network quality: {pillStyle.label}{score !== null ? `, score ${score}` : ''}"
+    style:--pill-color={pillStyle.color}
+    style:--pill-glow={pillStyle.glow}
+  >
+    <span class="status-dot" class:on={isRunning && level !== 'unknown'}></span>
+    <span class="status-label">{pillStyle.label}</span>
+    <span class="status-tick" aria-hidden="true">{tickText}</span>
+  </div>
+
+  <div class="topbar-divider run-divider" aria-hidden="true"></div>
+
+  <div class="run-state">
+    <span class="run-state-label">{runText}</span>
+  </div>
 
   <div class="spacer"></div>
 
   <nav class="actions" aria-label="Test controls">
     {#if isSharedView}
-      <button type="button" class="btn btn-ghost" aria-label="Share results" aria-expanded={$uiStore.showShare} aria-controls="share-popover" onclick={handleShare}>
-        <svg class="btn-icon" width="20" height="20" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <button
+        type="button" class="icon-btn"
+        aria-label="Share results" aria-expanded={$uiStore.showShare} aria-controls="share-popover"
+        onclick={handleShare}
+      >
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
           <path d="M4 10V12.5C4 13.052 4.448 13.5 5 13.5H11C11.552 13.5 12 13.052 12 12.5V10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
           <path d="M8 2.5V10M8 2.5L5.5 5M8 2.5L10.5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </button>
-      <button type="button" class="btn btn-start-stop start" aria-label="Run your own test" onclick={handleRunOwn}>Run Your Own Test</button>
+      <button type="button" class="run-btn start" aria-label="Run your own test" onclick={handleRunOwn}>
+        Run Your Own Test
+      </button>
     {:else}
-      <button type="button" class="btn btn-ghost" aria-label="Add or remove endpoints" aria-expanded={$uiStore.showEndpoints} aria-controls="endpoint-drawer" onclick={handleEndpoints}>
-        <svg class="btn-icon" width="20" height="20" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <button
+        type="button" class="icon-btn"
+        aria-label="Add or remove endpoints" aria-expanded={$uiStore.showEndpoints} aria-controls="endpoint-drawer"
+        onclick={handleEndpoints}
+      >
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
           <circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.3"/>
           <path d="M8 5V11M5 8H11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
         </svg>
       </button>
-      <button type="button" class="btn btn-ghost" aria-label="Open settings" aria-expanded={$uiStore.showSettings} aria-controls="settings-drawer" onclick={handleSettings}>
-        <svg class="btn-icon" width="20" height="20" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <button
+        type="button" class="icon-btn"
+        aria-label="Open settings" aria-expanded={$uiStore.showSettings} aria-controls="settings-drawer"
+        onclick={handleSettings}
+      >
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
           <path d="M2 4H10.5M13.5 4H14M2 8H5M8 8H14M2 12H8M11 12H14" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-          <circle cx="12" cy="4" r="1.5" stroke="currentColor" stroke-width="1.3"/>
-          <circle cx="6.5" cy="8" r="1.5" stroke="currentColor" stroke-width="1.3"/>
+          <circle cx="12"  cy="4"  r="1.5" stroke="currentColor" stroke-width="1.3"/>
+          <circle cx="6.5" cy="8"  r="1.5" stroke="currentColor" stroke-width="1.3"/>
           <circle cx="9.5" cy="12" r="1.5" stroke="currentColor" stroke-width="1.3"/>
         </svg>
       </button>
-      <button type="button" class="btn btn-ghost" aria-label="Share results" aria-expanded={$uiStore.showShare} aria-controls="share-popover" onclick={handleShare}>
-        <svg class="btn-icon" width="20" height="20" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <button
+        type="button" class="icon-btn"
+        aria-label="Share results" aria-expanded={$uiStore.showShare} aria-controls="share-popover"
+        onclick={handleShare}
+      >
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
           <path d="M4 10V12.5C4 13.052 4.448 13.5 5 13.5H11C11.552 13.5 12 13.052 12 12.5V10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
           <path d="M8 2.5V10M8 2.5L5.5 5M8 2.5L10.5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </button>
       <button
         type="button"
-        class="btn btn-start-stop"
+        class="run-btn"
         class:start={isStartButton}
-        class:stop={!isStartButton && lifecycle === 'running'}
+        class:stop={isRunning}
         disabled={isTransitioning}
         aria-disabled={isTransitioning}
         aria-label={startStopLabel}
         onclick={handleStartStop}
-      >{startStopLabel}</button>
+      >
+        <span class="run-btn-icon" aria-hidden="true">{isRunning ? '■' : '▶'}</span>
+        <span>{startStopLabel}</span>
+      </button>
     {/if}
   </nav>
 </header>
@@ -156,152 +165,151 @@
 <style>
   .topbar {
     height: var(--topbar-height);
+    padding: 0 18px;
     display: flex;
     align-items: center;
-    padding: 0 20px;
-    gap: 14px;
+    gap: 12px;
     flex-shrink: 0;
-    background: var(--topbar-bg);
-    border-bottom: 1px solid var(--border-bright);
-    backdrop-filter: blur(30px) saturate(1.3);
-    -webkit-backdrop-filter: blur(30px) saturate(1.3);
-    position: relative;
+    background: var(--surface-topbar-bg);
+    backdrop-filter: blur(16px) saturate(1.3);
+    -webkit-backdrop-filter: blur(16px) saturate(1.3);
+    border-bottom: 1px solid var(--border-mid);
+    color: var(--t1);
   }
-  .topbar::after {
-    content: '';
-    position: absolute;
-    top: 0; left: 20%; right: 20%;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, var(--glass-highlight), transparent);
-    pointer-events: none;
+
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand-mark {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, rgba(103,232,249,.15), rgba(249,168,212,.10));
+    border: 1px solid var(--border-bright);
+    display: grid; place-items: center;
+    color: var(--accent-cyan);
+    flex-shrink: 0;
   }
-  .logo { display: flex; align-items: center; }
-  .logo-text {
+  .brand-meta { display: flex; flex-direction: column; gap: 1px; }
+  .brand-name {
     font-family: var(--sans);
-    font-weight: 700;
-    font-size: 17px;
-    letter-spacing: -0.02em;
-    background: linear-gradient(135deg, var(--accent-cyan), var(--accent-pink));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    white-space: nowrap;
+    font-weight: 600;
+    font-size: var(--ts-lg);
+    letter-spacing: var(--tr-tight);
+    color: var(--t1);
   }
-  .run-status {
-    display: flex; align-items: center; gap: 8px;
-    font-family: var(--mono); font-size: 11px; font-weight: 300; color: var(--t2);
+  .brand-sub {
+    font-family: var(--mono);
+    font-size: var(--ts-xs);
+    color: var(--t3);
+    letter-spacing: var(--tr-kicker);
+    text-transform: uppercase;
   }
-  .pulse-dot {
-    width: 6px; height: 6px; border-radius: 50%;
-    background: var(--accent-green);
-    box-shadow: 0 0 8px var(--green-glow);
-    animation: pulse 2s ease-in-out infinite;
+
+  .topbar-divider {
+    width: 1px; height: 28px;
+    background: var(--border-mid);
     flex-shrink: 0;
-    transform: scale(0);
   }
-  .dot-enter {
-    animation: dot-entrance var(--timing-dot-enter) var(--easing-spring) forwards, pulse 2s ease-in-out infinite var(--timing-dot-enter);
+
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 10px; border-radius: 999px;
+    background: rgba(255,255,255,.03);
+    border: 1px solid var(--border-mid);
+    font-family: var(--mono);
+    font-size: var(--ts-sm);
+    color: var(--t2);
+    letter-spacing: var(--tr-label);
+    text-transform: uppercase;
   }
-  .dot-exit {
-    animation: dot-exit-anim var(--timing-dot-exit) ease-out forwards;
+  .status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--pill-color);
+    box-shadow: 0 0 8px var(--pill-glow);
+    transition: background 200ms ease, box-shadow 200ms ease;
   }
-  @keyframes dot-entrance {
-    from { transform: scale(0); }
-    to { transform: scale(1); }
-  }
-  @keyframes dot-exit-anim {
-    from { transform: scale(1); opacity: 1; }
-    to { transform: scale(0); opacity: 0; }
-  }
+  .status-dot.on { animation: pulse 1.8s ease-in-out infinite; }
   @keyframes pulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: .4; transform: scale(.85); }
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
   }
-  .run-label { color: var(--t2); }
+  .status-label { color: var(--t2); }
+  .status-tick {
+    color: var(--t3);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0;
+  }
+
+  .run-state { display: flex; align-items: center; }
+  .run-state-label {
+    font-family: var(--mono);
+    font-size: var(--ts-xs);
+    color: var(--t3);
+    letter-spacing: var(--tr-label);
+    text-transform: uppercase;
+  }
+
   .spacer { flex: 1; }
+
   .actions { display: flex; align-items: center; gap: 8px; }
-  .btn {
-    font-family: var(--sans); font-size: 11px; font-weight: 500;
-    letter-spacing: 0.01em; padding: 7px 16px;
-    border-radius: var(--btn-radius);
-    border: 1px solid transparent;
+
+  .icon-btn {
+    width: 32px; height: 32px;
+    border-radius: 8px;
     background: transparent;
-    color: var(--t2); cursor: pointer;
-    transition: background var(--timing-stat) ease,
-                border-color var(--timing-stat) ease,
-                color var(--timing-stat) ease,
-                box-shadow var(--timing-stat) ease,
-                transform 100ms ease;
-    white-space: nowrap; min-height: 44px;
-    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border-mid);
+    color: var(--t2);
+    display: grid; place-items: center;
+    cursor: pointer;
+    transition: color 160ms ease, border-color 160ms ease, background 160ms ease;
+  }
+  .icon-btn:hover {
+    color: var(--t1);
+    border-color: var(--border-bright);
+    background: rgba(255,255,255,.03);
+  }
+  .icon-btn:focus-visible {
+    outline: 1.5px solid var(--accent-cyan);
+    outline-offset: 2px;
   }
 
-  /* Ghost buttons — secondary actions */
-  .btn-ghost {
-    background: transparent;
-    border-color: transparent;
-    color: var(--t1);
+  .run-btn {
+    font-family: var(--sans);
+    font-size: var(--ts-md);
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    padding: 8px 16px;
+    border-radius: 8px;
+    background: rgba(134,239,172,.12);
+    border: 1px solid rgba(134,239,172,.30);
+    color: var(--accent-green);
+    display: inline-flex; align-items: center; gap: 6px;
+    cursor: pointer;
+    transition: filter 160ms ease;
   }
-  .btn-ghost:hover:not(:disabled) {
-    background: var(--glass-bg);
-    border-color: transparent;
-    color: var(--t1);
-  }
-
-  /* Start/Stop — single node, class toggles for CSS crossfade */
-  .btn-start-stop {
-    background: var(--cyan-bg-subtle);
-    border-color: var(--cyan-border-subtle);
-    color: var(--accent-cyan);
-  }
-  .btn-start-stop.stop {
-    background: var(--pink-bg-subtle);
-    border-color: var(--pink-border-subtle);
+  .run-btn.stop {
+    background: rgba(249,168,212,.10);
+    border-color: rgba(249,168,212,.30);
     color: var(--accent-pink);
   }
-  .btn-start-stop:hover:not(:disabled) {
-    background: var(--cyan25);
-    border-color: var(--cyan-border-subtle);
-    box-shadow: 0 0 12px var(--glow-cyan);
-    color: var(--accent-cyan);
+  .run-btn:hover:not(:disabled) { filter: brightness(1.15); }
+  .run-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+  .run-btn:focus-visible {
+    outline: 1.5px solid var(--accent-cyan);
+    outline-offset: 2px;
   }
-  .btn-start-stop.stop:hover:not(:disabled) {
-    background: var(--pink25);
-    border-color: var(--pink-border-subtle);
-    box-shadow: 0 0 12px var(--glow-pink);
-    color: var(--accent-pink);
-  }
-
-  .btn:active:not(:disabled) {
-    transform: scale(0.97);
-    transition-duration: 50ms;
-  }
-
-  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-  .btn-icon { display: block; flex-shrink: 0; }
+  .run-btn-icon { font-size: var(--ts-xs); }
 
   @media (prefers-reduced-motion: reduce) {
-    .btn, .pulse-dot, .dot-enter {
-      transition-duration: 0s !important;
-      animation-duration: 0s !important;
-    }
+    .status-dot, .icon-btn, .run-btn { animation: none !important; transition: none; }
   }
 
+  /* Mobile narrow: collapse the run-state label and brand-sub to keep the topbar
+     usable below 768px. Status pill + action icons stay visible.
+     Hides .run-divider explicitly — selector is class-based because the brand
+     element is also a <div> and `:nth-of-type(2)` would match the wrong one.  */
   @media (max-width: 767px) {
-    .topbar { padding: 0 12px; gap: 8px; }
-    .btn-ghost { padding: 7px; min-width: 44px; }
-  }
-
-  @media (min-width: 768px) {
-    .btn-ghost { min-width: 44px; }
-  }
-
-  @media (max-width: 479px) {
-    .logo-text {
-      max-width: 80px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
+    .brand-sub, .run-state, .run-divider { display: none; }
+    .topbar { gap: 8px; padding: 0 12px; }
+    .status-pill { padding: 6px 8px; }
   }
 </style>

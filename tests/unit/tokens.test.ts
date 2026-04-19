@@ -286,16 +286,30 @@ describe('v2 foundation tokens (Phase 0)', () => {
     expect(tokens.color.tooltip.textDim).toBe('rgba(255,255,255,.55)');
   });
 
-  it('exposes typography scale (xs → xxl) and tracking', () => {
-    expect(tokens.typography.scale.xs).toBe('9px');
-    expect(tokens.typography.scale.sm).toBe('10px');
-    expect(tokens.typography.scale.md).toBe('11.5px');
+  it('exposes typography scale matching the v2 prototype', () => {
+    // Source of truth: v2/Chronoscope v2.html CSS variable block.
+    expect(tokens.typography.scale.xs).toBe('10px');
+    expect(tokens.typography.scale.sm).toBe('11px');
+    expect(tokens.typography.scale.md).toBe('12px');
+    expect(tokens.typography.scale.base).toBe('13px');
     expect(tokens.typography.scale.lg).toBe('14px');
-    expect(tokens.typography.scale.xl).toBe('18px');
+    expect(tokens.typography.scale.xl).toBe('17px');
+    expect(tokens.typography.scale.xl2).toBe('20px');
+    expect(tokens.typography.scale.xl3).toBe('24px');
     expect(tokens.typography.scale.xxl).toBe('32px');
-    expect(tokens.typography.tracking.kicker).toBe('0.18em');
-    expect(tokens.typography.tracking.label).toBe('0.08em');
+  });
+
+  it('exposes tracking tokens matching the v2 prototype', () => {
+    expect(tokens.typography.tracking.kicker).toBe('0.22em');
+    expect(tokens.typography.tracking.label).toBe('0.14em');
+    expect(tokens.typography.tracking.tight).toBe('-0.01em');
+    expect(tokens.typography.tracking.display).toBe('-0.03em');
     expect(tokens.typography.tracking.body).toBe('0');
+  });
+
+  it('exposes lane.topbarHeight=58 and lane.railWidth=264 per v2 chrome', () => {
+    expect(tokens.lane.topbarHeight).toBe(58);
+    expect(tokens.lane.railWidth).toBe(264);
   });
 
   it('exposes v2 motion primitives', () => {
