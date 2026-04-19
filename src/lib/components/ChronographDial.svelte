@@ -1,13 +1,24 @@
 <!-- src/lib/components/ChronographDial.svelte -->
-<!-- v2 Overview hero. Minimal 520×520 analog dial — fixed geometry, live hand -->
-<!-- with rAF lerp interpolation, endpoint orbit ring outside the scale, and a -->
-<!-- rim pulse when the aggregate median crosses the health threshold.         -->
+<!-- Overview chronograph dial — base geometry (rim / threshold arc / ticks /   -->
+<!-- hand / orbit / pulse) plus four feature layers:                            -->
+<!--   • Baseline arc inside the tick track (where the network usually lives)  -->
+<!--   • 60s quality trace inside the face                                     -->
+<!--   • Within-band / above / below label below the score                    -->
+<!--   • Breathing chrome — dial weights lerp between healthy and degraded     -->
+<!-- Originally shipped as ChronographDialV2 alongside the Classic dial. The    -->
+<!-- Classic sibling was retired in v8 (Overview has one layout now).           -->
 <script lang="ts">
   import { onDestroy } from 'svelte';
   import { tokens } from '$lib/tokens';
   import { VERDICT_STYLES, overviewVerdict, type OverviewVerdict } from '$lib/utils/classify';
   import { fmt } from '$lib/utils/format';
   import type { Endpoint } from '$lib/types';
+
+  interface Baseline {
+    p25: number;
+    median: number;
+    p75: number;
+  }
 
   interface Props {
     score: number | null;
@@ -19,9 +30,14 @@
      *  (lifecycle 'stopped' or 'completed'). 'idle' / 'starting' do not paint
      *  the PAUSED badge — there's nothing to be paused from. */
     paused: boolean;
+    /** Last 60 samples of `networkQuality()`; used to draw the quality trace. */
+    scoreHistory: readonly number[];
+    /** Baseline latency cluster computed from ≥30 samples over last 120s;
+     *  null when confidence is too low — dial hides the baseline arc. */
+    baseline: Baseline | null;
   }
 
-  let { score, liveMedian, threshold, endpoints, lastLatencies, paused }: Props = $props();
+  let { score, liveMedian, threshold, endpoints, lastLatencies, paused, scoreHistory, baseline }: Props = $props();
 
   // ── Geometry constants ─────────────────────────────────────────────────────
   const SIZE = 520;
@@ -92,6 +108,98 @@
   const overThreshold = $derived(liveMedian != null && liveMedian > threshold);
   const endpointCount = $derived(endpoints.length);
   const scoreDisplay = $derived(score == null ? '—' : String(score));
+
+  // ── Baseline arc (Dial v2) ─────────────────────────────────────────────────
+  // "Where the network usually lives." Drawn inside the tick track — its width
+  // is the p25→p75 spread of the last 120s sample pool. A central tick marks
+  // the median. Hidden when `baseline == null` (view gates on sample count).
+  const BASELINE_R = OUTER_R - 48;
+  const baselineArc = $derived.by(() => {
+    if (baseline === null) return null;
+    const startAng = latToAng(baseline.p25);
+    const endAng = latToAng(baseline.p75);
+    return {
+      d: arcPath(CX, CY, BASELINE_R, startAng, endAng),
+      medianAng: latToAng(baseline.median),
+    };
+  });
+  // Small tick at the baseline's median angle, 6px long radially inward.
+  const baselineMedianTick = $derived.by(() => {
+    if (baselineArc === null) return null;
+    const a = (baselineArc.medianAng * Math.PI) / 180;
+    return {
+      x1: CX + Math.cos(a) * (BASELINE_R - 3),
+      y1: CY + Math.sin(a) * (BASELINE_R - 3),
+      x2: CX + Math.cos(a) * (BASELINE_R + 3),
+      y2: CY + Math.sin(a) * (BASELINE_R + 3),
+    };
+  });
+
+  // ── 60s quality trace (Dial v2) ────────────────────────────────────────────
+  // Sparkline inside the face, below the score + verdict. Score 100 at top,
+  // 0 at bottom. Hidden when history is too short — calibrating label shows
+  // instead. Geometry matches view-overview-v2.jsx QualityTraceMini: 160 px
+  // wide, 22 px tall, centered at cy+74.
+  const TRACE_X = CX - 80;
+  const TRACE_Y = CY + 63;
+  const TRACE_W = 160;
+  const TRACE_H = 22;
+  const TRACE_MIN_POINTS = 4;
+  const qualityTraceD = $derived.by(() => {
+    if (!scoreHistory || scoreHistory.length < TRACE_MIN_POINTS) return null;
+    const n = scoreHistory.length;
+    let d = '';
+    for (let i = 0; i < n; i++) {
+      const x = TRACE_X + (n === 1 ? TRACE_W / 2 : (i / (n - 1)) * TRACE_W);
+      const s = Math.max(0, Math.min(100, scoreHistory[i]));
+      const y = TRACE_Y + (TRACE_H - (s / 100) * (TRACE_H - 2) - 1);
+      d += (i === 0 ? 'M ' : 'L ') + `${x.toFixed(1)} ${y.toFixed(1)} `;
+    }
+    return d.trim();
+  });
+  // Dynamic trace color, synced to the current score's verdict tone.
+  const traceColor = $derived.by(() => {
+    if (score == null) return 'var(--t4)';
+    if (score >= 70) return 'var(--accent-green)';
+    if (score >= 45) return 'var(--accent-amber)';
+    return 'var(--accent-pink)';
+  });
+
+  // ── Within-band label (Dial v2) ────────────────────────────────────────────
+  type BandLabel = 'WITHIN BAND' | 'ABOVE BAND' | 'BELOW BAND' | null;
+  const bandLabel: BandLabel = $derived.by(() => {
+    if (baseline === null || liveMedian == null) return null;
+    if (liveMedian >= baseline.p25 && liveMedian <= baseline.p75) return 'WITHIN BAND';
+    if (liveMedian > baseline.p75) return 'ABOVE BAND';
+    return 'BELOW BAND';
+  });
+  const bandLabelColor = $derived.by(() => {
+    if (bandLabel === 'WITHIN BAND') return 'var(--accent-green)';
+    if (bandLabel === 'ABOVE BAND')  return 'var(--accent-amber)';
+    return 'var(--t4)';
+  });
+
+  // ── Breathing chrome (Dial v2) ─────────────────────────────────────────────
+  // Weight scalar: 0 when healthy (score ≥ 70), 1 when degraded (score < 45),
+  // linearly interpolated across the [45, 70] band. Drives stroke opacity,
+  // tick weight, label opacity, and score weight via CSS custom properties so
+  // the whole dial "breathes" on score changes without per-element animation.
+  const breatheWeight = $derived.by(() => {
+    if (score == null) return 0;
+    const s = Math.max(45, Math.min(70, score));
+    return (70 - s) / 25;
+  });
+  const breatheVars = $derived.by(() => {
+    const w = breatheWeight;
+    return {
+      '--ring-opacity':   String(0.14 + w * 0.18),
+      '--face-stroke':    `${1.2 + w * 1.0}px`,
+      '--tick-minor-op':  String(0.55 + w * 0.23),
+      '--tick-major-op':  String(0.72 + w * 0.13),
+      '--label-op':       String(0.42 + w * 0.26),
+      '--score-weight':   String(Math.round(500 + w * 200)),
+    } as Record<string, string>;
+  });
 
   // ── prefers-reduced-motion (live-listened) ────────────────────────────────
   // OS toggle can flip while the app is open, so a one-shot read is wrong;
@@ -220,7 +328,10 @@
     const scorePart = score == null ? 'no data' : `${score} percent healthy`;
     const medianPart = liveMedian == null ? 'unknown median' : `median ${Math.round(liveMedian)} milliseconds`;
     const countPart = `${endpointCount} endpoint${endpointCount === 1 ? '' : 's'} monitored`;
-    return `Network health dial — ${scorePart}, ${medianPart}, ${countPart}.`;
+    const bandPart = bandLabel === null
+      ? ''
+      : `, ${bandLabel === 'WITHIN BAND' ? 'within normal range' : bandLabel === 'ABOVE BAND' ? 'above normal range' : 'below normal range'}`;
+    return `Network health dial — ${scorePart}, ${medianPart}${bandPart}, ${countPart}.`;
   });
 </script>
 
@@ -232,6 +343,7 @@
     preserveAspectRatio="xMidYMid meet"
     role="img"
     aria-label={ariaLabel}
+    style={Object.entries(breatheVars).map(([k, v]) => `${k}:${v}`).join(';')}
   >
       <defs>
         <radialGradient id="dial-face-bg" cx="50%" cy="40%">
@@ -262,6 +374,27 @@
       <circle cx={CX} cy={CY} r={OUTER_R - 36} fill="none" stroke="var(--svg-grid-cyan)" stroke-width="0.5" />
       <circle cx={CX} cy={CY} r={60}           fill="none" stroke="var(--svg-grid-cyan)" stroke-width="0.5" />
 
+      <!-- 4a (v2). Baseline arc — "where the network usually lives". Hidden
+           when baseline is null (sample count < 30). Decorative, no role. -->
+      {#if baselineArc !== null}
+        <g aria-hidden="true">
+          <path
+            d={baselineArc.d}
+            fill="none"
+            stroke="rgba(255,255,255,.07)"
+            stroke-width="14"
+            stroke-linecap="round"
+          />
+          {#if baselineMedianTick !== null}
+            <line
+              x1={baselineMedianTick.x1} y1={baselineMedianTick.y1}
+              x2={baselineMedianTick.x2} y2={baselineMedianTick.y2}
+              stroke="rgba(255,255,255,.14)" stroke-width="1.5" stroke-linecap="round"
+            />
+          {/if}
+        </g>
+      {/if}
+
       <!-- 5. Threshold arc (over-threshold zone). -->
       <path d={threshArcD} fill="none" stroke="var(--svg-threshold)" stroke-width="2" stroke-linecap="round" />
 
@@ -286,23 +419,56 @@
         >{l.ms}</text>
       {/each}
 
-      <!-- 8. Center readouts. Kicker / score / verdict / live-median.
-           Y-positions and sizes match the v2 prototype MainDial
-           (view-overview.jsx): kicker cy-94@9px, score cy-8@120px,
-           verdict cy+22@11px, live cy+46@10px. -->
-      <text x={CX} y={CY - 94} text-anchor="middle" font-size="9"
+      <!-- 8. Center readouts. Kicker / score / verdict. The "LIVE {median} ·
+           WITHIN/ABOVE/BELOW BAND" line is rendered below the trace at
+           CY+108 (see step 8b). Y-positions and sizes match the v2 prototype
+           MainDialV2 (view-overview-v2.jsx): kicker cy-72@9px, score cy-6@100px,
+           verdict cy+22@10px. -->
+      <text x={CX} y={CY - 72} text-anchor="middle" font-size="9"
             font-family={tokens.typography.mono.fontFamily} fill="var(--t3)" letter-spacing="0.3em">QUALITY</text>
-      <text x={CX} y={CY - 8} text-anchor="middle" font-size="120" font-weight="200"
+      <text x={CX} y={CY - 6} text-anchor="middle" font-size="100" font-weight="200"
             fill="var(--t1)" font-family={tokens.typography.sans.fontFamily}
             style="letter-spacing: -0.05em; font-variant-numeric: tabular-nums;">{scoreDisplay}</text>
-      <text x={CX} y={CY + 22} text-anchor="middle" font-size="11"
+      <text x={CX} y={CY + 22} text-anchor="middle" font-size="10"
             font-family={tokens.typography.mono.fontFamily} fill={verdictStyle.color} letter-spacing="0.28em">
         {verdictStyle.kicker}
       </text>
-      <text x={CX} y={CY + 46} text-anchor="middle" font-size="10"
-            font-family={tokens.typography.mono.fontFamily} fill="var(--t4)" letter-spacing="0.18em">
-        LIVE {fmt(liveMedian).toUpperCase()} · {endpointCount} {endpointCount === 1 ? 'LINK' : 'LINKS'}
-      </text>
+
+      <!-- 8a (v2). 60s quality trace inside the face. Decorative — the numeric
+           score + verdict kicker carry the primary meaning for SR users. -->
+      {#if qualityTraceD !== null}
+        <g aria-hidden="true">
+          <path
+            d={qualityTraceD}
+            fill="none"
+            stroke={traceColor}
+            stroke-width="1.4"
+            stroke-linejoin="round"
+            stroke-linecap="round"
+            opacity="0.9"
+          />
+        </g>
+      {:else if scoreHistory && scoreHistory.length > 0}
+        <text
+          x={CX} y={TRACE_Y + TRACE_H / 2 + 4}
+          text-anchor="middle" font-size="9"
+          font-family={tokens.typography.mono.fontFamily}
+          fill="var(--t4)" letter-spacing="0.18em"
+          aria-hidden="true"
+        >CALIBRATING</text>
+      {/if}
+
+      <!-- 8b (v2). LIVE median + band label. Combines the prototype's single
+           "LIVE {median} · WITHIN BAND" / "OUTSIDE BAND" line (cy+108, 9.5 px)
+           with our more precise 3-way ABOVE/WITHIN/BELOW distinction. Dim
+           when WITHIN, amber when ABOVE/BELOW. Included in dial aria-label. -->
+      <text
+        x={CX} y={CY + 108}
+        text-anchor="middle" font-size="9.5"
+        font-family={tokens.typography.mono.fontFamily}
+        fill={bandLabel === null || bandLabel === 'WITHIN BAND' ? 'var(--t4)' : bandLabelColor}
+        letter-spacing="0.18em"
+      >LIVE {fmt(liveMedian).toUpperCase()}{bandLabel !== null ? ` · ${bandLabel}` : ''}</text>
 
       <!-- 9. Endpoint orbit ring. -->
       <g aria-hidden="true">
@@ -361,11 +527,57 @@
     padding: 12px 0;
   }
 
+  /* Register the breathing-chrome custom properties so transitions can animate
+     them. Without @property the browser treats custom props as untyped strings
+     and snaps between values. Falls back to unanimated snaps on older browsers. */
+  @property --ring-opacity {
+    syntax: '<number>';
+    initial-value: 0.14;
+    inherits: true;
+  }
+  @property --face-stroke {
+    syntax: '<length>';
+    initial-value: 1.2px;
+    inherits: true;
+  }
+  @property --tick-minor-op {
+    syntax: '<number>';
+    initial-value: 0.55;
+    inherits: true;
+  }
+  @property --tick-major-op {
+    syntax: '<number>';
+    initial-value: 0.72;
+    inherits: true;
+  }
+  @property --label-op {
+    syntax: '<number>';
+    initial-value: 0.42;
+    inherits: true;
+  }
+  @property --score-weight {
+    syntax: '<number>';
+    initial-value: 500;
+    inherits: true;
+  }
+
   .dial {
     width: 100%;
     max-width: min(520px, 80vw);
     height: auto;
     display: block;
+    /* Breathing chrome — all five transitions run in parallel. Subtle by
+       design; if visibly "pulsing", amplitude is wrong, not timing. */
+    transition:
+      --ring-opacity 900ms ease,
+      --face-stroke  900ms ease,
+      --tick-minor-op 900ms ease,
+      --tick-major-op 900ms ease,
+      --label-op     900ms ease,
+      --score-weight 900ms ease;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .dial { transition: none; }
   }
 
   /* One-shot drop-shadow flash when the aggregate median crosses the health

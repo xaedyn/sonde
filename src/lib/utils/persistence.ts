@@ -1,26 +1,27 @@
 // src/lib/utils/persistence.ts
 // Versioned localStorage persistence with forward-only migration support.
 //
-// Migration chain: v1 → v2 → v3 → v4 → v5 → v6 → v7 (current). Each
+// Migration chain: v1 → v2 → v3 → v4 → v5 → v6 → v7 → v8 (current). Each
 // normalizeVN shapes a payload at version N; migrateSettings threads older
 // payloads through the chain up to CURRENT_VERSION. Never re-read a newer
 // version in an older build.
 //
-// Phase 7 (v6 → v7): retires the Lanes family of views. Any persisted
+// Phase 7 (v6 → v7): retired the Lanes family of views. Any persisted
 // `activeView` in {'lanes', 'timeline', 'heatmap', 'split'} collapses to
-// 'overview'. The underlying Lanes components and routes are deleted at the
-// same time, so the migration is the only thing stopping a returning user
-// from landing on a no-op view. No Lanes-specific Settings fields exist in
-// this codebase (no timelineZoom / heatmapResolution / etc.), so no Settings
-// coercion is needed — any such fields in a payload would already be
-// dropped by readSettingsField's allowlist.
+// 'overview'.
+//
+// v7 → v8 (this release): drops `settings.overviewMode`. The Classic dial
+// has been retired; there is only one Overview mode now (the former
+// "enriched"), so the toggle is no longer meaningful. stepV7toV8 is the only
+// thing keeping a returning "classic" user from having an unused field
+// linger in their persisted blob; it also debug-logs the drop so support
+// can correlate a returning user's session.
 
 import { DEFAULT_SETTINGS } from '../types';
 import { detectRegion, isValidRegion } from '../regional-defaults';
 import type {
   ActiveView,
   LiveTimeRange,
-  OverviewMode,
   PersistedSettings,
   Settings,
   TerminalEventType,
@@ -29,9 +30,14 @@ import type { Region } from '../regional-defaults';
 
 const STORAGE_KEY = 'chronoscope_settings'; // skipcq: JS-0860 — localStorage key, not a credential
 const LEGACY_STORAGE_KEY = 'chronoscope_v2_settings'; // skipcq: JS-0860 — localStorage key, not a credential
-export const CURRENT_VERSION = 7;
+export const CURRENT_VERSION = 8;
 
-const V6_OVERVIEW_MODES: ReadonlySet<OverviewMode> = new Set<OverviewMode>(['classic', 'enriched']);
+// v6/v7-era overview mode vocabulary. Retained as a literal set because the
+// OverviewMode type has been removed from public Settings at v8 — these
+// strings only live on in intermediate migration payloads, and the v7→v8
+// step is the single point that drops the field entirely.
+const V6_OVERVIEW_MODES: ReadonlySet<string> = new Set(['classic', 'enriched']);
+type LegacyOverviewMode = 'classic' | 'enriched';
 
 // v2-era labels that v5 rewrites to 'lanes' (the legacy escape hatch).
 // Retained here because the v4→v5 step still performs that rewrite — v7
@@ -64,7 +70,14 @@ const V7_LEGACY_LANES_VIEWS: ReadonlySet<string> = new Set([
 // collapses them. Keeping this as a file-local widening avoids leaking the
 // legacy strings into PersistedSettings consumers.
 type LegacyActiveView = ActiveView | 'lanes' | 'timeline' | 'heatmap' | 'split';
-interface LegacyPersistedSettings extends Omit<PersistedSettings, 'ui'> {
+
+// Intermediate Settings used inside the pre-v8 chain. v6/v7 payloads carry
+// `overviewMode`; the public v8 Settings no longer has the field. stepV7toV8
+// is the only boundary that drops it — before that point, intermediate
+// shapes must be able to carry it so the debug-log has something to report.
+type LegacySettings = Settings & { overviewMode?: LegacyOverviewMode };
+interface LegacyPersistedSettings extends Omit<PersistedSettings, 'ui' | 'settings'> {
+  readonly settings: LegacySettings;
   readonly ui: Omit<PersistedSettings['ui'], 'activeView'> & { activeView: LegacyActiveView };
 }
 
@@ -115,18 +128,26 @@ export function migrateSettings(data: unknown): PersistedSettings | null {
   const record = data as Record<string, unknown>;
   const version = typeof record['version'] === 'number' ? record['version'] : 0;
 
-  if (version === CURRENT_VERSION) return normalizeV7(record);
+  if (version === CURRENT_VERSION) return normalizeV8(record);
+
+  if (version === 7) {
+    const v7 = normalizeV7(record);
+    return v7 ? stepV7toV8(v7) : null;
+  }
 
   if (version === 6) {
     const v6 = normalizeV6(record);
-    return v6 ? stepV6toV7(v6) : null;
+    if (!v6) return null;
+    const v7 = stepV6toV7(v6);
+    return stepV7toV8(v7);
   }
 
   if (version === 5) {
     const v5 = normalizeV5(record);
     if (!v5) return null;
     const v6 = stepV5toV6(v5, record);
-    return stepV6toV7(v6);
+    const v7 = stepV6toV7(v6);
+    return stepV7toV8(v7);
   }
 
   if (version === 4) {
@@ -134,7 +155,8 @@ export function migrateSettings(data: unknown): PersistedSettings | null {
     if (!v4) return null;
     const v5 = stepV4toV5(v4, record);
     const v6 = stepV5toV6(v5, record);
-    return stepV6toV7(v6);
+    const v7 = stepV6toV7(v6);
+    return stepV7toV8(v7);
   }
 
   if (version === 3) {
@@ -147,7 +169,8 @@ export function migrateSettings(data: unknown): PersistedSettings | null {
     };
     const v5 = stepV4toV5(v4, record);
     const v6 = stepV5toV6(v5, record);
-    return stepV6toV7(v6);
+    const v7 = stepV6toV7(v6);
+    return stepV7toV8(v7);
   }
 
   if (version === 2) {
@@ -171,7 +194,8 @@ export function migrateSettings(data: unknown): PersistedSettings | null {
     };
     const v5 = stepV4toV5(v4, record);
     const v6 = stepV5toV6(v5, record);
-    return stepV6toV7(v6);
+    const v7 = stepV6toV7(v6);
+    return stepV7toV8(v7);
   }
 
   if (version === 1) {
@@ -191,7 +215,8 @@ export function migrateSettings(data: unknown): PersistedSettings | null {
     };
     const v5 = stepV4toV5(v4, record);
     const v6 = stepV5toV6(v5, record);
-    return stepV6toV7(v6);
+    const v7 = stepV6toV7(v6);
+    return stepV7toV8(v7);
   }
 
   // Unknown version — return null (triggers first-install path). We deliberately
@@ -200,17 +225,49 @@ export function migrateSettings(data: unknown): PersistedSettings | null {
   return null;
 }
 
+// ── v7 → v8 step ─────────────────────────────────────────────────────────────
+// Retires the Classic Overview dial. `settings.overviewMode` is dropped from
+// the persisted payload because there is only one Overview layout now — the
+// former "enriched" mode, renamed back to Overview. If the incoming payload
+// had a mode set (which is every v6/v7 payload, since stepV5toV6 seeds it),
+// debug-log the drop so support can correlate a returning Classic user's
+// session. Payloads that never had the field (edge case) stay silent.
+function stepV7toV8(v7: LegacyPersistedSettings): PersistedSettings {
+  const droppedMode = v7.settings.overviewMode;
+  if (droppedMode !== undefined) {
+    console.debug(
+      `[Chronoscope] v8 migration: settings.overviewMode '${droppedMode}' retired; Overview is now a single layout.`,
+    );
+  }
+  // Strip the field. Explicit destructure + ignore preserves every other
+  // Settings property and keeps the drop auditable at a glance.
+  const { overviewMode: _dropped, ...cleanSettings } = v7.settings;
+  void _dropped;
+  // Narrow activeView: stepV6toV7 already collapsed the Lanes family to
+  // 'overview', so any incoming value must be in V7_VIEWS. Re-check defensively
+  // and fall through to 'overview' for a corrupt/hand-edited payload.
+  const incomingView = v7.ui.activeView;
+  const activeView: ActiveView = V7_VIEWS.has(incomingView) ? (incomingView as ActiveView) : 'overview';
+  return {
+    version: 8,
+    endpoints: v7.endpoints,
+    settings: cleanSettings,
+    ui: { ...v7.ui, activeView },
+  };
+}
+
 // ── v6 → v7 step ─────────────────────────────────────────────────────────────
 // Retires the Lanes family. Any activeView in {'lanes','timeline','heatmap',
 // 'split'} becomes 'overview'. Anything already in V7_VIEWS passes through.
 // Anything unknown also becomes 'overview' (same coercion policy as earlier
 // steps). Debug-logs the conversion so a returning Lanes user's session
-// leaves a breadcrumb without being noisy for modern payloads.
-function stepV6toV7(v6: LegacyPersistedSettings): PersistedSettings {
+// leaves a breadcrumb without being noisy for modern payloads. Returns
+// LegacyPersistedSettings so `settings.overviewMode` survives into stepV7toV8.
+function stepV6toV7(v6: LegacyPersistedSettings): LegacyPersistedSettings {
   const incoming = v6.ui.activeView;
-  let activeView: ActiveView = 'overview';
-  if (V7_VIEWS.has(incoming as ActiveView)) {
-    activeView = incoming as ActiveView;
+  let activeView: LegacyActiveView = 'overview';
+  if (V7_VIEWS.has(incoming)) {
+    activeView = incoming;
   } else if (V7_LEGACY_LANES_VIEWS.has(incoming)) {
     // Intentional data loss: a user on a Lanes-family view lands on Overview
     // in v7 because the Lanes view has been removed from the app. No
@@ -238,9 +295,9 @@ function stepV5toV6(v5: LegacyPersistedSettings, rawRecord: Record<string, unkno
       ? (rawRecord['settings'] as Record<string, unknown>)
       : {};
   const raw = rawSettings['overviewMode'];
-  const overviewMode: OverviewMode =
-    typeof raw === 'string' && V6_OVERVIEW_MODES.has(raw as OverviewMode)
-      ? (raw as OverviewMode)
+  const overviewMode: LegacyOverviewMode =
+    typeof raw === 'string' && V6_OVERVIEW_MODES.has(raw)
+      ? (raw as LegacyOverviewMode)
       : 'classic';
   return {
     ...v5,
@@ -332,6 +389,7 @@ function readEndpointsField(record: Record<string, unknown>): { url: string; ena
     }));
 }
 
+// v8+ reader — returns the clean Settings shape (no overviewMode).
 function readSettingsField(record: Record<string, unknown>): Settings {
   const raw = asRecord(record['settings']) ?? {};
   const region: Region | undefined = isValidRegion(raw['region']) ? raw['region'] : undefined;
@@ -339,11 +397,6 @@ function readSettingsField(record: Record<string, unknown>): Settings {
     raw['corsMode'] === 'cors' || raw['corsMode'] === 'no-cors'
       ? raw['corsMode']
       : DEFAULT_SETTINGS.corsMode;
-  const overviewModeRaw = raw['overviewMode'];
-  const overviewMode: OverviewMode =
-    typeof overviewModeRaw === 'string' && V6_OVERVIEW_MODES.has(overviewModeRaw as OverviewMode)
-      ? (overviewModeRaw as OverviewMode)
-      : DEFAULT_SETTINGS.overviewMode;
   return {
     timeout:         typeof raw['timeout']         === 'number' ? raw['timeout']         : DEFAULT_SETTINGS.timeout,
     delay:           typeof raw['delay']           === 'number' ? raw['delay']           : DEFAULT_SETTINGS.delay,
@@ -352,9 +405,22 @@ function readSettingsField(record: Record<string, unknown>): Settings {
     cap:             typeof raw['cap']             === 'number' ? raw['cap']             : DEFAULT_SETTINGS.cap,
     healthThreshold: typeof raw['healthThreshold'] === 'number' ? raw['healthThreshold'] : DEFAULT_SETTINGS.healthThreshold,
     corsMode,
-    overviewMode,
     ...(region !== undefined ? { region } : {}),
   };
+}
+
+// Legacy reader — preserves `overviewMode` on its return so pre-v8 stages
+// (normalizeV5/V6/V7) can carry the field forward. stepV7toV8 reads it off
+// the payload to produce the debug-log breadcrumb, then drops it.
+function readLegacySettingsField(record: Record<string, unknown>): LegacySettings {
+  const base = readSettingsField(record);
+  const raw = asRecord(record['settings']) ?? {};
+  const overviewModeRaw = raw['overviewMode'];
+  const overviewMode: LegacyOverviewMode | undefined =
+    typeof overviewModeRaw === 'string' && V6_OVERVIEW_MODES.has(overviewModeRaw)
+      ? (overviewModeRaw as LegacyOverviewMode)
+      : undefined;
+  return overviewMode === undefined ? base : { ...base, overviewMode };
 }
 
 function readExpandedCards(rawUi: Record<string, unknown>): string[] {
@@ -400,7 +466,9 @@ function normalizeV5(record: Record<string, unknown>): LegacyPersistedSettings |
     return {
       version: 5,
       endpoints: readEndpointsField(record),
-      settings: readSettingsField(record),
+      // v5 didn't actually ship overviewMode; the legacy reader just skips it
+      // if absent. stepV5toV6 sets the default 'classic' forward.
+      settings: readLegacySettingsField(record),
       ui: {
         expandedCards:     readExpandedCards(rawUi),
         // v5 accepts the Lanes family; the v7 step collapses them later.
@@ -416,16 +484,14 @@ function normalizeV5(record: Record<string, unknown>): LegacyPersistedSettings |
 }
 
 // v6 shape mirrors v5 exactly on the ui side; the only delta is Settings gains
-// `overviewMode` — already handled by readSettingsField so this is a thin
-// wrapper that tags the version. Still accepts the Lanes view family; the
-// v7 step retires it.
+// `overviewMode`. Legacy reader carries it through; stepV7toV8 drops it.
 function normalizeV6(record: Record<string, unknown>): LegacyPersistedSettings | null {
   try {
     const rawUi = asRecord(record['ui']) ?? {};
     return {
       version: 6,
       endpoints: readEndpointsField(record),
-      settings: readSettingsField(record),
+      settings: readLegacySettingsField(record),
       ui: {
         expandedCards:     readExpandedCards(rawUi),
         activeView:        readActiveView(rawUi, V5_VIEWS),
@@ -440,18 +506,40 @@ function normalizeV6(record: Record<string, unknown>): LegacyPersistedSettings |
 }
 
 // v7 mirrors v6 on the Settings side; the only delta is the narrower view set
-// (V7_VIEWS, which excludes the Lanes family). A fresh v7 payload shouldn't
-// contain 'lanes'/'timeline'/'heatmap'/'split'; if one does (e.g. a hand-edited
-// payload or a future escape-hatch), readActiveView coerces to 'overview'.
-function normalizeV7(record: Record<string, unknown>): PersistedSettings | null {
+// (V7_VIEWS, which excludes the Lanes family). Returns LegacyPersistedSettings
+// because v7 payloads still carry `settings.overviewMode` — stepV7toV8 is the
+// boundary that drops it.
+function normalizeV7(record: Record<string, unknown>): LegacyPersistedSettings | null {
   try {
     const rawUi = asRecord(record['ui']) ?? {};
-    // readActiveView returns LegacyActiveView; narrow to ActiveView by
-    // re-checking V7_VIEWS membership. TS can't prove the constraint transitively.
+    return {
+      version: 7,
+      endpoints: readEndpointsField(record),
+      settings: readLegacySettingsField(record),
+      ui: {
+        expandedCards:     readExpandedCards(rawUi),
+        activeView:        readActiveView(rawUi, V7_VIEWS),
+        focusedEndpointId: readFocusedEndpointId(rawUi),
+        liveOptions:       readLiveOptions(rawUi),
+        terminalFilters:   readTerminalFilters(rawUi),
+      },
+    };
+  } catch {
+    return null;
+  }
+}
+
+// v8 is the public shape — `settings` has no overviewMode, activeView is
+// narrow. The single new Settings delta is the absence of the Classic dial
+// toggle. A stray 'classic'/'enriched' value in a hand-edited v8 payload is
+// simply ignored (readSettingsField doesn't read it).
+function normalizeV8(record: Record<string, unknown>): PersistedSettings | null {
+  try {
+    const rawUi = asRecord(record['ui']) ?? {};
     const view = readActiveView(rawUi, V7_VIEWS);
     const activeView: ActiveView = V7_VIEWS.has(view) ? (view as ActiveView) : 'overview';
     return {
-      version: 7,
+      version: 8,
       endpoints: readEndpointsField(record),
       settings: readSettingsField(record),
       ui: {
@@ -498,7 +586,6 @@ function normalizeV2(record: Record<string, unknown>): LegacyPersistedSettings |
           ? rawSettings['corsMode']
           : DEFAULT_SETTINGS.corsMode,
       healthThreshold: DEFAULT_SETTINGS.healthThreshold,
-      overviewMode: DEFAULT_SETTINGS.overviewMode,
     };
 
     const rawUi =
@@ -547,7 +634,6 @@ function normalizeV3(record: Record<string, unknown>): LegacyPersistedSettings |
           ? rawSettings['corsMode']
           : DEFAULT_SETTINGS.corsMode,
       healthThreshold: DEFAULT_SETTINGS.healthThreshold,
-      overviewMode: DEFAULT_SETTINGS.overviewMode,
     };
 
     const rawUi =
@@ -602,9 +688,6 @@ function normalizeV4(record: Record<string, unknown>): LegacyPersistedSettings |
         typeof rawSettings['healthThreshold'] === 'number'
           ? rawSettings['healthThreshold']
           : DEFAULT_SETTINGS.healthThreshold,
-      // v4 storage never wrote overviewMode either; stepV5toV6 reads it from
-      // the raw payload if present, so this field is a safe default here.
-      overviewMode: DEFAULT_SETTINGS.overviewMode,
       ...(region !== undefined ? { region } : {}),
     };
 

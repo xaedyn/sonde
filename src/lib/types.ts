@@ -180,8 +180,9 @@ export interface EndpointStatistics {
 export type StatisticsState = Record<string, EndpointStatistics>;
 
 // ── Settings store ─────────────────────────────────────────────────────────
-export type OverviewMode = 'classic' | 'enriched';
-
+// `overviewMode` was v6–v7 only. The Classic dial was retired in v8; Overview
+// now ships a single layout (the former "enriched"), so the toggle was
+// removed from Settings and stripped from persisted payloads by stepV7toV8.
 export interface Settings {
   timeout: number;
   delay: number;
@@ -190,11 +191,6 @@ export interface Settings {
   cap: number;
   corsMode: 'no-cors' | 'cors';
   region?: Region;
-  // Chooses between the Phase 2 Classic dial (score + ticks + hand) and the
-  // Phase 2.5 Enriched dial (+ baseline arc + quality trace + racing strip +
-  // event feed + causal verdict). Landed in v6; default 'classic' until the
-  // enriched surface is flipped to default in a later release.
-  overviewMode: OverviewMode;
   // Latency alarm threshold in ms — distinct from `timeout` (which is the hard
   // request abort). Drives classify()/networkQuality() and the chronograph dial.
   // Must be strictly less than `timeout`; callers enforce.
@@ -209,7 +205,6 @@ export const DEFAULT_SETTINGS: Settings = {
   cap: 0,
   corsMode: 'no-cors',
   healthThreshold: 120,
-  overviewMode: 'classic',
 };
 
 // ── UI store ───────────────────────────────────────────────────────────────
@@ -301,7 +296,7 @@ export interface SharePayload {
 // Older versions migrate forward via persistence.ts. Sets serialize as arrays
 // on disk; `ui.terminalFilters` round-trips accordingly.
 export interface PersistedSettings {
-  version: 2 | 3 | 4 | 5 | 6 | 7;
+  version: 2 | 3 | 4 | 5 | 6 | 7 | 8;
   endpoints: { url: string; enabled: boolean }[];
   settings: Settings;
   ui: {
