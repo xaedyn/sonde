@@ -124,7 +124,9 @@
   });
 
   // Score history ring buffer — one entry per round, max 60 entries. Driven
-  // by roundCounter changes; append on every round.
+  // by roundCounter changes; append on every round. Svelte 5 $state arrays
+  // are proxied, so push/shift notify subscribers directly — no re-assignment
+  // needed.
   const HISTORY_MAX = 60;
   let scoreHistory = $state<number[]>([]);
   let lastSeenRound = -1;
@@ -137,9 +139,6 @@
     if (score === null) return;
     scoreHistory.push(score);
     while (scoreHistory.length > HISTORY_MAX) scoreHistory.shift();
-    // Trigger Svelte reactivity — mutations to a $state array don't always
-    // notify subscribers; reassign the reference.
-    scoreHistory = scoreHistory;
   });
 
   // Event ring buffer — threshold crossings + p95 shifts. Per-endpoint
@@ -293,12 +292,30 @@
     uiStore.setActiveView('lanes');
   }
 
-  // Rerender clock for the event feed's relative-time labels.
+  // Rerender clock for the event feed's relative-time labels. Ticks every
+  // second while enriched is active so labels age monotonically regardless of
+  // measurement cadence — a round-counter-driven clock would freeze "N s ago"
+  // between rounds or after lifecycle stops. The ticker is torn down when
+  // mode flips back to classic and on component destroy.
+  let nowTick = $state(Date.now());
+  let nowTimer: ReturnType<typeof setInterval> | null = null;
+  $effect(() => {
+    if (!isEnriched) {
+      if (nowTimer !== null) { clearInterval(nowTimer); nowTimer = null; }
+      return;
+    }
+    nowTick = Date.now();
+    if (nowTimer !== null) clearInterval(nowTimer);
+    nowTimer = setInterval(() => { nowTick = Date.now(); }, 1000);
+  });
+  onDestroy(() => {
+    if (nowTimer !== null) clearInterval(nowTimer);
+  });
+  // Include the round counter as a secondary trigger so the feed also updates
+  // on the measurement edge (not just on the 1s tick).
   const now = $derived.by(() => {
-    // Tie rerender cadence to the round counter so labels refresh without a
-    // separate setInterval clock.
     void measurements.roundCounter;
-    return Date.now();
+    return nowTick;
   });
 </script>
 

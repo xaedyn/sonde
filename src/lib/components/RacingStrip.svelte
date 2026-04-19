@@ -49,31 +49,38 @@
   }
 
   // Trailing sparkline path for an endpoint — last 40 samples, normalized to the
-  // shared axis. Missing/error samples break the path (M vs L).
+  // shared axis. Missing/error samples break the path (M starts a new subpath,
+  // L continues the current one). An explicit `prevWasGap` flag avoids the
+  // string-inspection bug where `d.endsWith(' ')` was true on every iteration
+  // (every space-terminated previous emission), so every point became an M.
   function sparklinePath(epId: string): string {
     const samples = samplesByEndpoint[epId] ?? [];
     if (samples.length === 0) return '';
     const slice = samples.slice(-40);
     const n = slice.length;
     let d = '';
+    let prevWasGap = true;
     for (let i = 0; i < n; i++) {
       const s = slice[i];
       const x = n === 1 ? 50 : (i / (n - 1)) * 100;
       if (s.status !== 'ok' || !Number.isFinite(s.latency)) {
-        // Gap — next non-ok sample starts a fresh move.
+        prevWasGap = true;
         continue;
       }
       const y = 28 - Math.min(28, (s.latency / maxSeen) * 28);
-      d += (d.length === 0 || d.endsWith(' ')) ? `M ${x.toFixed(1)} ${y.toFixed(1)} ` : `L ${x.toFixed(1)} ${y.toFixed(1)} `;
+      d += `${prevWasGap ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)} `;
+      prevWasGap = false;
     }
     return d.trim();
   }
 
   function handleClick(event: MouseEvent, ep: Endpoint): void {
     uiStore.setFocusedEndpoint(ep.id);
-    // Phase 2.5 fallback: drill to Lanes since Live (Phase 3) and Atlas (Phase 4)
-    // aren't shipped yet. Swap to 'live' / 'atlas' when those land.
-    uiStore.setActiveView(event.shiftKey ? 'lanes' : 'lanes');
+    // Phase 2.5 fallback: both taps route to Lanes because Live (Phase 3) and
+    // Atlas (Phase 4) aren't shipped yet. Keep the single-target wiring until
+    // the hint can honestly advertise `Click → Live · ⇧ → Diagnose`.
+    void event;
+    uiStore.setActiveView('lanes');
   }
 </script>
 
@@ -83,7 +90,7 @@
       <h3 class="racing-title">Per-endpoint comparison</h3>
       <p class="racing-sub">Live latencies on shared axis</p>
     </div>
-    <p class="racing-hint">Click → Live · ⇧ → Diagnose</p>
+    <p class="racing-hint">Click → Lanes</p>
   </header>
 
   <div class="racing-axis" aria-hidden="true">

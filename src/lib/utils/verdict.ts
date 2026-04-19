@@ -180,7 +180,9 @@ export function computeCausalVerdict(
 
   return {
     tone: 'warn',
-    headline: `${overCount} ${overCount === 1 ? 'endpoint' : 'endpoints'} above threshold.`,
+    // Singular form is unreachable — overCount === 1 is handled above by the
+    // endpoint-specific branch; this fallback only fires for 0 or ≥2.
+    headline: `${overCount} endpoints above threshold.`,
   };
 }
 

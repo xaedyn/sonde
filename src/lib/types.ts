@@ -322,8 +322,9 @@ export interface SharePayload {
 
 // ── Persistence schema ─────────────────────────────────────────────────────
 // v5 adds `healthThreshold` (settings) and `focusedEndpointId`, `liveOptions`,
-// `terminalFilters` (ui). Older versions migrate forward via persistence.ts.
-// Sets serialize as arrays on disk; `ui.terminalFilters` round-trips accordingly.
+// `terminalFilters` (ui). v6 adds `settings.overviewMode` (classic | enriched).
+// Older versions migrate forward via persistence.ts. Sets serialize as arrays
+// on disk; `ui.terminalFilters` round-trips accordingly.
 export interface PersistedSettings {
   version: 2 | 3 | 4 | 5 | 6;
   endpoints: { url: string; enabled: boolean }[];

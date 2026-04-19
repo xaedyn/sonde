@@ -3,6 +3,7 @@
 <!-- plays a feedArrive flash when it arrives. Pure render — event derivation  -->
 <!-- lives in the parent (OverviewView event ring buffer).                     -->
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import { tokens } from '$lib/tokens';
   import { fmt } from '$lib/utils/format';
   import type { Endpoint } from '$lib/types';
@@ -31,22 +32,28 @@
   const MAX_ROWS = 5;
   const rows = $derived(events.slice(0, MAX_ROWS));
 
-  // Track the latest event "key" so we can flash the arrived row once per new
-  // event. Stored as a $state var rather than inside $effect cleanup so it
-  // survives re-runs cleanly.
-  let latestKey = $state<string | null>(null);
+  // Detect when the top event key changes and flash the arrival. Previous-key
+  // state is kept untracked — if it were $state read inside the $effect, the
+  // effect would self-invalidate as soon as we wrote the new key, cancelling
+  // arriveTimer before it fired. Timer cleanup lives in onDestroy so a fresh
+  // arrival during an already-pending flash doesn't cancel the flash mid-way.
+  let prevKey: string | null = null;
   let arrivedKey = $state<string | null>(null);
   let arriveTimer: ReturnType<typeof setTimeout> | null = null;
+
   $effect(() => {
     const top = rows[0];
     const nextKey = top ? `${top.t}-${top.epId}-${top.kind}` : null;
-    if (nextKey !== null && nextKey !== latestKey) {
-      latestKey = nextKey;
+    if (nextKey !== null && nextKey !== prevKey) {
+      prevKey = nextKey;
       arrivedKey = nextKey;
       if (arriveTimer !== null) clearTimeout(arriveTimer);
       arriveTimer = setTimeout(() => { arrivedKey = null; arriveTimer = null; }, 1200);
     }
-    return () => { if (arriveTimer !== null) { clearTimeout(arriveTimer); arriveTimer = null; } };
+  });
+
+  onDestroy(() => {
+    if (arriveTimer !== null) clearTimeout(arriveTimer);
   });
 
   function relTime(ms: number): string {

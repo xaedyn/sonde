@@ -77,14 +77,19 @@ try {
       unsub = epMod.endpointStore.subscribe((v) => { resolve(v); queueMicrotask(() => unsub?.()); });
     });
     // Push a sequence of alternating over/under samples to fabricate several
-    // crossings across multiple endpoints.
+    // crossings across multiple endpoints. Timestamps must be in the past so
+    // relTime() doesn't clamp everything to "0s ago". Per-endpoint offset
+    // avoids key collisions on `${t}-${epId}-${kind}` when all five cycles
+    // emit the same transition millisecond.
     let round = 40;
     const now = Date.now();
     for (let cycle = 0; cycle < 5; cycle++) {
       const over = cycle % 2 === 0;
-      for (const ep of eps) {
+      const cycleTime = now - (5 - cycle) * 1000;
+      for (let epIdx = 0; epIdx < eps.length; epIdx++) {
+        const ep = eps[epIdx];
         const lat = over ? 300 : 25;
-        measMod.measurementStore.addSample(ep.id, round, lat, 'ok', now + cycle * 1000);
+        measMod.measurementStore.addSample(ep.id, round, lat, 'ok', cycleTime - epIdx * 10);
       }
       round++;
     }

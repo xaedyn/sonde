@@ -217,14 +217,18 @@ describe('computeCausalVerdict — fallback', () => {
     expect(v.headline).toBe('2 endpoints above threshold.');
   });
 
-  it('uses singular form when the fallback pluralization collapses to 1', () => {
-    // Contrived: tier2 missing, loss/jit fine, overCount=1. This should hit
-    // the endpoint-specific branch instead, proving the fallback is rare.
+  it('endpoint-specific branch pre-empts the count fallback when overCount=1', () => {
+    // With a single row over threshold the endpoint-specific branch wins even
+    // though tier2 is missing and would otherwise hit the count fallback.
+    // (CR review on PR #47: previous title claimed this exercised the
+    // fallback's singular form — it never did; the endpoint-specific branch
+    // fires first. Renamed to describe actual behavior.)
     const rows = [
       makeRow({ id: 'a', label: 'a' }, { p50: 200, tier2Averages: undefined }),
     ];
     const v = computeCausalVerdict(rows, THRESHOLD);
     expect(v.headline).toBe('a degraded alone — endpoint-specific.');
+    expect(v.worstEpId).toBe(rows[0].ep.id);
   });
 });
 
