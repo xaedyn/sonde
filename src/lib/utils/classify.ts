@@ -1,7 +1,12 @@
 // src/lib/utils/classify.ts
-// Health classification for endpoint latency. Pure functions — single source of
-// truth so the chronograph dial, rail pip color, and causal verdict cannot drift
-// apart. No store imports; callers pass stats + threshold explicitly.
+// Thin classifier — maps raw stats/scores into named buckets and style palettes.
+// Pure, synchronous, no reasoning about causation. If a function answers "which
+// bucket does X land in?" it lives here; if it answers "why is X in that
+// bucket?" it lives in verdict.ts.
+//
+// classify.ts owns: classify(), networkQuality(), networkLevel(),
+// overviewVerdict(), and the three style maps (HEALTH_STYLES, LEVEL_STYLES,
+// VERDICT_STYLES). No store imports; callers pass stats + threshold explicitly.
 
 import type { EndpointStatistics } from '../types';
 

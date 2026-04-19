@@ -173,7 +173,7 @@
       const endpoints = get(endpointStore);
 
       const payload: PersistedSettings = {
-        version: 5,
+        version: 6,
         endpoints: endpoints.map(ep => ({ url: ep.url, enabled: ep.enabled })),
         settings,
         ui: {

@@ -1,15 +1,17 @@
 // src/lib/utils/persistence.ts
 // Versioned localStorage persistence with forward-only migration support.
 //
-// Migration chain: v1 → v2 → v3 → v4 → v5 (current). Each normalizeVN shapes a
-// payload at version N; migrateSettings threads older payloads through the
-// chain up to CURRENT_VERSION. Never re-read a newer version in an older build.
+// Migration chain: v1 → v2 → v3 → v4 → v5 → v6 (current). Each normalizeVN
+// shapes a payload at version N; migrateSettings threads older payloads
+// through the chain up to CURRENT_VERSION. Never re-read a newer version in
+// an older build.
 
 import { DEFAULT_SETTINGS } from '../types';
 import { detectRegion, isValidRegion } from '../regional-defaults';
 import type {
   ActiveView,
   LiveTimeRange,
+  OverviewMode,
   PersistedSettings,
   Settings,
   TerminalEventType,
@@ -18,7 +20,9 @@ import type { Region } from '../regional-defaults';
 
 const STORAGE_KEY = 'chronoscope_settings'; // skipcq: JS-0860 — localStorage key, not a credential
 const LEGACY_STORAGE_KEY = 'chronoscope_v2_settings'; // skipcq: JS-0860 — localStorage key, not a credential
-const CURRENT_VERSION = 5;
+const CURRENT_VERSION = 6;
+
+const V6_OVERVIEW_MODES: ReadonlySet<OverviewMode> = new Set<OverviewMode>(['classic', 'enriched']);
 
 // v2-era labels that v5 rewrites to 'lanes' (the legacy escape hatch).
 const LEGACY_VIEWS: ReadonlySet<string> = new Set(['timeline', 'heatmap', 'split']);
@@ -76,11 +80,18 @@ export function migrateSettings(data: unknown): PersistedSettings | null {
   const record = data as Record<string, unknown>;
   const version = typeof record['version'] === 'number' ? record['version'] : 0;
 
-  if (version === CURRENT_VERSION) return normalizeV5(record);
+  if (version === CURRENT_VERSION) return normalizeV6(record);
+
+  if (version === 5) {
+    const v5 = normalizeV5(record);
+    return v5 ? stepV5toV6(v5, record) : null;
+  }
 
   if (version === 4) {
     const v4 = normalizeV4(record);
-    return v4 ? stepV4toV5(v4, record) : null;
+    if (!v4) return null;
+    const v5 = stepV4toV5(v4, record);
+    return stepV5toV6(v5, record);
   }
 
   if (version === 3) {
@@ -91,7 +102,8 @@ export function migrateSettings(data: unknown): PersistedSettings | null {
       version: 4,
       settings: { ...v3.settings, region: detectRegion() },
     };
-    return stepV4toV5(v4, record);
+    const v5 = stepV4toV5(v4, record);
+    return stepV5toV6(v5, record);
   }
 
   if (version === 2) {
@@ -113,7 +125,8 @@ export function migrateSettings(data: unknown): PersistedSettings | null {
       version: 4,
       settings: { ...v3.settings, region: detectRegion() },
     };
-    return stepV4toV5(v4, record);
+    const v5 = stepV4toV5(v4, record);
+    return stepV5toV6(v5, record);
   }
 
   if (version === 1) {
@@ -131,13 +144,36 @@ export function migrateSettings(data: unknown): PersistedSettings | null {
       settings: { ...DEFAULT_SETTINGS, region: detectRegion() },
       ui: { expandedCards: [], activeView: 'split' as ActiveView },
     };
-    return stepV4toV5(v4, record);
+    const v5 = stepV4toV5(v4, record);
+    return stepV5toV6(v5, record);
   }
 
   // Unknown version — return null (triggers first-install path). We deliberately
   // do NOT coerce through the current normalizer; that would silently drop
   // future shape changes we don't understand yet.
   return null;
+}
+
+// ── v5 → v6 step ─────────────────────────────────────────────────────────────
+// Seeds Settings.overviewMode. Accepts a forward-written overviewMode if
+// present (e.g. a future patch or a debug tool wrote one into a v5 payload);
+// otherwise defaults to 'classic'. Any garbage type coerces to 'classic' so
+// the app never reads an invalid mode.
+function stepV5toV6(v5: PersistedSettings, rawRecord: Record<string, unknown>): PersistedSettings {
+  const rawSettings =
+    rawRecord['settings'] !== null && typeof rawRecord['settings'] === 'object'
+      ? (rawRecord['settings'] as Record<string, unknown>)
+      : {};
+  const raw = rawSettings['overviewMode'];
+  const overviewMode: OverviewMode =
+    typeof raw === 'string' && V6_OVERVIEW_MODES.has(raw as OverviewMode)
+      ? (raw as OverviewMode)
+      : 'classic';
+  return {
+    ...v5,
+    version: 6,
+    settings: { ...v5.settings, overviewMode },
+  };
 }
 
 // ── v4 → v5 step ─────────────────────────────────────────────────────────────
@@ -229,6 +265,11 @@ function readSettingsField(record: Record<string, unknown>): Settings {
     raw['corsMode'] === 'cors' || raw['corsMode'] === 'no-cors'
       ? raw['corsMode']
       : DEFAULT_SETTINGS.corsMode;
+  const overviewModeRaw = raw['overviewMode'];
+  const overviewMode: OverviewMode =
+    typeof overviewModeRaw === 'string' && V6_OVERVIEW_MODES.has(overviewModeRaw as OverviewMode)
+      ? (overviewModeRaw as OverviewMode)
+      : DEFAULT_SETTINGS.overviewMode;
   return {
     timeout:         typeof raw['timeout']         === 'number' ? raw['timeout']         : DEFAULT_SETTINGS.timeout,
     delay:           typeof raw['delay']           === 'number' ? raw['delay']           : DEFAULT_SETTINGS.delay,
@@ -237,6 +278,7 @@ function readSettingsField(record: Record<string, unknown>): Settings {
     cap:             typeof raw['cap']             === 'number' ? raw['cap']             : DEFAULT_SETTINGS.cap,
     healthThreshold: typeof raw['healthThreshold'] === 'number' ? raw['healthThreshold'] : DEFAULT_SETTINGS.healthThreshold,
     corsMode,
+    overviewMode,
     ...(region !== undefined ? { region } : {}),
   };
 }
@@ -295,6 +337,29 @@ function normalizeV5(record: Record<string, unknown>): PersistedSettings | null 
   }
 }
 
+// v6 shape mirrors v5 exactly on the ui side; the only delta is Settings gains
+// `overviewMode` — already handled by readSettingsField so this is a thin
+// wrapper that tags the version.
+function normalizeV6(record: Record<string, unknown>): PersistedSettings | null {
+  try {
+    const rawUi = asRecord(record['ui']) ?? {};
+    return {
+      version: 6,
+      endpoints: readEndpointsField(record),
+      settings: readSettingsField(record),
+      ui: {
+        expandedCards:     readExpandedCards(rawUi),
+        activeView:        readActiveView(rawUi),
+        focusedEndpointId: readFocusedEndpointId(rawUi),
+        liveOptions:       readLiveOptions(rawUi),
+        terminalFilters:   readTerminalFilters(rawUi),
+      },
+    };
+  } catch {
+    return null;
+  }
+}
+
 // ── Legacy normalizers (v2/v3/v4) ────────────────────────────────────────────
 // Each produces a payload tagged with its own version; migrateSettings threads
 // them forward. healthThreshold defaults are seeded here so downstream steps
@@ -326,6 +391,7 @@ function normalizeV2(record: Record<string, unknown>): PersistedSettings | null 
           ? rawSettings['corsMode']
           : DEFAULT_SETTINGS.corsMode,
       healthThreshold: DEFAULT_SETTINGS.healthThreshold,
+      overviewMode: DEFAULT_SETTINGS.overviewMode,
     };
 
     const rawUi =
@@ -374,6 +440,7 @@ function normalizeV3(record: Record<string, unknown>): PersistedSettings | null 
           ? rawSettings['corsMode']
           : DEFAULT_SETTINGS.corsMode,
       healthThreshold: DEFAULT_SETTINGS.healthThreshold,
+      overviewMode: DEFAULT_SETTINGS.overviewMode,
     };
 
     const rawUi =
@@ -429,6 +496,9 @@ function normalizeV4(record: Record<string, unknown>): PersistedSettings | null 
         typeof rawSettings['healthThreshold'] === 'number'
           ? rawSettings['healthThreshold']
           : DEFAULT_SETTINGS.healthThreshold,
+      // v4 storage never wrote overviewMode either; stepV5toV6 reads it from
+      // the raw payload if present, so this field is a safe default here.
+      overviewMode: DEFAULT_SETTINGS.overviewMode,
       ...(region !== undefined ? { region } : {}),
     };
 

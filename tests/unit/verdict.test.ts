@@ -1,0 +1,244 @@
+import { describe, it, expect } from 'vitest';
+import { computeCausalVerdict, PHASE_LABELS, type VerdictRow } from '../../src/lib/utils/verdict';
+import type { Endpoint, EndpointStatistics } from '../../src/lib/types';
+
+// ── Fixture helpers ─────────────────────────────────────────────────────────
+function makeEndpoint(over: Partial<Endpoint> = {}): Endpoint {
+  return {
+    id: 'ep-' + (over.id ?? Math.random().toString(36).slice(2, 8)),
+    url: over.url ?? 'https://example.test',
+    enabled: over.enabled ?? true,
+    label: over.label ?? 'example',
+    color: over.color ?? '#67e8f9',
+    ...over,
+  };
+}
+
+function makeStats(over: Partial<EndpointStatistics> = {}): EndpointStatistics {
+  return {
+    endpointId: over.endpointId ?? 'ep-x',
+    sampleCount: 50,
+    p50: 0, p95: 0, p99: 0, p25: 0, p75: 0, p90: 0,
+    min: 0, max: 0, stddev: 0,
+    ci95: { lower: 0, upper: 0, margin: 0 },
+    connectionReuseDelta: null,
+    lossPercent: 0,
+    ready: true,
+    ...over,
+  };
+}
+
+function makeRow(
+  epOver: Partial<Endpoint> = {},
+  statsOver: Partial<EndpointStatistics> = {},
+): VerdictRow {
+  const ep = makeEndpoint(epOver);
+  const stats = makeStats({ endpointId: ep.id, ...statsOver });
+  return { ep, stats };
+}
+
+// Tier2 averages with one clearly dominant phase.
+function tier2Dominating(phase: 'dns' | 'tcp' | 'tls' | 'ttfb' | 'transfer'): EndpointStatistics['tier2Averages'] {
+  const fieldFor = {
+    dns: 'dnsLookup', tcp: 'tcpConnect', tls: 'tlsHandshake', ttfb: 'ttfb', transfer: 'contentTransfer',
+  } as const;
+  const base = { dnsLookup: 5, tcpConnect: 5, tlsHandshake: 5, ttfb: 5, contentTransfer: 5 };
+  return { ...base, [fieldFor[phase]]: 200 };
+}
+
+const THRESHOLD = 120;
+
+// ── Branch 1: empty rows ────────────────────────────────────────────────────
+describe('computeCausalVerdict — empty', () => {
+  it('returns Calibrating… when no rows', () => {
+    const v = computeCausalVerdict([], THRESHOLD);
+    expect(v.tone).toBe('good');
+    expect(v.headline).toBe('Calibrating…');
+    expect(v.phase).toBeUndefined();
+    expect(v.worstEpId).toBeUndefined();
+  });
+});
+
+// ── Branch 2: all-healthy happy path ────────────────────────────────────────
+describe('computeCausalVerdict — all healthy', () => {
+  it('returns "All links within tolerance." when no one is over threshold and loss+jit are low', () => {
+    const rows = [
+      makeRow({ id: 'a', label: 'a' }, { p50: 40, stddev: 4, lossPercent: 0.2 }),
+      makeRow({ id: 'b', label: 'b' }, { p50: 60, stddev: 6, lossPercent: 0.5 }),
+    ];
+    const v = computeCausalVerdict(rows, THRESHOLD);
+    expect(v.tone).toBe('good');
+    expect(v.headline).toBe('All links within tolerance.');
+  });
+});
+
+// ── Branch 3: shared-phase upstream ─────────────────────────────────────────
+describe('computeCausalVerdict — shared upstream phase', () => {
+  it('calls out "DNS slow on N endpoints — likely upstream." when ≥2 share DNS dominance', () => {
+    const rows = [
+      makeRow({ id: 'a', label: 'a' }, { p50: 200, tier2Averages: tier2Dominating('dns') }),
+      makeRow({ id: 'b', label: 'b' }, { p50: 180, tier2Averages: tier2Dominating('dns') }),
+      makeRow({ id: 'c', label: 'c' }, { p50: 30,  tier2Averages: tier2Dominating('transfer') }),
+    ];
+    const v = computeCausalVerdict(rows, THRESHOLD);
+    expect(v.tone).toBe('warn');
+    expect(v.headline).toBe('DNS slow on 2 endpoints — likely upstream.');
+    expect(v.phase).toBe('dns');
+  });
+
+  it('counts endpoints above 0.7×threshold as dominance candidates even when under full threshold', () => {
+    // p50=90 is under threshold (120) but over 0.7*threshold (84). Should
+    // still be counted in the dominance bucket.
+    const rows = [
+      makeRow({ id: 'a', label: 'a' }, { p50: 200, tier2Averages: tier2Dominating('ttfb') }),
+      makeRow({ id: 'b', label: 'b' }, { p50: 200, tier2Averages: tier2Dominating('ttfb') }),
+      makeRow({ id: 'c', label: 'c' }, { p50: 90,  tier2Averages: tier2Dominating('ttfb') }),
+    ];
+    const v = computeCausalVerdict(rows, THRESHOLD);
+    expect(v.headline).toBe('TTFB slow on 3 endpoints — likely upstream.');
+    expect(v.phase).toBe('ttfb');
+  });
+
+  it('does NOT call upstream when only 1 endpoint is dominant on a phase', () => {
+    const rows = [
+      makeRow({ id: 'a', label: 'a' }, { p50: 200, tier2Averages: tier2Dominating('tls') }),
+      makeRow({ id: 'b', label: 'b' }, { p50: 30 }),
+    ];
+    const v = computeCausalVerdict(rows, THRESHOLD);
+    // Should fall through to "endpoint-specific" branch (overCount === 1).
+    expect(v.headline).toBe('a degraded alone — endpoint-specific.');
+    expect(v.worstEpId).toBe(rows[0].ep.id);
+  });
+});
+
+// ── Tied dominant phase → deterministic alphabetical tiebreak ──────────────
+describe('computeCausalVerdict — tied dominant phase', () => {
+  it('picks the alphabetically-earlier phase when counts tie', () => {
+    // Two endpoints on DNS, two on TCP — both tied at 2. Alphabetically, 'dns'
+    // comes before 'tcp' so the verdict should cite DNS.
+    const rows = [
+      makeRow({ id: 'a', label: 'a' }, { p50: 200, tier2Averages: tier2Dominating('dns') }),
+      makeRow({ id: 'b', label: 'b' }, { p50: 200, tier2Averages: tier2Dominating('dns') }),
+      makeRow({ id: 'c', label: 'c' }, { p50: 200, tier2Averages: tier2Dominating('tcp') }),
+      makeRow({ id: 'd', label: 'd' }, { p50: 200, tier2Averages: tier2Dominating('tcp') }),
+    ];
+    const v = computeCausalVerdict(rows, THRESHOLD);
+    expect(v.phase).toBe('dns');
+  });
+
+  it('tiebreak is stable regardless of input order', () => {
+    // Same counts as above, rows reversed. Same verdict expected.
+    const rows = [
+      makeRow({ id: 'd', label: 'd' }, { p50: 200, tier2Averages: tier2Dominating('tcp') }),
+      makeRow({ id: 'c', label: 'c' }, { p50: 200, tier2Averages: tier2Dominating('tcp') }),
+      makeRow({ id: 'b', label: 'b' }, { p50: 200, tier2Averages: tier2Dominating('dns') }),
+      makeRow({ id: 'a', label: 'a' }, { p50: 200, tier2Averages: tier2Dominating('dns') }),
+    ];
+    const v = computeCausalVerdict(rows, THRESHOLD);
+    expect(v.phase).toBe('dns');
+  });
+
+  it('within a single row, ties between tier2 phase values resolve alphabetically on the phase id', () => {
+    // All five phases tied at equal value — the dominant phase should be 'dns'.
+    const flat = { dnsLookup: 10, tcpConnect: 10, tlsHandshake: 10, ttfb: 10, contentTransfer: 10 };
+    const rows = [
+      makeRow({ id: 'a', label: 'a' }, { p50: 200, tier2Averages: flat }),
+      makeRow({ id: 'b', label: 'b' }, { p50: 200, tier2Averages: flat }),
+    ];
+    const v = computeCausalVerdict(rows, THRESHOLD);
+    expect(v.phase).toBe('dns');
+  });
+});
+
+// ── Branch 4: endpoint-specific (exactly 1 over) ────────────────────────────
+describe('computeCausalVerdict — endpoint-specific', () => {
+  it('names the offending endpoint when exactly one is over', () => {
+    const rows = [
+      makeRow({ id: 'a', label: 'auth-service' }, { p50: 200 }),
+      makeRow({ id: 'b', label: 'cdn' },         { p50: 30 }),
+      makeRow({ id: 'c', label: 'api' },         { p50: 40 }),
+    ];
+    const v = computeCausalVerdict(rows, THRESHOLD);
+    expect(v.headline).toBe('auth-service degraded alone — endpoint-specific.');
+    expect(v.worstEpId).toBe(rows[0].ep.id);
+  });
+});
+
+// ── Branch 5: packet loss ───────────────────────────────────────────────────
+describe('computeCausalVerdict — packet loss', () => {
+  it('cites packet loss when avg lossPercent > 1% and nobody is over threshold', () => {
+    const rows = [
+      makeRow({ id: 'a', label: 'a' }, { p50: 40, lossPercent: 3.0 }),
+      makeRow({ id: 'b', label: 'b' }, { p50: 50, lossPercent: 1.2 }),
+    ];
+    const v = computeCausalVerdict(rows, THRESHOLD);
+    expect(v.headline).toBe('Packet loss elevated to 2.1%.');
+  });
+
+  it('does not cite packet loss when exactly 1 endpoint is over — that branch wins first', () => {
+    const rows = [
+      makeRow({ id: 'a', label: 'a' }, { p50: 200, lossPercent: 10 }),
+      makeRow({ id: 'b', label: 'b' }, { p50: 30,  lossPercent: 0 }),
+    ];
+    const v = computeCausalVerdict(rows, THRESHOLD);
+    expect(v.headline).toContain('degraded alone');
+  });
+});
+
+// ── Branch 6: jitter ────────────────────────────────────────────────────────
+describe('computeCausalVerdict — jitter', () => {
+  it('cites jitter when avg stddev > 25ms and no other branch matched', () => {
+    const rows = [
+      makeRow({ id: 'a', label: 'a' }, { p50: 40, stddev: 30 }),
+      makeRow({ id: 'b', label: 'b' }, { p50: 50, stddev: 40 }),
+    ];
+    const v = computeCausalVerdict(rows, THRESHOLD);
+    expect(v.headline).toBe('Jitter elevated — σ 35.0ms.');
+  });
+
+  it('packet loss takes precedence over jitter when both elevated', () => {
+    const rows = [
+      makeRow({ id: 'a', label: 'a' }, { p50: 40, stddev: 40, lossPercent: 5 }),
+    ];
+    const v = computeCausalVerdict(rows, THRESHOLD);
+    expect(v.headline).toContain('Packet loss');
+  });
+});
+
+// ── Fallback branch (should be narrow) ─────────────────────────────────────
+describe('computeCausalVerdict — fallback', () => {
+  it('uses the count fallback when ≥2 over but no phase dominates and low loss/jit', () => {
+    // 2 rows over threshold but no tier2 data so no phase dominance.
+    const rows = [
+      makeRow({ id: 'a', label: 'a' }, { p50: 200, tier2Averages: undefined }),
+      makeRow({ id: 'b', label: 'b' }, { p50: 200, tier2Averages: undefined }),
+    ];
+    const v = computeCausalVerdict(rows, THRESHOLD);
+    expect(v.headline).toBe('2 endpoints above threshold.');
+  });
+
+  it('endpoint-specific branch pre-empts the count fallback when overCount=1', () => {
+    // With a single row over threshold the endpoint-specific branch wins even
+    // though tier2 is missing and would otherwise hit the count fallback.
+    // (CR review on PR #47: previous title claimed this exercised the
+    // fallback's singular form — it never did; the endpoint-specific branch
+    // fires first. Renamed to describe actual behavior.)
+    const rows = [
+      makeRow({ id: 'a', label: 'a' }, { p50: 200, tier2Averages: undefined }),
+    ];
+    const v = computeCausalVerdict(rows, THRESHOLD);
+    expect(v.headline).toBe('a degraded alone — endpoint-specific.');
+    expect(v.worstEpId).toBe(rows[0].ep.id);
+  });
+});
+
+// ── PHASE_LABELS sanity ─────────────────────────────────────────────────────
+describe('PHASE_LABELS', () => {
+  it('defines a label for every Tier2Phase', () => {
+    expect(PHASE_LABELS.dns).toBe('DNS');
+    expect(PHASE_LABELS.tcp).toBe('TCP handshake');
+    expect(PHASE_LABELS.tls).toBe('TLS handshake');
+    expect(PHASE_LABELS.ttfb).toBe('TTFB');
+    expect(PHASE_LABELS.transfer).toBe('Transfer');
+  });
+});

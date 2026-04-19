@@ -73,6 +73,9 @@ export function computeEndpointStatistics(
 
   const count = latencies.length;
   const ready = samples.length >= READY_SAMPLE_GATE;
+  const lossPercent = samples.length > 0
+    ? ((samples.length - okSamples.length) / samples.length) * 100
+    : 0;
 
   if (count === 0) {
     return {
@@ -83,6 +86,7 @@ export function computeEndpointStatistics(
       ci95: { lower: 0, upper: 0, margin: 0 },
       connectionReuseDelta: null,
       tier2Averages: undefined,
+      lossPercent,
       ready,
     };
   }
@@ -167,6 +171,7 @@ export function computeEndpointStatistics(
     connectionReuseDelta,
     tier2Averages,
     tier2P95,
+    lossPercent,
     ready,
   };
 }
@@ -195,6 +200,7 @@ export function computeEndpointStatisticsFromBuffer(
       ci95: { lower: 0, upper: 0, margin: 0 },
       connectionReuseDelta: null,
       tier2Averages: undefined,
+      lossPercent: lossCounts.lossPercent,
       ready,
     };
   }
@@ -284,6 +290,7 @@ export function computeEndpointStatisticsFromBuffer(
     connectionReuseDelta,
     tier2Averages,
     tier2P95,
+    lossPercent: lossCounts.lossPercent,
     ready,
   };
 }

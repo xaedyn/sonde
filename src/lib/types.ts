@@ -170,12 +170,18 @@ export interface EndpointStatistics {
     ttfb: number;
     contentTransfer: number;
   };
+  // Percent of samples that did NOT return `ok` (0–100). Consumed by
+  // verdict.ts's `Packet loss elevated to N.N%` branch. Zero when
+  // sampleCount is zero — consumers should gate on `ready` instead.
+  readonly lossPercent: number;
   readonly ready: boolean;
 }
 
 export type StatisticsState = Record<string, EndpointStatistics>;
 
 // ── Settings store ─────────────────────────────────────────────────────────
+export type OverviewMode = 'classic' | 'enriched';
+
 export interface Settings {
   timeout: number;
   delay: number;
@@ -184,6 +190,11 @@ export interface Settings {
   cap: number;
   corsMode: 'no-cors' | 'cors';
   region?: Region;
+  // Chooses between the Phase 2 Classic dial (score + ticks + hand) and the
+  // Phase 2.5 Enriched dial (+ baseline arc + quality trace + racing strip +
+  // event feed + causal verdict). Landed in v6; default 'classic' until the
+  // enriched surface is flipped to default in a later release.
+  overviewMode: OverviewMode;
   // Latency alarm threshold in ms — distinct from `timeout` (which is the hard
   // request abort). Drives classify()/networkQuality() and the chronograph dial.
   // Must be strictly less than `timeout`; callers enforce.
@@ -198,6 +209,7 @@ export const DEFAULT_SETTINGS: Settings = {
   cap: 0,
   corsMode: 'no-cors',
   healthThreshold: 120,
+  overviewMode: 'classic',
 };
 
 // ── UI store ───────────────────────────────────────────────────────────────
@@ -310,10 +322,11 @@ export interface SharePayload {
 
 // ── Persistence schema ─────────────────────────────────────────────────────
 // v5 adds `healthThreshold` (settings) and `focusedEndpointId`, `liveOptions`,
-// `terminalFilters` (ui). Older versions migrate forward via persistence.ts.
-// Sets serialize as arrays on disk; `ui.terminalFilters` round-trips accordingly.
+// `terminalFilters` (ui). v6 adds `settings.overviewMode` (classic | enriched).
+// Older versions migrate forward via persistence.ts. Sets serialize as arrays
+// on disk; `ui.terminalFilters` round-trips accordingly.
 export interface PersistedSettings {
-  version: 2 | 3 | 4 | 5;
+  version: 2 | 3 | 4 | 5 | 6;
   endpoints: { url: string; enabled: boolean }[];
   settings: Settings;
   ui: {
