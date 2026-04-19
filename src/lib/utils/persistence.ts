@@ -239,10 +239,10 @@ function stepV7toV8(v7: LegacyPersistedSettings): PersistedSettings {
       `[Chronoscope] v8 migration: settings.overviewMode '${droppedMode}' retired; Overview is now a single layout.`,
     );
   }
-  // Strip the field. Explicit destructure + ignore preserves every other
-  // Settings property and keeps the drop auditable at a glance.
+  // Strip the field. Explicit destructure with an underscore-prefixed alias
+  // signals "intentionally unused" and keeps the drop auditable at a glance.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { overviewMode: _dropped, ...cleanSettings } = v7.settings;
-  void _dropped;
   // Narrow activeView: stepV6toV7 already collapsed the Lanes family to
   // 'overview', so any incoming value must be in V7_VIEWS. Re-check defensively
   // and fall through to 'overview' for a corrupt/hand-edited payload.
