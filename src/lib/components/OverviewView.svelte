@@ -315,7 +315,7 @@
     display: flex;
     flex-direction: column;
     gap: 24px;
-    padding: 32px 28px 40px;
+    padding: 18px 28px 40px;
     min-height: 0;
     overflow-y: auto;
   }
@@ -331,10 +331,16 @@
     gap: 24px;
     align-items: start;
   }
-  .overview-left, .overview-right {
+  .overview-left {
     display: flex;
     flex-direction: column;
     gap: 18px;
+    min-width: 0;
+  }
+  .overview-right {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
     min-width: 0;
   }
   @media (max-width: 1023px) {
