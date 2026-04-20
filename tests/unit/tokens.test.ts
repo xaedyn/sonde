@@ -116,7 +116,7 @@ describe('ux-polish tokens', () => {
   });
 
   // statTransition / dotEntrance / dotExit retired in Phase 7 — none of the
-  // surviving views (Overview, Live, Atlas) consumed them.
+  // surviving views (Overview, Live, Diagnose) consumed them.
 
   it('exports glass.statsBorder token', () => {
     expect(tokens.color.glass.statsBorder).toBe('rgba(255,255,255,.04)');

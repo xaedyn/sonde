@@ -1,8 +1,9 @@
 <!-- src/lib/components/Layout.svelte -->
 <!-- v2 shell. Topbar (top) | { Rail (264px) | { ViewSwitcher + main content } } | FooterBar (bottom). -->
-<!-- Routes activeView to OverviewView / LiveView / AtlasView. The legacy Lanes  -->
-<!-- family was retired in Phase 7 — the v6→v7 migration rewrites 'lanes' /      -->
-<!-- 'timeline' / 'heatmap' / 'split' to 'overview' so nothing reaches here.     -->
+<!-- Routes activeView to OverviewView / LiveView / DiagnoseView. The legacy    -->
+<!-- Lanes family was retired in Phase 7 — the v6→v7 migration rewrites         -->
+<!-- 'lanes' / 'timeline' / 'heatmap' / 'split' to 'overview' so nothing        -->
+<!-- reaches here.                                                              -->
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { get } from 'svelte/store';
@@ -15,7 +16,7 @@
   import ViewSwitcher from './ViewSwitcher.svelte';
   import OverviewView from './OverviewView.svelte';
   import LiveView from './LiveView.svelte';
-  import AtlasView from './AtlasView.svelte';
+  import DiagnoseView from './DiagnoseView.svelte';
   import FooterBar from './FooterBar.svelte';
 
   let { onStart, onStop }: {
@@ -74,7 +75,7 @@
         {#if activeView === 'live'}
           <LiveView />
         {:else if activeView === 'diagnose'}
-          <AtlasView />
+          <DiagnoseView />
         {:else}
           <!--
             Fallback: overview renders here as the default. 'strata' and

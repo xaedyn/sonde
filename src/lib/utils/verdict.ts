@@ -193,8 +193,8 @@ function mean(values: readonly number[]): number {
   return sum / values.length;
 }
 
-// ── Atlas phase-dominance hypothesis ───────────────────────────────────────
-// Single-endpoint diagnosis for AtlasView: given a 5-phase breakdown, name
+// ── Diagnose phase-dominance hypothesis ───────────────────────────────────
+// Single-endpoint diagnosis for DiagnoseView: given a 5-phase breakdown, name
 // the dominant phase (if any) in one sentence. Distinct from the network-wide
 // `computeCausalVerdict` above because this runs on one endpoint's tier2
 // averages, not across the fleet. Reuses PHASE_LABELS and Tier2Phase.

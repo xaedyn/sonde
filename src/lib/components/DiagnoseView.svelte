@@ -1,9 +1,10 @@
-<!-- src/lib/components/AtlasView.svelte -->
-<!-- Phase 4 Atlas view. For the rail-focused endpoint: horizontal phase-bar -->
-<!-- waterfall (dns / tcp / tls / ttfb / transfer) in P50 or P95 mode, a     -->
-<!-- one-sentence phase hypothesis, and the last 8 samples as mini phase    -->
-<!-- bars. Empty-state prompt when no endpoint is focused — the rail is     -->
-<!-- the only endpoint picker (Phase 1 non-negotiable).                     -->
+<!-- src/lib/components/DiagnoseView.svelte -->
+<!-- Diagnose view (renamed from Atlas at v9 to match the v2 prototype).       -->
+<!-- For the rail-focused endpoint: horizontal phase-bar waterfall (dns /     -->
+<!-- tcp / tls / ttfb / transfer) in P50 or P95 mode, a one-sentence phase    -->
+<!-- hypothesis, and the last 8 samples as mini phase bars. Empty-state       -->
+<!-- prompt when no endpoint is focused — the rail is the only endpoint       -->
+<!-- picker (Phase 1 non-negotiable).                                          -->
 <script lang="ts">
   import { monitoredEndpointsStore } from '$lib/stores/derived';
   import { measurementStore } from '$lib/stores/measurements';
@@ -27,7 +28,7 @@
   // ── Mode toggle ──────────────────────────────────────────────────────────
   let mode = $state<'p50' | 'p95'>('p50');
 
-  // ── Phase breakdown (adapt EndpointStatistics field names → Atlas phase
+  // ── Phase breakdown (adapt EndpointStatistics field names → Diagnose phase
   // vocabulary). P50 uses tier2Averages (means); P95 uses tier2P95.
   const phases: PhaseBreakdown | null = $derived.by(() => {
     if (!focusedStats) return null;
@@ -131,37 +132,37 @@
   );
 </script>
 
-<section class="atlas" aria-label="Atlas diagnose">
-  <header class="atlas-header">
-    <div class="atlas-title-block">
-      <div class="atlas-kicker">Diagnose · Atlas · Request waterfall</div>
-      <h1 class="atlas-title">
+<section class="diagnose" aria-label="Diagnose">
+  <header class="diagnose-header">
+    <div class="diagnose-title-block">
+      <div class="diagnose-kicker">Diagnose · Request waterfall</div>
+      <h1 class="diagnose-title">
         {#if focusedEndpoint}
-          <span class="atlas-title-pip" style:background={focusedEndpoint.color || tokens.color.endpoint[0]} aria-hidden="true"></span>
-          <span class="atlas-title-name">{focusedEndpoint.label}</span>
-          <span class="atlas-title-url">{focusedEndpoint.url}</span>
+          <span class="diagnose-title-pip" style:background={focusedEndpoint.color || tokens.color.endpoint[0]} aria-hidden="true"></span>
+          <span class="diagnose-title-name">{focusedEndpoint.label}</span>
+          <span class="diagnose-title-url">{focusedEndpoint.url}</span>
         {:else}
-          <span class="atlas-title-placeholder">—</span>
+          <span class="diagnose-title-placeholder">—</span>
         {/if}
       </h1>
     </div>
 
     {#if focusedEndpoint}
-      <div class="atlas-actions">
-        <div class="atlas-segment" role="group" aria-label="Percentile mode">
+      <div class="diagnose-actions">
+        <div class="diagnose-segment" role="group" aria-label="Percentile mode">
           <button
-            type="button" class="atlas-chip"
+            type="button" class="diagnose-chip"
             class:on={mode === 'p50'} aria-pressed={mode === 'p50'}
             onclick={() => handleSelectMode('p50')}
           >P50</button>
           <button
-            type="button" class="atlas-chip"
+            type="button" class="diagnose-chip"
             class:on={mode === 'p95'} aria-pressed={mode === 'p95'}
             onclick={() => handleSelectMode('p95')}
           >P95</button>
         </div>
         <button
-          type="button" class="atlas-chip atlas-chip-action"
+          type="button" class="diagnose-chip diagnose-chip-action"
           onclick={handleBack}
           aria-label="Back to live"
         >← Back to Live</button>
@@ -170,45 +171,45 @@
   </header>
 
   {#if !focusedEndpoint}
-    <div class="atlas-empty" role="note">
-      <p class="atlas-empty-title">Select an endpoint from the left rail to diagnose a specific link.</p>
-      <p class="atlas-empty-hint">Atlas breaks one request into DNS · TCP · TLS · Server · Transfer phases and points at the slow one.</p>
+    <div class="diagnose-empty" role="note">
+      <p class="diagnose-empty-title">Select an endpoint from the left rail to diagnose a specific link.</p>
+      <p class="diagnose-empty-hint">Diagnose breaks one request into DNS · TCP · TLS · Server · Transfer phases and points at the slow one.</p>
     </div>
   {:else if phases === null}
-    <div class="atlas-empty" role="note">
+    <div class="diagnose-empty" role="note">
       {#if mode === 'p95' && focusedStats?.tier2Averages}
         <!-- P50 data exists, P95 hasn't been computed yet. Without this branch -->
         <!-- the view reads as a regression when the user toggles to P95.      -->
-        <p class="atlas-empty-title">P95 phase breakdown not yet available.</p>
-        <p class="atlas-empty-hint">Switch to P50 to view the current breakdown, or wait for more samples.</p>
+        <p class="diagnose-empty-title">P95 phase breakdown not yet available.</p>
+        <p class="diagnose-empty-hint">Switch to P50 to view the current breakdown, or wait for more samples.</p>
       {:else}
-        <p class="atlas-empty-title">Awaiting tier-2 samples…</p>
-        <p class="atlas-empty-hint">Phase breakdown appears once the first tier-2 measurement lands.</p>
+        <p class="diagnose-empty-title">Awaiting tier-2 samples…</p>
+        <p class="diagnose-empty-hint">Phase breakdown appears once the first tier-2 measurement lands.</p>
       {/if}
     </div>
   {:else}
     <!-- Hero waterfall -->
-    <div class="atlas-waterfall" role="img" aria-label={heroAria}>
-      <div class="atlas-bar">
+    <div class="diagnose-waterfall" role="img" aria-label={heroAria}>
+      <div class="diagnose-bar">
         {#each segments as seg (seg.phase)}
           <div
-            class="atlas-bar-seg"
+            class="diagnose-bar-seg"
             class:dominant={seg.dominant}
             style:width="{seg.pctWidth}%"
             style:background={seg.color}
           >
             {#if seg.pctWidth >= 8}
-              <span class="atlas-bar-label" style:color={tokens.color.tier2.labelText}>
-                {seg.short} · {fmt(seg.ms)}<span class="atlas-bar-ms">ms</span>
+              <span class="diagnose-bar-label" style:color={tokens.color.tier2.labelText}>
+                {seg.short} · {fmt(seg.ms)}<span class="diagnose-bar-ms">ms</span>
               </span>
             {/if}
           </div>
         {/each}
       </div>
-      <div class="atlas-bar-scale">
+      <div class="diagnose-bar-scale">
         {#each segments as seg (seg.phase)}
-          <span class="atlas-bar-tick" style:flex="{seg.pctWidth}">
-            <span class="atlas-bar-tick-label">{seg.short}</span>
+          <span class="diagnose-bar-tick" style:flex="{seg.pctWidth}">
+            <span class="diagnose-bar-tick-label">{seg.short}</span>
           </span>
         {/each}
       </div>
@@ -216,21 +217,21 @@
 
     <!-- Hypothesis + evidence -->
     {#if hypothesis}
-      <section class="atlas-hypothesis" aria-label="Phase hypothesis">
-        <div class="atlas-hypothesis-kicker">Verdict</div>
-        <p class="atlas-hypothesis-text">{hypothesis.text}</p>
+      <section class="diagnose-hypothesis" aria-label="Phase hypothesis">
+        <div class="diagnose-hypothesis-kicker">Verdict</div>
+        <p class="diagnose-hypothesis-text">{hypothesis.text}</p>
 
-        <div class="atlas-hypothesis-kicker">Evidence</div>
-        <ul class="atlas-evidence">
+        <div class="diagnose-hypothesis-kicker">Evidence</div>
+        <ul class="diagnose-evidence">
           {#each segments as seg (seg.phase)}
-            <li class="atlas-evidence-row" class:dominant={seg.dominant}>
-              <span class="atlas-evidence-pip" style:background={seg.color} aria-hidden="true"></span>
-              <span class="atlas-evidence-name">{PHASE_LABELS[seg.phase]}</span>
-              <span class="atlas-evidence-ms">{fmt(seg.ms)} ms</span>
-              <span class="atlas-evidence-bar" aria-hidden="true">
-                <span class="atlas-evidence-fill" style:width="{seg.pctWidth}%" style:background={seg.color}></span>
+            <li class="diagnose-evidence-row" class:dominant={seg.dominant}>
+              <span class="diagnose-evidence-pip" style:background={seg.color} aria-hidden="true"></span>
+              <span class="diagnose-evidence-name">{PHASE_LABELS[seg.phase]}</span>
+              <span class="diagnose-evidence-ms">{fmt(seg.ms)} ms</span>
+              <span class="diagnose-evidence-bar" aria-hidden="true">
+                <span class="diagnose-evidence-fill" style:width="{seg.pctWidth}%" style:background={seg.color}></span>
               </span>
-              <span class="atlas-evidence-pct">{Math.round(seg.pct * 100)}%</span>
+              <span class="diagnose-evidence-pct">{Math.round(seg.pct * 100)}%</span>
             </li>
           {/each}
         </ul>
@@ -239,32 +240,32 @@
 
     <!-- Sample strip -->
     {#if recentSamples.length > 0}
-      <section class="atlas-samples" aria-label="Recent samples">
-        <div class="atlas-hypothesis-kicker">Last {recentSamples.length} sample{recentSamples.length === 1 ? '' : 's'}</div>
-        <table class="atlas-sample-table">
+      <section class="diagnose-samples" aria-label="Recent samples">
+        <div class="diagnose-hypothesis-kicker">Last {recentSamples.length} sample{recentSamples.length === 1 ? '' : 's'}</div>
+        <table class="diagnose-sample-table">
           <thead class="sr-only">
             <tr><th>Round</th><th>Phase breakdown</th><th>Total</th></tr>
           </thead>
           <tbody>
             {#each sampleRows as row (row.round)}
-              <tr class="atlas-sample-row">
-                <td class="atlas-sample-round">R{row.round}</td>
-                <td class="atlas-sample-bar-cell">
-                  <div class="atlas-sample-bar">
+              <tr class="diagnose-sample-row">
+                <td class="diagnose-sample-round">R{row.round}</td>
+                <td class="diagnose-sample-bar-cell">
+                  <div class="diagnose-sample-bar">
                     {#if row.status === 'ok' && row.segs.length > 0}
                       {#each row.segs as seg (seg.phase)}
-                        <span class="atlas-sample-seg" style:width="{seg.pctWidth}%" style:background={seg.color} aria-hidden="true"></span>
+                        <span class="diagnose-sample-seg" style:width="{seg.pctWidth}%" style:background={seg.color} aria-hidden="true"></span>
                       {/each}
                     {:else if row.status === 'no-tier2'}
-                      <span class="atlas-sample-neutral" aria-label="No tier-2 breakdown available"></span>
+                      <span class="diagnose-sample-neutral" aria-label="No tier-2 breakdown available"></span>
                     {:else if row.status === 'timeout'}
-                      <span class="atlas-sample-timeout" aria-label="Timeout">TIMEOUT</span>
+                      <span class="diagnose-sample-timeout" aria-label="Timeout">TIMEOUT</span>
                     {:else}
-                      <span class="atlas-sample-timeout" aria-label="Error">ERROR</span>
+                      <span class="diagnose-sample-timeout" aria-label="Error">ERROR</span>
                     {/if}
                   </div>
                 </td>
-                <td class="atlas-sample-total">{fmt(row.total)} ms</td>
+                <td class="diagnose-sample-total">{fmt(row.total)} ms</td>
               </tr>
             {/each}
           </tbody>
@@ -275,7 +276,7 @@
 </section>
 
 <style>
-  .atlas {
+  .diagnose {
     padding: 18px 28px 40px;
     display: flex;
     flex-direction: column;
@@ -285,14 +286,14 @@
     flex: 1;
   }
 
-  .atlas-header {
+  .diagnose-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
     gap: 20px;
     flex-wrap: wrap;
   }
-  .atlas-kicker {
+  .diagnose-kicker {
     font-family: var(--mono);
     font-size: var(--ts-xs);
     letter-spacing: var(--tr-kicker);
@@ -300,7 +301,7 @@
     text-transform: uppercase;
     margin-bottom: 4px;
   }
-  .atlas-title {
+  .diagnose-title {
     margin: 0;
     font-size: var(--ts-2xl);
     font-weight: 500;
@@ -311,23 +312,23 @@
     gap: 10px;
     flex-wrap: wrap;
   }
-  .atlas-title-pip {
+  .diagnose-title-pip {
     width: 10px; height: 10px;
     border-radius: 50%;
     align-self: center;
     box-shadow: 0 0 6px currentColor;
   }
-  .atlas-title-url {
+  .diagnose-title-url {
     font-family: var(--mono);
     font-size: var(--ts-sm);
     color: var(--t3);
     font-weight: 400;
     letter-spacing: var(--tr-body);
   }
-  .atlas-title-placeholder { color: var(--t4); font-weight: 300; }
+  .diagnose-title-placeholder { color: var(--t4); font-weight: 300; }
 
-  .atlas-actions { display: flex; align-items: center; gap: 10px; }
-  .atlas-segment {
+  .diagnose-actions { display: flex; align-items: center; gap: 10px; }
+  .diagnose-segment {
     display: inline-flex;
     padding: 2px;
     background: rgba(255, 255, 255, 0.04);
@@ -335,7 +336,7 @@
     border: 1px solid var(--border-mid);
     gap: 2px;
   }
-  .atlas-chip {
+  .diagnose-chip {
     padding: 6px 12px;
     border-radius: 5px;
     background: transparent;
@@ -347,23 +348,23 @@
     cursor: pointer;
     transition: color 160ms ease, background 160ms ease, border-color 160ms ease;
   }
-  .atlas-chip:hover { color: var(--t1); border-color: var(--border-bright); }
-  .atlas-chip.on {
+  .diagnose-chip:hover { color: var(--t1); border-color: var(--border-bright); }
+  .diagnose-chip.on {
     background: rgba(255, 255, 255, 0.08);
     color: var(--t1);
     border-color: transparent;
   }
-  .atlas-chip:focus-visible {
+  .diagnose-chip:focus-visible {
     outline: 1.5px solid var(--accent-cyan);
     outline-offset: 2px;
   }
-  .atlas-chip-action {
+  .diagnose-chip-action {
     background: transparent;
     border: 1px solid var(--border-mid);
   }
 
   /* Empty states */
-  .atlas-empty {
+  .diagnose-empty {
     padding: 32px 24px;
     border: 1px dashed var(--border-mid);
     border-radius: 14px;
@@ -373,14 +374,14 @@
     gap: 6px;
     background: var(--glass-bg-rail-hover);
   }
-  .atlas-empty-title {
+  .diagnose-empty-title {
     margin: 0;
     color: var(--t1);
     font-family: var(--sans);
     font-size: var(--ts-base);
     font-weight: 500;
   }
-  .atlas-empty-hint {
+  .diagnose-empty-hint {
     margin: 0;
     color: var(--t3);
     font-family: var(--mono);
@@ -389,12 +390,12 @@
   }
 
   /* Hero waterfall */
-  .atlas-waterfall {
+  .diagnose-waterfall {
     display: flex;
     flex-direction: column;
     gap: 6px;
   }
-  .atlas-bar {
+  .diagnose-bar {
     display: flex;
     width: 100%;
     height: 80px;
@@ -403,7 +404,7 @@
     background: var(--surface-raised);
     border: 1px solid var(--border-mid);
   }
-  .atlas-bar-seg {
+  .diagnose-bar-seg {
     height: 100%;
     display: flex;
     align-items: center;
@@ -412,11 +413,11 @@
     position: relative;
     transition: filter 160ms ease;
   }
-  .atlas-bar-seg:hover { filter: brightness(1.1); }
-  .atlas-bar-seg.dominant {
+  .diagnose-bar-seg:hover { filter: brightness(1.1); }
+  .diagnose-bar-seg.dominant {
     box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.25);
   }
-  .atlas-bar-label {
+  .diagnose-bar-label {
     font-family: var(--mono);
     font-size: var(--ts-xs);
     letter-spacing: var(--tr-label);
@@ -424,16 +425,16 @@
     font-weight: 500;
     white-space: nowrap;
   }
-  .atlas-bar-ms {
+  .diagnose-bar-ms {
     font-weight: 400;
     margin-left: 2px;
     opacity: 0.8;
   }
-  .atlas-bar-scale {
+  .diagnose-bar-scale {
     display: flex;
     gap: 0;
   }
-  .atlas-bar-tick {
+  .diagnose-bar-tick {
     text-align: center;
     font-family: var(--mono);
     font-size: var(--ts-xs);
@@ -444,7 +445,7 @@
   }
 
   /* Hypothesis */
-  .atlas-hypothesis {
+  .diagnose-hypothesis {
     background: var(--glass-bg-rail-hover);
     border: 1px solid var(--border-mid);
     border-radius: 14px;
@@ -455,14 +456,14 @@
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
   }
-  .atlas-hypothesis-kicker {
+  .diagnose-hypothesis-kicker {
     font-family: var(--mono);
     font-size: var(--ts-xs);
     letter-spacing: var(--tr-kicker);
     color: var(--t4);
     text-transform: uppercase;
   }
-  .atlas-hypothesis-text {
+  .diagnose-hypothesis-text {
     margin: 0 0 8px;
     color: var(--t1);
     font-family: var(--sans);
@@ -471,7 +472,7 @@
     letter-spacing: var(--tr-tight);
   }
 
-  .atlas-evidence {
+  .diagnose-evidence {
     list-style: none;
     margin: 0;
     padding: 0;
@@ -479,7 +480,7 @@
     flex-direction: column;
     gap: 6px;
   }
-  .atlas-evidence-row {
+  .diagnose-evidence-row {
     display: grid;
     grid-template-columns: 10px 140px 80px 1fr 40px;
     gap: 10px;
@@ -491,39 +492,39 @@
     padding: 2px 4px;
     border-radius: 4px;
   }
-  .atlas-evidence-row.dominant {
+  .diagnose-evidence-row.dominant {
     color: var(--t1);
     background: rgba(255, 255, 255, 0.03);
   }
-  .atlas-evidence-pip {
+  .diagnose-evidence-pip {
     width: 8px; height: 8px;
     border-radius: 50%;
     align-self: center;
   }
-  .atlas-evidence-name { color: inherit; }
-  .atlas-evidence-ms { color: var(--t1); }
-  .atlas-evidence-bar {
+  .diagnose-evidence-name { color: inherit; }
+  .diagnose-evidence-ms { color: var(--t1); }
+  .diagnose-evidence-bar {
     position: relative;
     height: 6px;
     background: rgba(255, 255, 255, 0.04);
     border-radius: 3px;
     overflow: hidden;
   }
-  .atlas-evidence-fill {
+  .diagnose-evidence-fill {
     position: absolute;
     top: 0;
     left: 0;
     height: 100%;
     border-radius: 3px;
   }
-  .atlas-evidence-pct {
+  .diagnose-evidence-pct {
     text-align: right;
     color: var(--t4);
     letter-spacing: var(--tr-label);
   }
 
   /* Samples */
-  .atlas-samples {
+  .diagnose-samples {
     background: var(--glass-bg-rail-hover);
     border: 1px solid var(--border-mid);
     border-radius: 14px;
@@ -534,36 +535,36 @@
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
   }
-  .atlas-sample-table {
+  .diagnose-sample-table {
     width: 100%;
     border-collapse: collapse;
   }
-  .atlas-sample-row td {
+  .diagnose-sample-row td {
     padding: 3px 0;
     vertical-align: middle;
   }
-  .atlas-sample-round {
+  .diagnose-sample-round {
     font-family: var(--mono);
     font-size: var(--ts-xs);
     color: var(--t4);
     letter-spacing: var(--tr-label);
     width: 58px;
   }
-  .atlas-sample-bar-cell { width: 100%; padding: 3px 10px; }
-  .atlas-sample-bar {
+  .diagnose-sample-bar-cell { width: 100%; padding: 3px 10px; }
+  .diagnose-sample-bar {
     display: flex;
     height: 14px;
     border-radius: 4px;
     overflow: hidden;
     background: rgba(255, 255, 255, 0.03);
   }
-  .atlas-sample-seg { height: 100%; min-width: 1px; }
-  .atlas-sample-neutral {
+  .diagnose-sample-seg { height: 100%; min-width: 1px; }
+  .diagnose-sample-neutral {
     display: block;
     width: 100%; height: 100%;
     background: var(--t5, rgba(255, 255, 255, 0.07));
   }
-  .atlas-sample-timeout {
+  .diagnose-sample-timeout {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -574,7 +575,7 @@
     font-size: var(--ts-xs);
     letter-spacing: var(--tr-label);
   }
-  .atlas-sample-total {
+  .diagnose-sample-total {
     font-family: var(--mono);
     font-size: var(--ts-xs);
     color: var(--t2);
@@ -592,12 +593,12 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .atlas-chip, .atlas-bar-seg { transition: none; }
+    .diagnose-chip, .diagnose-bar-seg { transition: none; }
   }
 
   @media (max-width: 767px) {
-    .atlas { padding: 12px; gap: 12px; }
-    .atlas-header { flex-direction: column; align-items: flex-start; }
-    .atlas-evidence-row { grid-template-columns: 10px 110px 70px 1fr 40px; }
+    .diagnose { padding: 12px; gap: 12px; }
+    .diagnose-header { flex-direction: column; align-items: flex-start; }
+    .diagnose-evidence-row { grid-template-columns: 10px 110px 70px 1fr 40px; }
   }
 </style>
