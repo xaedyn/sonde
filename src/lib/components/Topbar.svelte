@@ -1,12 +1,14 @@
 <!-- src/lib/components/Topbar.svelte -->
-<!-- v2 chrome — pixel-aligned to v2/Chronoscope v2.html. Preserves every       -->
-<!-- existing control (endpoints / settings / share / start-stop) and adds the -->
-<!-- networkQualityStore-driven status pill required by the Phase 1 brief.     -->
+<!-- v2 chrome — pixel-aligned to v2/Chronoscope v2.html. Brand on the left,    -->
+<!-- combined `run-status` (lifecycle dot + label + tick) inline next to it,    -->
+<!-- and the action cluster (endpoints / settings / share / start-stop) on     -->
+<!-- the right. The network-quality severity pill the older brief asked for    -->
+<!-- was removed at the v2-parity refactor: the chronograph dial in Overview   -->
+<!-- already carries the at-a-glance health verdict, so the pill duplicated    -->
+<!-- that signal in a less expressive form.                                    -->
 <script lang="ts">
   import { measurementStore } from '$lib/stores/measurements';
   import { uiStore } from '$lib/stores/ui';
-  import { networkQualityStore } from '$lib/stores/derived';
-  import { LEVEL_STYLES, networkLevel } from '$lib/utils/classify';
   import type { TestLifecycleState } from '$lib/types';
 
   let { onStart, onStop }: {
@@ -40,11 +42,6 @@
     lifecycle === 'idle' || lifecycle === 'stopped' || lifecycle === 'completed',
   );
 
-  // Status pill — driven by networkQualityStore, mapped through networkLevel().
-  const score = $derived($networkQualityStore);
-  const level = $derived(networkLevel(score));
-  const pillStyle = $derived(LEVEL_STYLES[level]);
-
   function handleStartStop(): void {
     if (lifecycle === 'running') onStop?.();
     else if (isStartButton) onStart?.();
@@ -58,7 +55,7 @@
   function handleEndpoints(): void { uiStore.toggleEndpoints(); }
 </script>
 
-<header class="topbar" data-level={level}>
+<header class="topbar">
   <div class="brand">
     <div class="brand-mark" aria-hidden="true">
       <svg viewBox="0 0 24 24" width="22" height="22">
@@ -74,25 +71,12 @@
     </div>
   </div>
 
-  <div class="topbar-divider brand-divider" aria-hidden="true"></div>
+  <div class="topbar-divider" aria-hidden="true"></div>
 
-  <div
-    class="status-pill"
-    role="status"
-    aria-live="polite"
-    aria-label="Network quality: {pillStyle.label}{score !== null ? `, score ${score}` : ''}"
-    style:--pill-color={pillStyle.color}
-    style:--pill-glow={pillStyle.glow}
-  >
-    <span class="status-dot" class:on={isRunning && level !== 'unknown'}></span>
-    <span class="status-label">{pillStyle.label}</span>
-    <span class="status-tick" aria-hidden="true">{tickText}</span>
-  </div>
-
-  <div class="topbar-divider run-divider" aria-hidden="true"></div>
-
-  <div class="run-state">
-    <span class="run-state-label">{runText}</span>
+  <div class="run-status" aria-label={runText}>
+    <span class="run-dot" class:on={isRunning} aria-hidden="true"></span>
+    <span class="run-label" role="status" aria-live="polite">{runText}</span>
+    <span class="run-tick" aria-hidden="true">{tickText}</span>
   </div>
 
   <div class="spacer"></div>
@@ -209,43 +193,39 @@
     flex-shrink: 0;
   }
 
-  .status-pill {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 6px 10px; border-radius: 999px;
-    background: rgba(255,255,255,.03);
-    border: 1px solid var(--border-mid);
+  .run-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .run-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--t4);
+    transition: background 200ms ease, box-shadow 200ms ease;
+  }
+  .run-dot.on {
+    background: var(--accent-green);
+    box-shadow: 0 0 10px var(--green-glow);
+    animation: pulse 1.8s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+  }
+  .run-label {
     font-family: var(--mono);
     font-size: var(--ts-sm);
     color: var(--t2);
     letter-spacing: var(--tr-label);
     text-transform: uppercase;
   }
-  .status-dot {
-    width: 7px; height: 7px;
-    border-radius: 50%;
-    background: var(--pill-color);
-    box-shadow: 0 0 8px var(--pill-glow);
-    transition: background 200ms ease, box-shadow 200ms ease;
-  }
-  .status-dot.on { animation: pulse 1.8s ease-in-out infinite; }
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.45; }
-  }
-  .status-label { color: var(--t2); }
-  .status-tick {
+  .run-tick {
+    font-family: var(--mono);
+    font-size: var(--ts-sm);
     color: var(--t3);
     font-variant-numeric: tabular-nums;
-    letter-spacing: 0;
-  }
-
-  .run-state { display: flex; align-items: center; }
-  .run-state-label {
-    font-family: var(--mono);
-    font-size: var(--ts-xs);
-    color: var(--t3);
-    letter-spacing: var(--tr-label);
-    text-transform: uppercase;
+    margin-left: 2px;
   }
 
   .spacer { flex: 1; }
@@ -300,16 +280,13 @@
   .run-btn-icon { font-size: var(--ts-xs); }
 
   @media (prefers-reduced-motion: reduce) {
-    .status-dot, .icon-btn, .run-btn { animation: none !important; transition: none; }
+    .run-dot, .icon-btn, .run-btn { animation: none !important; transition: none; }
   }
 
-  /* Mobile narrow: collapse the run-state label and brand-sub to keep the topbar
-     usable below 768px. Status pill + action icons stay visible.
-     Hides .run-divider explicitly — selector is class-based because the brand
-     element is also a <div> and `:nth-of-type(2)` would match the wrong one.  */
+  /* Mobile narrow: hide brand-sub, label, and tick under 768px so the dot
+     and action cluster stay visible without horizontal overflow.            */
   @media (max-width: 767px) {
-    .brand-sub, .run-state, .run-divider { display: none; }
+    .brand-sub, .run-label, .run-tick { display: none; }
     .topbar { gap: 8px; padding: 0 12px; }
-    .status-pill { padding: 6px 8px; }
   }
 </style>

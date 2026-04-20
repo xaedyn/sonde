@@ -25,8 +25,7 @@ export const monitoredEndpointsStore: Readable<readonly Endpoint[]> = derived(
 
 /**
  * Aggregate 0–100 score across monitored endpoints — null until at least one
- * endpoint's statistics are `ready`. Subscribed by Topbar status and the
- * chronograph dial's main hand.
+ * endpoint's statistics are `ready`. Drives the chronograph dial's main hand.
  */
 export const networkQualityStore: Readable<number | null> = derived(
   [monitoredEndpointsStore, statisticsStore, settingsStore],
