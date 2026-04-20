@@ -73,15 +73,10 @@
 
   <div class="topbar-divider" aria-hidden="true"></div>
 
-  <div
-    class="run-status"
-    role="status"
-    aria-live="polite"
-    aria-label="{runText}, round {roundCounter}"
-  >
-    <span class="run-dot" class:on={isRunning}></span>
-    <span class="run-label">{runText}</span>
-    <span class="run-tick">{tickText}</span>
+  <div class="run-status" aria-label={runText}>
+    <span class="run-dot" class:on={isRunning} aria-hidden="true"></span>
+    <span class="run-label" role="status" aria-live="polite">{runText}</span>
+    <span class="run-tick" aria-hidden="true">{tickText}</span>
   </div>
 
   <div class="spacer"></div>
