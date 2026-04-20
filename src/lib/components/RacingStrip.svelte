@@ -87,7 +87,7 @@
       <h3 class="racing-title">Per-endpoint comparison</h3>
       <p class="racing-sub">Live latencies on shared axis</p>
     </div>
-    <p class="racing-hint">Click → Live · ⇧ → Diagnose</p>
+    <p class="racing-hint">Click → Live · ⇧-click → Diagnose</p>
   </header>
 
   <div class="racing-axis" aria-hidden="true">
