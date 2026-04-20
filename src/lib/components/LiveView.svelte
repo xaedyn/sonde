@@ -77,17 +77,27 @@
         {#if soloEndpoint}
           <span class="live-title-solo">
             <span class="live-title-pip" style:background={soloEndpoint.color} aria-hidden="true"></span>
-            {soloEndpoint.label}
+            Tracing <span class="live-title-solo-label" style:color={soloEndpoint.color}>{soloEndpoint.label}</span>
           </span>
         {:else}
-          Real-time trace
+          All endpoints · {liveOptions.split ? 'split' : 'unified'} scope
         {/if}
       </h1>
     </div>
 
     <div class="live-controls">
-      <div class="live-control" role="group" aria-label="Scope layout">
-        <span class="live-control-label">Layout</span>
+      {#if soloEndpoint}
+        <button
+          type="button" class="live-chip live-chip-back"
+          onclick={clearFocus}
+          aria-label="Clear focus on {soloEndpoint.label}"
+        >
+          ← All endpoints
+        </button>
+      {/if}
+
+      <div class="live-control" role="group" aria-label="Scope mode">
+        <span class="live-control-label">Mode</span>
         <div class="live-segment">
           <!--
             Pressed state tracks `liveOptions.split` (the user's stashed
@@ -112,19 +122,6 @@
           >Split</button>
         </div>
       </div>
-
-      {#if soloEndpoint}
-        <div class="live-control">
-          <span class="live-control-label">Focus</span>
-          <button
-            type="button" class="live-chip live-chip-action"
-            onclick={clearFocus}
-            aria-label="Clear focus on {soloEndpoint.label}"
-          >
-            Clear focus
-          </button>
-        </div>
-      {/if}
 
       <div class="live-control live-control-trig" aria-label="Trigger threshold, {threshold} milliseconds">
         <span class="live-control-label">Trig</span>
@@ -219,6 +216,7 @@
     color: var(--t1);
   }
   .live-title-solo { display: inline-flex; align-items: center; gap: 10px; }
+  .live-title-solo-label { letter-spacing: inherit; }
   .live-title-pip {
     width: 10px; height: 10px; border-radius: 50%;
     box-shadow: 0 0 6px currentColor;
@@ -266,10 +264,23 @@
     outline: 1.5px solid var(--accent-cyan);
     outline-offset: 2px;
   }
-  .live-chip-action {
+  .live-chip-back {
+    padding: 6px 12px;
+    border-radius: 5px;
     background: transparent;
     border: 1px solid var(--border-mid);
     color: var(--t2);
+    font-family: var(--mono);
+    font-size: var(--ts-xs);
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    transition: color 160ms ease, background 160ms ease, border-color 160ms ease;
+    align-self: flex-end;
+  }
+  .live-chip-back:hover { color: var(--t1); border-color: var(--border-bright); }
+  .live-chip-back:focus-visible {
+    outline: 1.5px solid var(--accent-cyan);
+    outline-offset: 2px;
   }
 
   .trig-display {
