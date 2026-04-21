@@ -4,7 +4,7 @@
 <!-- directly. Click drills to Live; Shift-click drills to Diagnose.            -->
 <script lang="ts">
   import { tokens } from '$lib/tokens';
-  import { fmt } from '$lib/utils/format';
+  import { fmt, fmtParts } from '$lib/utils/format';
   import type { Endpoint, EndpointStatistics, MeasurementSample } from '$lib/types';
   import { uiStore } from '$lib/stores/ui';
 
@@ -104,13 +104,14 @@
       {@const row = rowStyle(ep.id)}
       {@const s = stats[ep.id]}
       {@const live = lastLatencies[ep.id]}
+      {@const liveParts = fmtParts(live)}
       {@const focused = focusedEndpointId === ep.id}
       <button
         type="button"
         class="racing-row"
         class:over={row.over}
         class:focused
-        aria-label="{ep.label}, live {live == null ? 'no data' : Math.round(live) + ' milliseconds'}, p95 {s ? Math.round(s.p95) + ' milliseconds' : 'no data'}, {row.over ? 'above threshold' : 'within threshold'}"
+        aria-label="{ep.label}, live {live == null || !Number.isFinite(live) ? 'no data' : Math.round(live) + ' milliseconds'}, p95 {s && Number.isFinite(s.p95) ? Math.round(s.p95) + ' milliseconds' : 'no data'}, {row.over ? 'above threshold' : 'within threshold'}"
         onclick={(e) => handleClick(e, ep)}
       >
         <span class="racing-label">
@@ -149,7 +150,7 @@
         </span>
 
         <span class="racing-stats">
-          <span class="racing-stats-live">{fmt(live)}</span>
+          <span class="racing-stats-live"><span class="racing-stats-live-num">{liveParts.num}</span>{#if liveParts.unit}<span class="racing-stats-live-unit" aria-hidden="true">{liveParts.unit}</span>{/if}</span>
           <span class="racing-stats-p95">{s ? `p95 ${fmt(s.p95)}` : '—'}</span>
         </span>
       </button>
@@ -317,6 +318,16 @@
     font-size: var(--ts-xs);
     color: var(--t4);
     letter-spacing: var(--tr-label);
+  }
+
+  .racing-stats-live-num {
+    /* inherits font/size/color from parent .racing-stats-live */
+  }
+  .racing-stats-live-unit {
+    font-size: var(--ts-xs);
+    color: var(--t4);
+    letter-spacing: var(--tr-label);
+    margin-left: 1px;
   }
 
   @media (prefers-reduced-motion: reduce) {
