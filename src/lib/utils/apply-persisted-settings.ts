@@ -11,8 +11,73 @@ import { endpointStore } from '../stores/endpoints';
 import { settingsStore } from '../stores/settings';
 import { uiStore } from '../stores/ui';
 import type { PersistedSettings } from '../types';
+import { brandFor } from '../regional-defaults';
 
-export function applyPersistedSettings(persisted: PersistedSettings): void {
+// Helpers are declared as const arrows (not `function` declarations) to stay
+// clear of DeepSource's "function declaration in global scope" rule, and each
+// helper holds a single concern so cyclomatic complexity stays below threshold.
+
+// Hydrate one persisted endpoint into the runtime store.
+const hydrateEndpoint = (ep: { url: string; enabled: boolean }): void => {
+  const url = ep.url.trim();
+  if (!url) return;
+  const label = brandFor(url)?.label ?? url;
+  const id = endpointStore.addEndpoint(url, label);
+  endpointStore.updateEndpoint(id, { enabled: ep.enabled });
+};
+
+// Per-section UI helpers — each takes a narrow payload slice so callers can't
+// accidentally couple unrelated UI state.
+
+const hydrateActiveView = (view: PersistedSettings['ui']['activeView']): void => {
+  if (view) uiStore.setActiveView(view);
+};
+
+const hydrateExpandedCards = (cards: PersistedSettings['ui']['expandedCards']): void => {
+  for (const cardId of cards) {
+    if (!get(uiStore).expandedCards.has(cardId)) {
+      uiStore.toggleCard(cardId);
+    }
+  }
+};
+
+// v5: focusedEndpointId — drop silently if the id no longer resolves, since
+// the user may have deleted that endpoint between sessions.
+const hydrateFocusedEndpoint = (focusedId: PersistedSettings['ui']['focusedEndpointId']): void => {
+  const storedFocus = focusedId ?? null;
+  if (storedFocus === null) return;
+  const exists = get(endpointStore).some((e) => e.id === storedFocus);
+  uiStore.setFocusedEndpoint(exists ? storedFocus : null);
+};
+
+const hydrateLiveOptions = (opts: PersistedSettings['ui']['liveOptions']): void => {
+  if (!opts) return;
+  uiStore.setLiveSplit(opts.split);
+  uiStore.setLiveTimeRange(opts.timeRange);
+};
+
+// v5: terminalFilters (serialized as array → runtime Set).
+const hydrateTerminalFilters = (filters: PersistedSettings['ui']['terminalFilters']): void => {
+  if (!filters || filters.length === 0) return;
+  uiStore.clearTerminalFilters();
+  for (const type of filters) {
+    uiStore.toggleTerminalFilter(type);
+  }
+};
+
+const hydrateUiState = (ui: PersistedSettings['ui']): void => {
+  hydrateActiveView(ui.activeView);
+  hydrateExpandedCards(ui.expandedCards);
+  hydrateFocusedEndpoint(ui.focusedEndpointId);
+  hydrateLiveOptions(ui.liveOptions);
+  hydrateTerminalFilters(ui.terminalFilters);
+};
+
+// Exported as a const arrow (not `export function`) for consistency with the
+// file's module-scope helpers and to keep DeepSource's rule against global-scope
+// function declarations satisfied. Callers using `import { applyPersistedSettings }`
+// are unaffected — ES modules treat both export forms identically at call sites.
+export const applyPersistedSettings = (persisted: PersistedSettings): void => {
   // Settings (includes region if present in persisted data)
   settingsStore.set(persisted.settings);
 
@@ -21,41 +86,8 @@ export function applyPersistedSettings(persisted: PersistedSettings): void {
   // by the module-load NA seed (spec §6.2).
   endpointStore.setEndpoints([]);
   for (const ep of persisted.endpoints) {
-    if (ep.url.trim()) {
-      const id = endpointStore.addEndpoint(ep.url, ep.url);
-      endpointStore.updateEndpoint(id, { enabled: ep.enabled });
-    }
+    hydrateEndpoint(ep);
   }
 
-  // UI state
-  if (persisted.ui.activeView) {
-    uiStore.setActiveView(persisted.ui.activeView);
-  }
-  for (const cardId of persisted.ui.expandedCards) {
-    if (!get(uiStore).expandedCards.has(cardId)) {
-      uiStore.toggleCard(cardId);
-    }
-  }
-
-  // v5: focusedEndpointId — drop silently if the id no longer resolves, since
-  // the user may have deleted that endpoint between sessions.
-  const storedFocus = persisted.ui.focusedEndpointId ?? null;
-  if (storedFocus !== null) {
-    const exists = get(endpointStore).some((e) => e.id === storedFocus);
-    uiStore.setFocusedEndpoint(exists ? storedFocus : null);
-  }
-
-  // v5: liveOptions
-  if (persisted.ui.liveOptions) {
-    uiStore.setLiveSplit(persisted.ui.liveOptions.split);
-    uiStore.setLiveTimeRange(persisted.ui.liveOptions.timeRange);
-  }
-
-  // v5: terminalFilters (serialized as array → runtime Set)
-  if (persisted.ui.terminalFilters && persisted.ui.terminalFilters.length > 0) {
-    uiStore.clearTerminalFilters();
-    for (const type of persisted.ui.terminalFilters) {
-      uiStore.toggleTerminalFilter(type);
-    }
-  }
-}
+  hydrateUiState(persisted.ui);
+};

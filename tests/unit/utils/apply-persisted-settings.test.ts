@@ -12,6 +12,73 @@ beforeEach(() => {
   ]);
 });
 
+describe('applyPersistedSettings — G6 label hydration via brandFor', () => {
+  it('should derive label "Google" for https://www.google.com from regional-defaults', () => {
+    const persisted: PersistedSettings = {
+      version: 4,
+      endpoints: [{ url: 'https://www.google.com', enabled: true }],
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
+      ui: { expandedCards: [], activeView: 'overview' },
+    };
+
+    applyPersistedSettings(persisted);
+
+    const eps = get(endpointStore);
+    expect(eps).toHaveLength(1);
+    expect(eps[0]?.label).toBe('Google');
+    expect(eps[0]?.url).toBe('https://www.google.com');
+  });
+
+  it('should derive label "Google" for mixed-case URL via normalizeUrlForBrandLookup', () => {
+    const persisted: PersistedSettings = {
+      version: 4,
+      endpoints: [{ url: 'https://WWW.Google.COM/', enabled: true }],
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
+      ui: { expandedCards: [], activeView: 'overview' },
+    };
+
+    applyPersistedSettings(persisted);
+
+    const eps = get(endpointStore);
+    expect(eps).toHaveLength(1);
+    expect(eps[0]?.label).toBe('Google');
+  });
+
+  it('should fall back label to URL for unknown domain not in BRAND_LABELS', () => {
+    const persisted: PersistedSettings = {
+      version: 4,
+      endpoints: [{ url: 'https://unknown-domain.example.com', enabled: true }],
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
+      ui: { expandedCards: [], activeView: 'overview' },
+    };
+
+    applyPersistedSettings(persisted);
+
+    const eps = get(endpointStore);
+    expect(eps).toHaveLength(1);
+    expect(eps[0]?.label).toBe('https://unknown-domain.example.com');
+  });
+
+  it('should trim surrounding whitespace from url AND still derive brand label', () => {
+    // Locks the loader's `ep.url.trim()` behavior: a persisted URL with
+    // leading/trailing whitespace must both (a) be stored as the trimmed form
+    // and (b) still match brandFor so the label resolves correctly.
+    const persisted: PersistedSettings = {
+      version: 4,
+      endpoints: [{ url: '  https://www.google.com  ', enabled: true }],
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
+      ui: { expandedCards: [], activeView: 'overview' },
+    };
+
+    applyPersistedSettings(persisted);
+
+    const eps = get(endpointStore);
+    expect(eps).toHaveLength(1);
+    expect(eps[0]?.url).toBe('https://www.google.com');
+    expect(eps[0]?.label).toBe('Google');
+  });
+});
+
 describe('applyPersistedSettings — AC2 empty-endpoints contract (§6.2)', () => {
   it('persisted v4 with endpoints:[] results in empty endpoint store', () => {
     const persisted: PersistedSettings = {
