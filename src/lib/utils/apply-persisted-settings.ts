@@ -11,6 +11,7 @@ import { endpointStore } from '../stores/endpoints';
 import { settingsStore } from '../stores/settings';
 import { uiStore } from '../stores/ui';
 import type { PersistedSettings } from '../types';
+import { brandFor } from '../regional-defaults';
 
 export function applyPersistedSettings(persisted: PersistedSettings): void {
   // Settings (includes region if present in persisted data)
@@ -21,8 +22,10 @@ export function applyPersistedSettings(persisted: PersistedSettings): void {
   // by the module-load NA seed (spec §6.2).
   endpointStore.setEndpoints([]);
   for (const ep of persisted.endpoints) {
-    if (ep.url.trim()) {
-      const id = endpointStore.addEndpoint(ep.url, ep.url);
+    const url = ep.url.trim();
+    if (url) {
+      const label = brandFor(url)?.label ?? url;
+      const id = endpointStore.addEndpoint(url, label);
       endpointStore.updateEndpoint(id, { enabled: ep.enabled });
     }
   }
