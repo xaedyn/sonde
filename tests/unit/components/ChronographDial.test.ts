@@ -36,7 +36,7 @@ describe('ChronographDial — G2 NORMAL label', () => {
     const normalText = container.querySelector('text[data-role="normal-label"]');
     expect(normalText).toBeTruthy();
     // Must sit inside the baseline-arc group specifically, not just any
-    // aria-hidden group — Phase 5 (G1) will also target this data-role.
+    // aria-hidden group — Phase 5 (G1) also targets this data-role.
     const ancestorG = normalText?.closest('g[data-role="baseline-arc"]');
     expect(ancestorG).toBeTruthy();
     expect(ancestorG?.getAttribute('aria-hidden')).toBe('true');
@@ -68,5 +68,72 @@ describe('ChronographDial — G2 NORMAL label', () => {
     });
     const normalText = container.querySelector('text[data-role="normal-label"]');
     expect(normalText).toBeNull();
+  });
+});
+
+describe('ChronographDial — G1 dual-stroke baseline arc', () => {
+  const withBaseline = {
+    ...baseProps,
+    baseline: { p25: 30, median: 50, p75: 80 },
+  };
+
+  it('should render exactly 3 path elements under the baseline arc group', () => {
+    const { container } = render(ChronographDial, { props: withBaseline });
+    const baselineGroup = container.querySelector('g[data-role="baseline-arc"]');
+    expect(baselineGroup).not.toBeNull();
+    const paths = baselineGroup?.querySelectorAll('path') ?? [];
+    expect(paths.length).toBe(3);
+  });
+
+  it('should render outer glow path with stroke-width="22"', () => {
+    const { container } = render(ChronographDial, { props: withBaseline });
+    const baselineGroup = container.querySelector('g[data-role="baseline-arc"]');
+    const paths = Array.from(baselineGroup?.querySelectorAll('path') ?? []);
+    expect(paths[0]?.getAttribute('stroke-width')).toBe('22');
+  });
+
+  it('should render body path with stroke rgba(103,232,249,.55) and width 16', () => {
+    const { container } = render(ChronographDial, { props: withBaseline });
+    const baselineGroup = container.querySelector('g[data-role="baseline-arc"]');
+    const paths = Array.from(baselineGroup?.querySelectorAll('path') ?? []);
+    expect(paths[1]?.getAttribute('stroke')).toBe('rgba(103,232,249,.55)');
+    expect(paths[1]?.getAttribute('stroke-width')).toBe('16');
+  });
+
+  it('should render accent path with stroke-width="1.2" and stroke rgba cyan 95%', () => {
+    const { container } = render(ChronographDial, { props: withBaseline });
+    const baselineGroup = container.querySelector('g[data-role="baseline-arc"]');
+    const paths = Array.from(baselineGroup?.querySelectorAll('path') ?? []);
+    expect(paths[2]?.getAttribute('stroke-width')).toBe('1.2');
+    expect(paths[2]?.getAttribute('stroke')).toBe('rgba(103,232,249,.95)');
+  });
+
+  it('should NOT render the old rgba(255,255,255,.07) stroke', () => {
+    const { container } = render(ChronographDial, { props: withBaseline });
+    const allPaths = container.querySelectorAll('path');
+    const oldStroke = Array.from(allPaths).find(
+      p => p.getAttribute('stroke') === 'rgba(255,255,255,.07)'
+    );
+    expect(oldStroke).toBeUndefined();
+  });
+
+  it('should render no baseline-arc paths when baseline is null', () => {
+    const { container } = render(ChronographDial, { props: { ...baseProps, baseline: null } });
+    const baselineGroup = container.querySelector('g[data-role="baseline-arc"]');
+    expect(baselineGroup).toBeNull();
+  });
+
+  // Guard against silent visual regression: all three layers must trace the
+  // same arc. If a future refactor drifts one layer's `d`, the band will
+  // render with visible misalignment between the glow halo and the body.
+  it('all three stacked paths must share the same d attribute', () => {
+    const { container } = render(ChronographDial, { props: withBaseline });
+    const baselineGroup = container.querySelector('g[data-role="baseline-arc"]');
+    const paths = Array.from(baselineGroup?.querySelectorAll('path') ?? []);
+    expect(paths).toHaveLength(3);
+    const d0 = paths[0]?.getAttribute('d');
+    expect(d0).toBeTruthy();
+    expect(paths[1]?.getAttribute('d')).toBe(d0);
+    expect(paths[2]?.getAttribute('d')).toBe(d0);
   });
 });

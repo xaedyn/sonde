@@ -416,11 +416,30 @@
            when baseline is null (sample count < 30). Decorative, no role. -->
       {#if baselineArc !== null}
         <g aria-hidden="true" data-role="baseline-arc">
+          <!-- Layer 1: Outer glow (22px, rgba cyan 20%). Uses tokens.color.accent.cyan20. -->
           <path
             d={baselineArc.d}
             fill="none"
-            stroke="rgba(255,255,255,.07)"
-            stroke-width="14"
+            stroke={tokens.color.accent.cyan20}
+            stroke-width="22"
+            stroke-linecap="round"
+          />
+          <!-- Layer 2: Inner body (16px, rgba cyan 55%). Replaces old white-at-7%.
+               Matches v2 prototype view-overview-v2.jsx:212. -->
+          <path
+            d={baselineArc.d}
+            fill="none"
+            stroke="rgba(103,232,249,.55)"
+            stroke-width="16"
+            stroke-linecap="round"
+          />
+          <!-- Layer 3: Top accent (1.2px crisp inner edge).
+               Matches v2 prototype view-overview-v2.jsx:215. -->
+          <path
+            d={baselineArc.d}
+            fill="none"
+            stroke="rgba(103,232,249,.95)"
+            stroke-width="1.2"
             stroke-linecap="round"
           />
           {#if baselineMedianTick !== null}
