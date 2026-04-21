@@ -147,6 +147,25 @@
     };
   });
 
+  // ── NORMAL label position (G2) ─────────────────────────────────────────────
+  // Anchored to the p75 (upper-σ) edge of the baseline band. Reuses the same
+  // clamp-and-swap sanitization as baselineArc to ensure the angle is always
+  // on-dial. Radius matches the prototype: outerR - 48 === BASELINE_R.
+  const normalLabelPos = $derived.by(() => {
+    if (baseline === null) return null;
+    if (!Number.isFinite(baseline.p25) || !Number.isFinite(baseline.p75)) return null;
+    let p25 = Math.max(0, Math.min(MAX_MS, baseline.p25));
+    let p75 = Math.max(0, Math.min(MAX_MS, baseline.p75));
+    if (p25 > p75) [p25, p75] = [p75, p25];
+    const ang = latToAng(p75);
+    const a = (ang * Math.PI) / 180;
+    const r = BASELINE_R;
+    return {
+      x: CX + Math.cos(a) * r,
+      y: CY + Math.sin(a) * r,
+    };
+  });
+
   // ── 60s quality trace (Dial v2) ────────────────────────────────────────────
   // Sparkline inside the face, below the score + verdict. Score 100 at top,
   // 0 at bottom. Hidden when history is too short — calibrating label shows
@@ -396,7 +415,7 @@
       <!-- 4a (v2). Baseline arc — "where the network usually lives". Hidden
            when baseline is null (sample count < 30). Decorative, no role. -->
       {#if baselineArc !== null}
-        <g aria-hidden="true">
+        <g aria-hidden="true" data-role="baseline-arc">
           <path
             d={baselineArc.d}
             fill="none"
@@ -410,6 +429,19 @@
               x2={baselineMedianTick.x2} y2={baselineMedianTick.y2}
               stroke="rgba(255,255,255,.14)" stroke-width="1.5" stroke-linecap="round"
             />
+          {/if}
+          {#if normalLabelPos !== null}
+            <text
+              x={normalLabelPos.x}
+              y={normalLabelPos.y}
+              text-anchor="middle"
+              dominant-baseline="middle"
+              font-size="8.5"
+              font-family={tokens.typography.mono.fontFamily}
+              fill="rgba(103,232,249,.55)"
+              letter-spacing="0.2em"
+              data-role="normal-label"
+            >NORMAL</text>
           {/if}
         </g>
       {/if}
