@@ -159,7 +159,9 @@
     if (p25 > p75) [p25, p75] = [p75, p25];
     const ang = latToAng(p75);
     const a = (ang * Math.PI) / 180;
-    const r = BASELINE_R;
+    // Inward 22px from BASELINE_R clears the 22 px outer cyan glow so the
+    // word reads against the darker face instead of blending into the arc.
+    const r = BASELINE_R - 22;
     return {
       x: CX + Math.cos(a) * r,
       y: CY + Math.sin(a) * r,
@@ -457,7 +459,7 @@
               dominant-baseline="middle"
               font-size="8.5"
               font-family={tokens.typography.mono.fontFamily}
-              fill="rgba(103,232,249,.55)"
+              fill="rgba(103,232,249,.80)"
               letter-spacing="0.2em"
               data-role="normal-label"
             >NORMAL</text>
@@ -489,20 +491,15 @@
         >{l.ms}</text>
       {/each}
 
-      <!-- 8. Center readouts. Kicker / score / verdict. The "LIVE {median} ·
-           WITHIN/ABOVE/BELOW BAND" line is rendered below the trace at
-           CY+108 (see step 8b). Y-positions and sizes match the v2 prototype
-           MainDialV2 (view-overview-v2.jsx): kicker cy-72@9px, score cy-6@100px,
-           verdict cy+22@10px. -->
-      <text x={CX} y={CY - 72} text-anchor="middle" font-size="9"
-            font-family={tokens.typography.mono.fontFamily} fill="var(--t3)" letter-spacing="0.3em">QUALITY</text>
+      <!-- 8. Center readouts — score only. The QUALITY kicker (cy-72) and the
+           standalone verdict kicker (cy+22) were removed in the 2026-04-22
+           overlap polish: QUALITY was redundant with the score + verdict, and
+           the cy+22 verdict collided with the hand needle. Verdict text is
+           now carried as a tspan in the merged strip at cy+108 (see step 8b
+           below, which is painted AFTER the hand). -->
       <text x={CX} y={CY - 6} text-anchor="middle" font-size="100" font-weight="200"
             fill="var(--t1)" font-family={tokens.typography.sans.fontFamily}
             style="letter-spacing: -0.05em; font-variant-numeric: tabular-nums;">{scoreDisplay}</text>
-      <text x={CX} y={CY + 22} text-anchor="middle" font-size="10"
-            font-family={tokens.typography.mono.fontFamily} fill={verdictStyle.color} letter-spacing="0.28em">
-        {verdictStyle.kicker}
-      </text>
 
       <!-- 8a (v2). 60s quality trace inside the face. Decorative — the numeric
            score + verdict kicker carry the primary meaning for SR users. -->
@@ -528,17 +525,9 @@
         >CALIBRATING</text>
       {/if}
 
-      <!-- 8b (v2). LIVE median + band label. Combines the prototype's single
-           "LIVE {median} · WITHIN BAND" / "OUTSIDE BAND" line (cy+108, 9.5 px)
-           with our more precise 3-way ABOVE/WITHIN/BELOW distinction. Dim
-           when WITHIN, amber when ABOVE/BELOW. Included in dial aria-label. -->
-      <text
-        x={CX} y={CY + 108}
-        text-anchor="middle" font-size="9.5"
-        font-family={tokens.typography.mono.fontFamily}
-        fill={bandLabel === null || bandLabel === 'WITHIN BAND' ? 'var(--t4)' : bandLabelColor}
-        letter-spacing="0.18em"
-      >LIVE {fmt(liveMedian).toUpperCase()}{bandLabel !== null ? ` · ${bandLabel}` : ''}</text>
+      <!-- (The merged verdict + LIVE + band strip that used to live here has
+           moved below, AFTER the hand group, so it paints on top of the
+           needle. See step 12 at the bottom of the SVG. -->
 
       <!-- 9. Endpoint orbit ring. -->
       <g aria-hidden="true">
@@ -576,6 +565,30 @@
       <!-- 11. Central hub. -->
       <circle cx={CX} cy={CY} r="8" fill="var(--bg-base)" stroke="var(--border-bright)" stroke-width="1" />
       <circle cx={CX} cy={CY} r="2.5" fill="var(--t1)" />
+
+      <!-- 12. Merged verdict · LIVE · band strip (cy+108).
+           Painted AFTER the hand so the needle never visually cuts the
+           glyphs. `paint-order="stroke fill"` with a dial-face-colored
+           stroke draws a 3 px halo behind each tspan, so hand line that
+           crosses the strip threads around the letters instead of through
+           them. Three tspans in sequence:
+             · verdictStyle.kicker   (cyan / amber / pink by state)
+             · " · LIVE {median}"     (t3 grey)
+             · " · {bandLabel}"       (green / amber / t4, omitted if null)
+           This block carries the screen-reader information previously split
+           between the cy+22 kicker and the cy+108 LIVE line. -->
+      <text
+        x={CX} y={CY + 108}
+        text-anchor="middle" font-size="9.5"
+        font-family={tokens.typography.mono.fontFamily}
+        letter-spacing="0.18em"
+        paint-order="stroke fill"
+        stroke="var(--bg-base)"
+        stroke-width="3"
+        stroke-linejoin="round"
+        aria-hidden="true"
+        data-role="merged-verdict-live"
+      ><tspan fill={verdictStyle.color}>{verdictStyle.kicker}</tspan><tspan fill="var(--t3)"> · LIVE {fmt(liveMedian).toUpperCase()}</tspan>{#if bandLabel !== null}<tspan fill={bandLabelColor}> · {bandLabel}</tspan>{/if}</text>
     </svg>
 
   <div class="dial-announcer" role="status" aria-live="polite" aria-atomic="true">
@@ -583,7 +596,7 @@
   </div>
 
   {#if paused}
-    <span class="paused-badge" aria-hidden="true">PAUSED</span>
+    <div class="paused-overlay" aria-hidden="true">PAUSED</div>
   {/if}
 </div>
 
@@ -636,9 +649,14 @@
     max-width: min(520px, 80vw);
     height: auto;
     display: block;
-    /* Breathing chrome — all five transitions run in parallel. Subtle by
-       design; if visibly "pulsing", amplitude is wrong, not timing. */
+    /* Breathing chrome — the five --vars transitions run in parallel.
+       opacity + filter sit on the base rule so the paused → unpaused
+       direction also animates; declaring them only in the .paused
+       selector would snap on exit (CR #68). Subtle by design; if visibly
+       "pulsing", amplitude is wrong, not timing. */
     transition:
+      opacity        300ms ease,
+      filter         300ms ease,
       --ring-opacity 900ms ease,
       --face-stroke  900ms ease,
       --tick-minor-op 900ms ease,
@@ -666,19 +684,37 @@
     .dial.pulsing { animation: none; }
   }
 
-  .paused-badge {
+  /* Paused treatment — dim the whole SVG face and overlay a centered pill.
+     Replaces the old .paused-badge that sat at bottom:28px and overlapped
+     the pink threshold arc. Dimming also kills the "live-looking readouts"
+     bug — score, verdict, LIVE band all fade together so they stop
+     contradicting the halted state. (Transitions live on the base .dial
+     rule so paused → unpaused also fades — see above.) */
+  .dial-wrap.paused .dial {
+    opacity: 0.4;
+    filter: saturate(0.6);
+  }
+
+  .paused-overlay {
     position: absolute;
-    bottom: 28px;
+    top: 50%;
     left: 50%;
-    transform: translateX(-50%);
+    transform: translate(-50%, -50%);
     font-family: var(--mono);
-    font-size: var(--ts-xs);
-    letter-spacing: var(--tr-kicker);
-    color: var(--t3);
-    padding: 3px 10px;
-    border: 1px solid var(--border-mid);
+    font-weight: 500;
+    font-size: 18px;
+    letter-spacing: 0.3em;
+    color: var(--t2);
+    padding: 10px 22px 9px;
+    border: 1px solid var(--border-bright);
     border-radius: 3px;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
     text-transform: uppercase;
+    line-height: 1;
+    white-space: nowrap;
+    pointer-events: none;
   }
 
   .dial-announcer {
