@@ -586,6 +586,7 @@
         stroke="var(--bg-base)"
         stroke-width="3"
         stroke-linejoin="round"
+        aria-hidden="true"
         data-role="merged-verdict-live"
       ><tspan fill={verdictStyle.color}>{verdictStyle.kicker}</tspan><tspan fill="var(--t3)"> · LIVE {fmt(liveMedian).toUpperCase()}</tspan>{#if bandLabel !== null}<tspan fill={bandLabelColor}> · {bandLabel}</tspan>{/if}</text>
     </svg>
@@ -648,9 +649,14 @@
     max-width: min(520px, 80vw);
     height: auto;
     display: block;
-    /* Breathing chrome — all five transitions run in parallel. Subtle by
-       design; if visibly "pulsing", amplitude is wrong, not timing. */
+    /* Breathing chrome — the five --vars transitions run in parallel.
+       opacity + filter sit on the base rule so the paused → unpaused
+       direction also animates; declaring them only in the .paused
+       selector would snap on exit (CR #68). Subtle by design; if visibly
+       "pulsing", amplitude is wrong, not timing. */
     transition:
+      opacity        300ms ease,
+      filter         300ms ease,
       --ring-opacity 900ms ease,
       --face-stroke  900ms ease,
       --tick-minor-op 900ms ease,
@@ -682,14 +688,11 @@
      Replaces the old .paused-badge that sat at bottom:28px and overlapped
      the pink threshold arc. Dimming also kills the "live-looking readouts"
      bug — score, verdict, LIVE band all fade together so they stop
-     contradicting the halted state. */
+     contradicting the halted state. (Transitions live on the base .dial
+     rule so paused → unpaused also fades — see above.) */
   .dial-wrap.paused .dial {
     opacity: 0.4;
-    transition: opacity 300ms ease, filter 300ms ease;
     filter: saturate(0.6);
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .dial-wrap.paused .dial { transition: none; }
   }
 
   .paused-overlay {

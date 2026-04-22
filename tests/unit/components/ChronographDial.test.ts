@@ -234,6 +234,16 @@ describe('ChronographDial — overlap polish · verdict+LIVE merged strip', () =
     expect(merged?.getAttribute('stroke-width')).toBe('3');
   });
 
+  it('merged strip is aria-hidden (decorative — info lives on the SVG aria-label)', () => {
+    const { container } = render(ChronographDial, { props: withBand });
+    const merged = container.querySelector(
+      'text[data-role="merged-verdict-live"]',
+    );
+    // Matches the pattern for every other decorative SVG group:
+    // baseline-arc, quality-trace, CALIBRATING, orbit.
+    expect(merged?.getAttribute('aria-hidden')).toBe('true');
+  });
+
   it('omits the band tspan when bandLabel is null (no baseline yet)', () => {
     const withoutBaseline = { ...baseProps, score: 85, liveMedian: 45, baseline: null };
     const { container } = render(ChronographDial, { props: withoutBaseline });
