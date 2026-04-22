@@ -2,10 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   classify,
   networkQuality,
-  networkLevel,
   overviewVerdict,
   HEALTH_STYLES,
-  LEVEL_STYLES,
   VERDICT_STYLES,
 } from '../../src/lib/utils/classify';
 import type { EndpointStatistics } from '../../src/lib/types';
@@ -108,45 +106,6 @@ describe('HEALTH_STYLES', () => {
     for (const bucket of ['healthy', 'degraded', 'unhealthy', 'unknown'] as const) {
       expect(HEALTH_STYLES[bucket].color).toMatch(/^var\(--/);
     }
-  });
-});
-
-describe('networkLevel()', () => {
-  it('returns "unknown" for null score', () => {
-    expect(networkLevel(null)).toBe('unknown');
-  });
-  it('returns "healthy" at 90 and above', () => {
-    expect(networkLevel(100)).toBe('healthy');
-    expect(networkLevel(90)).toBe('healthy');
-  });
-  it('returns "warning" between 60 and 89', () => {
-    expect(networkLevel(89)).toBe('warning');
-    expect(networkLevel(60)).toBe('warning');
-  });
-  it('returns "degraded" between 30 and 59', () => {
-    expect(networkLevel(59)).toBe('degraded');
-    expect(networkLevel(30)).toBe('degraded');
-  });
-  it('returns "critical" below 30', () => {
-    expect(networkLevel(29)).toBe('critical');
-    expect(networkLevel(0)).toBe('critical');
-  });
-});
-
-describe('LEVEL_STYLES', () => {
-  it('defines a style entry for every level', () => {
-    for (const level of ['unknown', 'healthy', 'warning', 'degraded', 'critical'] as const) {
-      expect(LEVEL_STYLES[level].color).toBeTruthy();
-      expect(LEVEL_STYLES[level].label).toBeTruthy();
-    }
-  });
-  it('references CSS custom properties bridged from tokens', () => {
-    for (const level of ['healthy', 'warning', 'degraded', 'critical'] as const) {
-      expect(LEVEL_STYLES[level].color).toMatch(/^var\(--/);
-    }
-  });
-  it('keeps the "unknown" label distinguishable for screen readers', () => {
-    expect(LEVEL_STYLES.unknown.label).toBe('No data');
   });
 });
 

@@ -161,7 +161,7 @@ export interface EndpointStatistics {
     contentTransfer: number;
   };
   // Per-phase p95 — fed by the same cadence as tier2Averages. Needed for
-  // Atlas view's P50/P95 toggle. Optional to mirror tier2Averages semantics
+  // Diagnose view's P50/P95 toggle. Optional to mirror tier2Averages semantics
   // (absent when no tier-2 samples have been captured yet).
   readonly tier2P95?: {
     dnsLookup: number;
@@ -208,13 +208,14 @@ export const DEFAULT_SETTINGS: Settings = {
 };
 
 // ── UI store ───────────────────────────────────────────────────────────────
-// v2 view union — post-Phase-7 shape. The Lanes family ('lanes' | 'timeline'
-// | 'heatmap' | 'split') has been retired. Persisted payloads carrying any of
-// those values collapse to 'overview' via stepV6toV7 in persistence.ts.
+// v2 view union — post-Phase-7 (Lanes retired) and post-v9 (Atlas renamed
+// to Diagnose to match the v2 prototype vocabulary). Persisted payloads
+// with retired values are coerced/renamed by stepV6toV7 (Lanes family →
+// 'overview') and stepV8toV9 ('atlas' → 'diagnose') in persistence.ts.
 export type ActiveView =
   | 'overview'
   | 'live'
-  | 'atlas'
+  | 'diagnose'
   | 'strata'
   | 'terminal';
 
@@ -296,11 +297,12 @@ export interface SharePayload {
 // v7 retires the Lanes view family (collapses 'lanes'/'timeline'/'heatmap'/
 // 'split' activeView values to 'overview'). v8 retires
 // `settings.overviewMode` — the Classic dial was dropped; Overview is a
-// single layout now.
+// single layout. v9 renames `activeView: 'atlas'` to `'diagnose'` to align
+// with the v2 prototype vocabulary.
 // Older versions migrate forward via persistence.ts. Sets serialize as arrays
 // on disk; `ui.terminalFilters` round-trips accordingly.
 export interface PersistedSettings {
-  version: 2 | 3 | 4 | 5 | 6 | 7 | 8;
+  version: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
   endpoints: { url: string; enabled: boolean }[];
   settings: Settings;
   ui: {

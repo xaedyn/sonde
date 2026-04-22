@@ -18,7 +18,7 @@
   }
 
   function addEndpoint(): void {
-    endpointStore.addEndpoint('https://', '');
+    endpointStore.addEndpoint('https://');
   }
 </script>
 

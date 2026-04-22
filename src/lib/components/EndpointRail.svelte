@@ -67,7 +67,7 @@
         class:disabled={!ep.enabled}
         disabled={!ep.enabled}
         aria-pressed={focused}
-        aria-label="{ep.label}, {ep.url}, status: {style.label}"
+        aria-label="{ep.label === ep.url || ep.label.trim() === '' ? ep.url : `${ep.label}, ${ep.url}`}, status: {style.label}"
         onclick={() => handleClick(ep.id)}
         ondblclick={() => handleDoubleClick(ep.id)}
         onkeydown={(e) => handleKeydown(e, ep.id)}
@@ -75,12 +75,18 @@
         <span
           class="rail-pip"
           style:background={style.color}
-          style:box-shadow="0 0 8px {style.color}"
+          style:box-shadow="0 0 8px {style.glow}"
           aria-hidden="true"
         ></span>
-        <span class="rail-row-body">
-          <span class="rail-row-label">{ep.label}</span>
-          <span class="rail-row-url">{ep.url}</span>
+        <span class="rail-row-body" class:single-line={ep.label.trim() === '' || ep.label === ep.url}>
+          <!-- Whitespace-only or blank labels render the URL in the label slot
+               so the visible top line is never empty. The URL subtitle is then
+               hidden (no duplicate). Keeps the one-line/two-line logic symmetric
+               with the aria-label dedup on line 70. -->
+          <span class="rail-row-label">{ep.label.trim() === '' ? ep.url : ep.label}</span>
+          {#if ep.label.trim() !== '' && ep.label !== ep.url}
+            <span class="rail-row-url">{ep.url}</span>
+          {/if}
         </span>
         <span class="rail-row-metric">
           <span class="rail-row-p50" style:color={epColor}>{parts.num}</span>
@@ -152,6 +158,12 @@
     cursor: pointer;
     font-family: inherit;
     transition: background 140ms ease, border-color 140ms ease;
+    /* Enforce equal row height regardless of one-line vs two-line body content.
+       Grid rows auto-size to the tallest cell; without min-height a single-line
+       row collapses. Computed from two-line layout: 10px top padding +
+       2 × ~20px line-height + 1px gap + 10px bottom padding ≈ 61px.
+       At 375px the 44px tap-target floor is already exceeded by this value. */
+    min-height: 60px;
   }
   .rail-row:hover:not(:disabled) { background: var(--glass-bg-rail-hover); border-color: var(--border-mid); }
   .rail-row.focused {
@@ -176,6 +188,9 @@
     flex-direction: column;
     gap: 1px;
     min-width: 0;
+  }
+  .rail-row-body.single-line {
+    justify-content: center;
   }
   .rail-row-label {
     font-size: var(--ts-md);

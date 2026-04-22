@@ -1,21 +1,22 @@
 // src/lib/utils/persistence.ts
 // Versioned localStorage persistence with forward-only migration support.
 //
-// Migration chain: v1 → v2 → v3 → v4 → v5 → v6 → v7 → v8 (current). Each
-// normalizeVN shapes a payload at version N; migrateSettings threads older
-// payloads through the chain up to CURRENT_VERSION. Never re-read a newer
-// version in an older build.
+// Migration chain: v1 → v2 → v3 → v4 → v5 → v6 → v7 → v8 → v9 (current).
+// Each normalizeVN shapes a payload at version N; migrateSettings threads
+// older payloads through the chain up to CURRENT_VERSION. Never re-read a
+// newer version in an older build.
 //
 // Phase 7 (v6 → v7): retired the Lanes family of views. Any persisted
 // `activeView` in {'lanes', 'timeline', 'heatmap', 'split'} collapses to
 // 'overview'.
 //
-// v7 → v8 (this release): drops `settings.overviewMode`. The Classic dial
-// has been retired; there is only one Overview mode now (the former
-// "enriched"), so the toggle is no longer meaningful. stepV7toV8 is the only
-// thing keeping a returning "classic" user from having an unused field
-// linger in their persisted blob; it also debug-logs the drop so support
-// can correlate a returning user's session.
+// v7 → v8: dropped `settings.overviewMode`. The Classic dial was retired;
+// only one Overview mode remained.
+//
+// v8 → v9 (this release): renames the Atlas view to Diagnose to align with
+// the v2 prototype vocabulary. `activeView: 'atlas'` rewrites to 'diagnose'
+// with a debug-log breadcrumb so a returning Atlas user's session leaves a
+// trace. The view's content is unchanged — only the routing key + label.
 
 import { DEFAULT_SETTINGS } from '../types';
 import { detectRegion, isValidRegion } from '../regional-defaults';
@@ -30,7 +31,7 @@ import type { Region } from '../regional-defaults';
 
 const STORAGE_KEY = 'chronoscope_settings'; // skipcq: JS-0860 — localStorage key, not a credential
 const LEGACY_STORAGE_KEY = 'chronoscope_v2_settings'; // skipcq: JS-0860 — localStorage key, not a credential
-export const CURRENT_VERSION = 8;
+export const CURRENT_VERSION = 9;
 
 // v6/v7-era overview mode vocabulary. Retained as a literal set because the
 // OverviewMode type has been removed from public Settings at v8 — these
@@ -51,11 +52,18 @@ const V5_VIEWS: ReadonlySet<string> = new Set([
   'timeline', 'heatmap', 'split',
 ]);
 
-// Views valid at v7 (post-Phase-7). Lanes and its aliases are retired.
-// Typed as string-set so the legacy intermediate activeView can be tested
-// for membership without casts; all five values are still in ActiveView.
-const V7_VIEWS: ReadonlySet<string> = new Set<ActiveView>([
+// Views valid at the v7/v8 boundary (pre-rename). Includes 'atlas' since v8
+// payloads still carry it; stepV8toV9 rewrites it to 'diagnose'. Typed as
+// string-set so the legacy intermediate activeView can be tested for
+// membership without casts.
+const V7_VIEWS: ReadonlySet<string> = new Set([
   'overview', 'live', 'atlas', 'strata', 'terminal',
+]);
+
+// Views valid at v9 (post-Atlas-rename). 'atlas' replaced by 'diagnose'.
+// All five values are in the public ActiveView union.
+const V9_VIEWS: ReadonlySet<string> = new Set<ActiveView>([
+  'overview', 'live', 'diagnose', 'strata', 'terminal',
 ]);
 
 // Views v7 treats as "legacy Lanes family" — rewritten to 'overview' on
@@ -64,12 +72,13 @@ const V7_LEGACY_LANES_VIEWS: ReadonlySet<string> = new Set([
   'lanes', 'timeline', 'heatmap', 'split',
 ]);
 
-// Intermediate activeView type used inside the pre-v7 chain. The public
-// ActiveView union no longer contains the Lanes family, but stages v4→v5,
-// v5→v6, and the v6 shape may still carry those strings until stepV6toV7
-// collapses them. Keeping this as a file-local widening avoids leaking the
-// legacy strings into PersistedSettings consumers.
-type LegacyActiveView = ActiveView | 'lanes' | 'timeline' | 'heatmap' | 'split';
+// Intermediate activeView type used inside the pre-v9 chain. The public
+// ActiveView union no longer contains the Lanes family OR 'atlas', but
+// stages v4→v5/v5→v6/v6→v7/v7→v8/v8→v9 may still carry those strings until
+// stepV6toV7 collapses Lanes and stepV8toV9 renames atlas. Keeping this as
+// a file-local widening avoids leaking the legacy strings into
+// PersistedSettings consumers.
+type LegacyActiveView = ActiveView | 'atlas' | 'lanes' | 'timeline' | 'heatmap' | 'split';
 
 // Intermediate Settings used inside the pre-v8 chain. v6/v7 payloads carry
 // `overviewMode`; the public v8 Settings no longer has the field. stepV7toV8
@@ -128,18 +137,26 @@ export function migrateSettings(data: unknown): PersistedSettings | null {
   const record = data as Record<string, unknown>;
   const version = typeof record['version'] === 'number' ? record['version'] : 0;
 
-  if (version === CURRENT_VERSION) return normalizeV8(record);
+  if (version === CURRENT_VERSION) return normalizeV9(record);
+
+  if (version === 8) {
+    const v8 = normalizeV8(record);
+    return v8 ? stepV8toV9(v8) : null;
+  }
 
   if (version === 7) {
     const v7 = normalizeV7(record);
-    return v7 ? stepV7toV8(v7) : null;
+    if (!v7) return null;
+    const v8 = stepV7toV8(v7);
+    return stepV8toV9(v8);
   }
 
   if (version === 6) {
     const v6 = normalizeV6(record);
     if (!v6) return null;
     const v7 = stepV6toV7(v6);
-    return stepV7toV8(v7);
+    const v8 = stepV7toV8(v7);
+    return stepV8toV9(v8);
   }
 
   if (version === 5) {
@@ -147,7 +164,8 @@ export function migrateSettings(data: unknown): PersistedSettings | null {
     if (!v5) return null;
     const v6 = stepV5toV6(v5, record);
     const v7 = stepV6toV7(v6);
-    return stepV7toV8(v7);
+    const v8 = stepV7toV8(v7);
+    return stepV8toV9(v8);
   }
 
   if (version === 4) {
@@ -156,7 +174,8 @@ export function migrateSettings(data: unknown): PersistedSettings | null {
     const v5 = stepV4toV5(v4, record);
     const v6 = stepV5toV6(v5, record);
     const v7 = stepV6toV7(v6);
-    return stepV7toV8(v7);
+    const v8 = stepV7toV8(v7);
+    return stepV8toV9(v8);
   }
 
   if (version === 3) {
@@ -170,7 +189,8 @@ export function migrateSettings(data: unknown): PersistedSettings | null {
     const v5 = stepV4toV5(v4, record);
     const v6 = stepV5toV6(v5, record);
     const v7 = stepV6toV7(v6);
-    return stepV7toV8(v7);
+    const v8 = stepV7toV8(v7);
+    return stepV8toV9(v8);
   }
 
   if (version === 2) {
@@ -195,7 +215,8 @@ export function migrateSettings(data: unknown): PersistedSettings | null {
     const v5 = stepV4toV5(v4, record);
     const v6 = stepV5toV6(v5, record);
     const v7 = stepV6toV7(v6);
-    return stepV7toV8(v7);
+    const v8 = stepV7toV8(v7);
+    return stepV8toV9(v8);
   }
 
   if (version === 1) {
@@ -216,13 +237,44 @@ export function migrateSettings(data: unknown): PersistedSettings | null {
     const v5 = stepV4toV5(v4, record);
     const v6 = stepV5toV6(v5, record);
     const v7 = stepV6toV7(v6);
-    return stepV7toV8(v7);
+    const v8 = stepV7toV8(v7);
+    return stepV8toV9(v8);
   }
 
   // Unknown version — return null (triggers first-install path). We deliberately
   // do NOT coerce through the current normalizer; that would silently drop
   // future shape changes we don't understand yet.
   return null;
+}
+
+// ── v8 → v9 step ─────────────────────────────────────────────────────────────
+// Renames the Atlas view to Diagnose to align with the v2 prototype. Any
+// persisted `activeView: 'atlas'` rewrites to `'diagnose'`. The view's
+// content is unchanged — only the routing key + label. Debug-log so a
+// returning Atlas user's session leaves a breadcrumb. Also performs the
+// final activeView narrow into the v9 ActiveView union (which doesn't
+// include 'atlas').
+function stepV8toV9(v8: LegacyPersistedSettings): PersistedSettings {
+  const incoming = v8.ui.activeView;
+  let activeView: ActiveView;
+  if (incoming === 'atlas') {
+    console.debug(
+      "[Chronoscope] v9 migration: activeView 'atlas' renamed to 'diagnose'.",
+    );
+    activeView = 'diagnose';
+  } else if (V9_VIEWS.has(incoming)) {
+    activeView = incoming as ActiveView;
+  } else {
+    // Stray pre-v8 value (Lanes family, etc.) shouldn't reach here because
+    // stepV6toV7 collapses them, but coerce defensively to 'overview'.
+    activeView = 'overview';
+  }
+  return {
+    version: 9,
+    endpoints: v8.endpoints,
+    settings: v8.settings as Settings,
+    ui: { ...v8.ui, activeView },
+  };
 }
 
 // ── v7 → v8 step ─────────────────────────────────────────────────────────────
@@ -232,7 +284,12 @@ export function migrateSettings(data: unknown): PersistedSettings | null {
 // had a mode set (which is every v6/v7 payload, since stepV5toV6 seeds it),
 // debug-log the drop so support can correlate a returning Classic user's
 // session. Payloads that never had the field (edge case) stay silent.
-function stepV7toV8(v7: LegacyPersistedSettings): PersistedSettings {
+//
+// Returns LegacyPersistedSettings (not PersistedSettings) so `activeView:
+// 'atlas'` can survive through to stepV8toV9, which is the boundary that
+// renames it. Without that, v6/v7 payloads with 'atlas' would be coerced
+// to 'overview' here and lose the meaningful breadcrumb.
+function stepV7toV8(v7: LegacyPersistedSettings): LegacyPersistedSettings {
   const droppedMode = v7.settings.overviewMode;
   if (droppedMode !== undefined) {
     console.debug(
@@ -243,16 +300,11 @@ function stepV7toV8(v7: LegacyPersistedSettings): PersistedSettings {
   // signals "intentionally unused" and keeps the drop auditable at a glance.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { overviewMode: _dropped, ...cleanSettings } = v7.settings;
-  // Narrow activeView: stepV6toV7 already collapsed the Lanes family to
-  // 'overview', so any incoming value must be in V7_VIEWS. Re-check defensively
-  // and fall through to 'overview' for a corrupt/hand-edited payload.
-  const incomingView = v7.ui.activeView;
-  const activeView: ActiveView = V7_VIEWS.has(incomingView) ? (incomingView as ActiveView) : 'overview';
   return {
     version: 8,
     endpoints: v7.endpoints,
     settings: cleanSettings,
-    ui: { ...v7.ui, activeView },
+    ui: v7.ui,
   };
 }
 
@@ -536,17 +588,45 @@ function normalizeV7(record: Record<string, unknown>): LegacyPersistedSettings |
   }
 }
 
-// v8 is the public shape — `settings` has no overviewMode, activeView is
-// narrow. The single new Settings delta is the absence of the Classic dial
-// toggle. A stray 'classic'/'enriched' value in a hand-edited v8 payload is
-// simply ignored (readSettingsField doesn't read it).
-function normalizeV8(record: Record<string, unknown>): PersistedSettings | null {
+// v8 — `settings` has no overviewMode, activeView still includes 'atlas'
+// because v8 was the last version to use that name. Returns
+// LegacyPersistedSettings so stepV8toV9 can rename 'atlas' → 'diagnose'
+// at the v9 boundary.
+function normalizeV8(record: Record<string, unknown>): LegacyPersistedSettings | null {
   try {
     const rawUi = asRecord(record['ui']) ?? {};
-    const view = readActiveView(rawUi, V7_VIEWS);
-    const activeView: ActiveView = V7_VIEWS.has(view) ? (view as ActiveView) : 'overview';
     return {
       version: 8,
+      endpoints: readEndpointsField(record),
+      // readSettingsField returns Settings (no overviewMode); LegacySettings
+      // is structurally a superset (overviewMode is optional), so the
+      // assignment is widening — no information loss.
+      settings: readSettingsField(record),
+      ui: {
+        expandedCards:     readExpandedCards(rawUi),
+        activeView:        readActiveView(rawUi, V7_VIEWS),
+        focusedEndpointId: readFocusedEndpointId(rawUi),
+        liveOptions:       readLiveOptions(rawUi),
+        terminalFilters:   readTerminalFilters(rawUi),
+      },
+    };
+  } catch {
+    return null;
+  }
+}
+
+// v9 is the public shape — activeView in V9_VIEWS (no 'atlas').
+// A hand-edited v9 payload with 'atlas' coerces to 'overview' here
+// (stepV8toV9 doesn't run on a v9-tagged payload).
+function normalizeV9(record: Record<string, unknown>): PersistedSettings | null {
+  try {
+    const rawUi = asRecord(record['ui']) ?? {};
+    // readActiveView returns either a value in V9_VIEWS or the literal
+    // 'overview' (also in V9_VIEWS), so the result is always in the union —
+    // the `as ActiveView` cast carries the narrowing TS can't prove.
+    const activeView = readActiveView(rawUi, V9_VIEWS) as ActiveView;
+    return {
+      version: 9,
       endpoints: readEndpointsField(record),
       settings: readSettingsField(record),
       ui: {

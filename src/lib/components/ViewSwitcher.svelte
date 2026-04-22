@@ -1,8 +1,9 @@
 <!-- src/lib/components/ViewSwitcher.svelte -->
 <!-- Five-tab view picker. Sits below the topbar, above the main content area. -->
-<!-- Overview / Live / Atlas are shipped; Strata / Terminal stay               -->
+<!-- Overview / Live / Diagnose are shipped; Strata / Terminal stay            -->
 <!-- disabled-with-tooltip until their prototypes land (issues #50, #51).      -->
-<!-- The Lanes tab was retired in Phase 7.                                     -->
+<!-- The Lanes tab was retired in Phase 7. Atlas was renamed to Diagnose at    -->
+<!-- v9 to align with the v2 prototype vocabulary.                             -->
 <script lang="ts">
   import { uiStore } from '$lib/stores/ui';
   import type { ActiveView } from '$lib/types';
@@ -16,12 +17,14 @@
   }
 
   // Visible label list. Order matches the prototype's left-to-right reading.
+  // Subs use the prototype's question-form hints (`shell.jsx:4–8` of the v2
+  // bundle): each tab's sub answers the question that view exists to answer.
   const VIEWS: readonly ViewDef[] = [
-    { id: 'overview', key: '1', label: 'Overview', hint: 'At a glance',     enabled: true  },
-    { id: 'live',     key: '2', label: 'Live',     hint: 'Real-time scope', enabled: true  },
-    { id: 'atlas',    key: '3', label: 'Atlas',    hint: 'Phase breakdown', enabled: true  },
-    { id: 'strata',   key: '4', label: 'Strata',   hint: 'Distribution',    enabled: false },
-    { id: 'terminal', key: '5', label: 'Terminal', hint: 'Event log',       enabled: false },
+    { id: 'overview', key: '1', label: 'Overview', hint: 'Is everything okay?',         enabled: true  },
+    { id: 'live',     key: '2', label: 'Live',     hint: "What's happening right now?", enabled: true  },
+    { id: 'diagnose', key: '3', label: 'Diagnose', hint: 'Why is it slow?',             enabled: true  },
+    { id: 'strata',   key: '4', label: 'Strata',   hint: 'How is the distribution?',    enabled: false },
+    { id: 'terminal', key: '5', label: 'Terminal', hint: "What's in the log?",          enabled: false },
   ];
 
   const DISABLED_TOOLTIP = 'Prototype in progress — not yet available.';
