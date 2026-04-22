@@ -121,7 +121,7 @@ describe('share-manager', () => {
 
   it('buildShareURL starts with origin', () => {
     const url = buildShareURL(configPayload);
-    expect(url.startsWith('https://chronoscope.example.com')).toBe(true);
+    expect(new URL(url).origin).toBe('https://chronoscope.example.com');
     expect(url).toContain('#s=');
   });
 
