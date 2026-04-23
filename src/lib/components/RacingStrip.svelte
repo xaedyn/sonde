@@ -334,4 +334,16 @@
     .racing-row, .racing-dotlive { transition: none; }
     .racing-dotlive.over { animation: none; }
   }
+
+  /* Mobile compaction — 4 endpoints × desktop row geometry overflows the
+     viewport budget. Tighten vertical rhythm only; desktop untouched. */
+  @media (max-width: 767px) {
+    .racing { padding: 8px 10px; }
+    .racing-header { margin-bottom: 4px; }
+    .racing-sub, .racing-hint { display: none; }
+    .racing-axis { padding: 2px 0 6px; margin-bottom: 4px; }
+    .racing-row { padding: 3px 6px; gap: 8px; grid-template-columns: 108px minmax(0, 1fr) max-content; }
+    .racing-track { height: 22px; }
+    .racing-rows { gap: 2px; }
+  }
 </style>

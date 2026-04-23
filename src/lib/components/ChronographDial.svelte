@@ -607,7 +607,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 12px 0;
+    padding: 8px 0;
   }
 
   /* Register the breathing-chrome custom properties so transitions can animate
@@ -646,6 +646,9 @@
 
   .dial {
     width: 100%;
+    /* 520 px is the design size. On short viewports (laptop floor 1366×768)
+       the dial caps at 440 px so the verdict strip fits above the fold. On
+       mobile widths it caps at 320 px — above the 300 px legibility floor. */
     max-width: min(520px, 80vw);
     height: auto;
     display: block;
@@ -723,5 +726,20 @@
     padding: 0; margin: -1px; overflow: hidden;
     clip-path: inset(50%);
     white-space: nowrap; border: 0;
+  }
+
+  /* Short-viewport cap: laptop floor (≤820 px height). Holds the 300 px
+     legibility minimum. */
+  @media (max-height: 820px) {
+    .dial { max-width: min(440px, 68vw); }
+  }
+  /* Mobile cap — 320 px comfortably reads. */
+  @media (max-width: 767px) {
+    .dial { max-width: min(320px, 88vw); }
+  }
+  /* Mobile floor (360 px) — drop to 300 px, the legibility minimum. Holds
+     the "no-scroll" invariant below the verdict. */
+  @media (max-width: 375px) {
+    .dial { max-width: min(300px, 86vw); }
   }
 </style>

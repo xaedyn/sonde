@@ -126,7 +126,12 @@
 
   .app {
     position: relative; z-index: 1;
-    height: 100vh;
+    /* 100svh is the "small" viewport height — worst-case browser chrome shown.
+       Using svh (not dvh) keeps the shell static during scroll-driven URL-bar
+       animations on iOS Safari, which would otherwise re-flow text every
+       frame. 100vh was wrong on iOS (calculated against URL-bar-hidden
+       viewport, so shells clipped on first paint). */
+    height: 100svh;
     display: flex; flex-direction: column;
     overflow: hidden;
     color: var(--t1);

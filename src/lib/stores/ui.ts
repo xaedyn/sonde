@@ -25,6 +25,7 @@ const initialState = (): UIState => ({
     timeRange: '5m',
   },
   terminalFilters: new Set<TerminalEventType>(),
+  overviewSubtab: 'racing',
 });
 
 function createUiStore() {
@@ -94,6 +95,9 @@ function createUiStore() {
     },
     clearTerminalFilters(): void {
       update((s) => ({ ...s, terminalFilters: new Set<TerminalEventType>() }));
+    },
+    setOverviewSubtab(tab: UIState['overviewSubtab']): void {
+      update((s) => ({ ...s, overviewSubtab: tab }));
     },
     reset(): void {
       set(initialState());

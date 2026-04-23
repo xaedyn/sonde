@@ -102,7 +102,9 @@
     .foot { padding: 0 12px; gap: 8px; }
     .config { display: none; }
   }
+  /* At the mobile floor the 38 px footer is the difference between fitting
+     and not — progress is already surfaced on the dial and topbar. */
   @media (max-width: 479px) {
-    .highlight { display: none; }
+    .foot { display: none; }
   }
 </style>

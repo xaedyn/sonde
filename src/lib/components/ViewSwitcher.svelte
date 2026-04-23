@@ -77,7 +77,17 @@
     border-bottom: 1px solid var(--border-mid);
     background: rgba(10, 9, 18, 0.3);
     flex-shrink: 0;
+    /* Enable horizontal scroll with snap at any width where the 5 tabs can't
+       fit. Desktop fits comfortably; the overflow path is the mobile answer.
+       `overflow-x: auto` + snap means the last visible tab is deliberately
+       clipped at narrow widths, signalling that tabs 4–5 exist beyond the
+       edge. Without this, tabs 4 and 5 were unreachable at ≤420 px. */
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
   }
+  .view-switcher::-webkit-scrollbar { display: none; }
+  .view-tab { scroll-snap-align: start; }
   .view-tab {
     background: transparent;
     border: none;
@@ -184,5 +194,17 @@
 
   @media (prefers-reduced-motion: reduce) {
     .view-tab, .view-tab::after { transition: none; }
+  }
+
+  /* Mobile: drop the keyboard-shortcut kicker (keyboard isn't reachable
+     anyway) and hide the tab sub-label so tabs pack tighter. Tab 5 still
+     bleeds 20–30 % past the right edge at 360 px, signalling the overflow
+     that the snap strip handles. */
+  @media (max-width: 767px) {
+    .view-switcher { padding: 8px 12px 0; gap: 2px; }
+    .view-switcher-trailing { display: none; }
+    .view-tab { padding: 6px 8px 10px 6px; }
+    .view-tab-sub { display: none; }
+    .view-tab-key { width: 18px; height: 18px; }
   }
 </style>

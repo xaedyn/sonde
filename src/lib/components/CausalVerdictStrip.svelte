@@ -205,8 +205,9 @@
   .verdict-drill-arrow { color: var(--accent-cyan); }
 
   @media (max-width: 767px) {
-    .verdict { grid-template-columns: 1fr; }
-    .verdict-metrics { flex-wrap: wrap; gap: 14px; }
+    .verdict { grid-template-columns: 1fr; padding: 10px 12px; gap: 8px 14px; }
+    .verdict-metrics { flex-wrap: wrap; gap: 10px 14px; padding-top: 6px; }
+    .verdict-metric-num { font-size: var(--ts-lg); }
     .verdict-drill {
       /* Reset the desktop placement (grid-column: 2; grid-row: 2;
          justify-self: end) so the button sits under the metrics row
@@ -215,6 +216,7 @@
       grid-row: auto;
       justify-self: stretch;
       justify-content: center;
+      padding: 6px 10px;
     }
   }
 </style>

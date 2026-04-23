@@ -266,6 +266,11 @@ export interface UIState {
 
   // Terminal view filter set. Empty = show all event types.
   terminalFilters: Set<TerminalEventType>;
+
+  // Which card is visible in the Overview's right column on narrow viewports
+  // (≤1023 px). Desktop shows both side-by-side and ignores this flag.
+  // Ephemeral — not persisted; first visit defaults to 'racing'.
+  overviewSubtab: 'racing' | 'events';
 }
 
 // ── Share payload ──────────────────────────────────────────────────────────

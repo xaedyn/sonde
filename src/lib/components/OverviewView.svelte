@@ -18,6 +18,7 @@
   import CausalVerdictStrip from './CausalVerdictStrip.svelte';
   import RacingStrip from './RacingStrip.svelte';
   import EventFeed from './EventFeed.svelte';
+  import OverviewSubtabStrip from './OverviewSubtabStrip.svelte';
   import type { Endpoint, MeasurementSample } from '$lib/types';
   import type { FeedEvent } from './EventFeed.svelte';
 
@@ -290,21 +291,41 @@
         onDrill={handleEnrichedDrill}
       />
     </div>
-    <div class="overview-right">
-      <RacingStrip
-        endpoints={monitored}
-        {stats}
-        {lastLatencies}
-        {samplesByEndpoint}
-        {threshold}
-        focusedEndpointId={$uiStore.focusedEndpointId}
-      />
-      <EventFeed
-        {events}
-        endpoints={monitored}
-        {now}
-        onDrill={handleEventDrill}
-      />
+    <div class="overview-right" data-subtab={$uiStore.overviewSubtab}>
+      <div class="overview-subtab-strip">
+        <OverviewSubtabStrip
+          selected={$uiStore.overviewSubtab}
+          onSelect={(t) => uiStore.setOverviewSubtab(t)}
+        />
+      </div>
+      <div
+        class="card-slot card-slot--racing"
+        id="overview-panel-racing"
+        role="tabpanel"
+        aria-labelledby="overview-subtab-racing"
+      >
+        <RacingStrip
+          endpoints={monitored}
+          {stats}
+          {lastLatencies}
+          {samplesByEndpoint}
+          {threshold}
+          focusedEndpointId={$uiStore.focusedEndpointId}
+        />
+      </div>
+      <div
+        class="card-slot card-slot--events"
+        id="overview-panel-events"
+        role="tabpanel"
+        aria-labelledby="overview-subtab-events"
+      >
+        <EventFeed
+          {events}
+          endpoints={monitored}
+          {now}
+          onDrill={handleEventDrill}
+        />
+      </div>
     </div>
   </div>
 </section>
@@ -314,39 +335,52 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 24px;
-    padding: 18px 28px 40px;
+    gap: 16px;
+    padding: 12px 24px 16px;
     min-height: 0;
-    overflow-y: auto;
+    overflow: hidden;
   }
 
   /* Two-column grid: dial + causal verdict on the left, racing strip + event
-     feed on the right. Collapses to one column below 1024 px. */
+     feed on the right. Collapses to one column below 1024 px. Centered with
+     max-width so wide viewports don't stretch the grid. */
   .overview-grid {
     width: 100%;
-    max-width: 1200px;
+    max-width: 1440px;
     margin: 0 auto;
     display: grid;
     grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
-    gap: 24px;
+    gap: 20px;
     align-items: start;
   }
   .overview-left {
     display: flex;
     flex-direction: column;
-    gap: 18px;
+    gap: 12px;
     min-width: 0;
   }
   .overview-right {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 12px;
     min-width: 0;
   }
+  /* Desktop: both racing and events live side-by-side in the right column
+     (the 2-col grid above stacks them vertically). The subtab strip is
+     hidden — it only exists as a mobile affordance. */
+  .overview-subtab-strip { display: none; }
+
   @media (max-width: 1023px) {
     .overview-grid { grid-template-columns: 1fr; }
+    /* Narrow viewports: expose the subtab strip and render only the active
+       card. The inactive card stays mounted in the DOM via CSS hide so its
+       store subscriptions persist (no resubscribe jitter when toggling). */
+    .overview-subtab-strip { display: block; }
+    .overview-right[data-subtab="racing"] .card-slot--events { display: none; }
+    .overview-right[data-subtab="events"] .card-slot--racing { display: none; }
   }
   @media (max-width: 767px) {
-    .overview { padding: 16px 12px 28px; gap: 16px; }
+    .overview { padding: 6px 12px 6px; gap: 10px; }
+    .overview-left, .overview-right { gap: 8px; }
   }
 </style>

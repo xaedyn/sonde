@@ -113,6 +113,11 @@
     flex-direction: column;
     min-height: 0;
   }
+  /* Mobile: the endpoint drawer (Topbar endpoint-count button) is the
+     affordance; the fixed-width rail would eat 264 px of a 360 px viewport. */
+  @media (max-width: 767px) {
+    .rail { display: none; }
+  }
 
   .rail-header {
     padding: 14px 16px 10px;
