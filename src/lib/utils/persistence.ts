@@ -35,30 +35,31 @@ const V10_TERMINAL_EVENTS: ReadonlySet<TerminalEventType> = new Set<TerminalEven
 
 export function loadPersistedSettings(): PersistedSettings | null {
   try {
-    let raw = localStorage.getItem(STORAGE_KEY);
-    // Only sweep storage when something was there to begin with — avoids a
-    // redundant removeItem on first-time visitors with empty storage.
-    let hadPayload = raw !== null;
-    if (raw === null) {
-      raw = localStorage.getItem(LEGACY_STORAGE_KEY);
-      if (raw !== null) {
-        hadPayload = true;
-        localStorage.setItem(STORAGE_KEY, raw);
-        localStorage.removeItem(LEGACY_STORAGE_KEY);
-      }
-    }
+    const { raw, hadPayload } = readRawPayload();
     if (raw === null) return null;
     const parsed: unknown = JSON.parse(raw);
     const result = migrateSettings(parsed);
-    if (result === null && hadPayload) {
-      clearPersistedSettings();
-    }
+    if (result === null && hadPayload) clearPersistedSettings();
     return result;
   } catch (err: unknown) {
     console.warn('[Chronoscope] Failed to load saved settings — using defaults:', err);
     clearPersistedSettings();
     return null;
   }
+}
+
+// Reads the persisted payload from primary key, falling back to the legacy
+// key (and migrating it to primary on the fly). `hadPayload` tells the caller
+// whether storage should be swept on a later reject — first-time visitors
+// with empty storage leave it at false so no redundant removeItem runs.
+function readRawPayload(): { raw: string | null; hadPayload: boolean } {
+  const primary = localStorage.getItem(STORAGE_KEY);
+  if (primary !== null) return { raw: primary, hadPayload: true };
+  const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+  if (legacy === null) return { raw: null, hadPayload: false };
+  localStorage.setItem(STORAGE_KEY, legacy);
+  localStorage.removeItem(LEGACY_STORAGE_KEY);
+  return { raw: legacy, hadPayload: true };
 }
 
 export function saveSettings(settings: PersistedSettings): void {
