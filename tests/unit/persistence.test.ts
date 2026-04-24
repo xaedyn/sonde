@@ -1,5 +1,10 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { loadPersistedSettings, saveSettings, migrateSettings } from '../../src/lib/utils/persistence';
+import { describe, it, expect, beforeEach } from 'vitest';
+import {
+  loadPersistedSettings,
+  saveSettings,
+  migrateSettings,
+  clearPersistedSettings,
+} from '../../src/lib/utils/persistence';
 import type { PersistedSettings } from '../../src/lib/types';
 
 const localStorageMock = (() => {
@@ -9,328 +14,215 @@ const localStorageMock = (() => {
     setItem: (key: string, value: string) => { store[key] = value; },
     removeItem: (key: string) => { delete store[key]; },
     clear: () => { store = {}; },
+    _store: () => store,
   };
 })();
 Object.defineProperty(global, 'localStorage', { value: localStorageMock });
 
+const PRIMARY_KEY = 'chronoscope_settings';
+const LEGACY_KEY = 'chronoscope_v2_settings';
+
 describe('persistence', () => {
   beforeEach(() => { localStorageMock.clear(); });
 
+  // ── First-visit / empty storage ───────────────────────────────────────────
+
   it('returns null when nothing is stored', () => {
+    // AC #1 (empty path — no keys present, no clear needed)
     expect(loadPersistedSettings()).toBeNull();
+    // No removeItem should have been called — keys were already absent
+    expect(localStorageMock.getItem(PRIMARY_KEY)).toBeNull();
+    expect(localStorageMock.getItem(LEGACY_KEY)).toBeNull();
   });
 
-  it('round-trips v3 settings into current v9 shape', () => {
-    const settings = {
-      version: 3,
-      endpoints: [{ url: 'https://example.com', enabled: true }],
-      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors' },
-      ui: { expandedCards: [], activeView: 'timeline' },
+  // ── v10 round-trip ────────────────────────────────────────────────────────
+
+  it('round-trips a v10 payload unchanged', () => {
+    // AC #4: v10 round-trip
+    const v10: PersistedSettings = {
+      version: 10,
+      endpoints: [{ url: 'https://a.example', enabled: true }],
+      settings: {
+        timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000,
+        cap: 0, corsMode: 'no-cors', healthThreshold: 200,
+      },
+      ui: {
+        expandedCards: ['ep-1'],
+        activeView: 'diagnose',
+        focusedEndpointId: 'ep-1',
+        liveOptions: { split: true, timeRange: '15m' },
+        terminalFilters: ['timeout', 'error'],
+      },
     };
-    saveSettings(settings as unknown as PersistedSettings);
+    saveSettings(v10);
     const loaded = loadPersistedSettings();
-    expect(loaded?.version).toBe(9);
-    expect(loaded?.endpoints[0]?.url).toBe('https://example.com');
-    expect(loaded?.settings.burstRounds).toBe(50);
-    expect(loaded?.settings.monitorDelay).toBe(1000);
-    expect(loaded?.settings.healthThreshold).toBe(120);
-    // overviewMode was retired at v8; migration strips the field entirely.
-    expect('overviewMode' in (loaded?.settings ?? {})).toBe(false);
+    expect(loaded).toEqual(v10);
   });
 
-  it('returns null for corrupt data', () => {
-    localStorageMock.setItem('chronoscope_settings', 'not-json{{{}}}');
+  it('v10 payload with stray retired activeView coerces to overview', () => {
+    // Edge case from spec: hand-edited v10 with e.g. 'atlas' uses allowlist fallback
+    const bad = {
+      version: 10,
+      endpoints: [],
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
+      ui: { expandedCards: [], activeView: 'atlas', focusedEndpointId: null, liveOptions: { split: false, timeRange: '5m' }, terminalFilters: [] },
+    };
+    localStorageMock.setItem(PRIMARY_KEY, JSON.stringify(bad));
+    const loaded = loadPersistedSettings();
+    expect(loaded).not.toBeNull();
+    expect(loaded?.ui.activeView).toBe('overview');
+  });
+
+  // ── Reset behavior: pre-v10 payloads → null + both keys cleared ──────────
+
+  it('pre-v10 payload (version 9) → returns null AND both storage keys are cleared', () => {
+    // AC #1, AC #3
+    const v9 = {
+      version: 9,
+      endpoints: [{ url: 'https://example.com', enabled: true }],
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
+      ui: { expandedCards: [], activeView: 'overview', focusedEndpointId: null, liveOptions: { split: false, timeRange: '5m' }, terminalFilters: [] },
+    };
+    localStorageMock.setItem(PRIMARY_KEY, JSON.stringify(v9));
+    const result = loadPersistedSettings();
+    expect(result).toBeNull();
+    // AC #3: both keys cleared on reject
+    expect(localStorageMock.getItem(PRIMARY_KEY)).toBeNull();
+    expect(localStorageMock.getItem(LEGACY_KEY)).toBeNull();
+  });
+
+  it('pre-v10 payload (version 1) → returns null AND both storage keys are cleared', () => {
+    // AC #1: any version !== 10 resets
+    const v1 = { version: 1, endpoints: [] };
+    localStorageMock.setItem(PRIMARY_KEY, JSON.stringify(v1));
+    const result = loadPersistedSettings();
+    expect(result).toBeNull();
+    expect(localStorageMock.getItem(PRIMARY_KEY)).toBeNull();
+    expect(localStorageMock.getItem(LEGACY_KEY)).toBeNull();
+  });
+
+  it('legacy key with pre-v10 payload → returns null AND both storage keys are cleared', () => {
+    // AC #1, AC #3: legacy key present, primary absent, payload is v9
+    const v9 = {
+      version: 9,
+      endpoints: [],
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
+      ui: { expandedCards: [], activeView: 'overview', focusedEndpointId: null, liveOptions: { split: false, timeRange: '5m' }, terminalFilters: [] },
+    };
+    localStorageMock.setItem(LEGACY_KEY, JSON.stringify(v9));
+    const result = loadPersistedSettings();
+    expect(result).toBeNull();
+    // The legacy-migration path copies to primary then rejects; clearPersistedSettings removes both
+    expect(localStorageMock.getItem(PRIMARY_KEY)).toBeNull();
+    expect(localStorageMock.getItem(LEGACY_KEY)).toBeNull();
+  });
+
+  it('legacy key with v10 payload migrates to primary key and returns settings', () => {
+    // Legacy key present with valid v10 data → primary key gets the value, legacy removed
+    const v10: PersistedSettings = {
+      version: 10,
+      endpoints: [{ url: 'https://example.com', enabled: true }],
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
+      ui: { expandedCards: [], activeView: 'overview', focusedEndpointId: null, liveOptions: { split: false, timeRange: '5m' }, terminalFilters: [] },
+    };
+    localStorageMock.setItem(LEGACY_KEY, JSON.stringify(v10));
+    const result = loadPersistedSettings();
+    expect(result).not.toBeNull();
+    expect(result?.version).toBe(10);
+    expect(localStorageMock.getItem(LEGACY_KEY)).toBeNull();
+    expect(localStorageMock.getItem(PRIMARY_KEY)).not.toBeNull();
+  });
+
+  // ── Corrupt JSON → null + key cleared ────────────────────────────────────
+
+  it('corrupt JSON under primary key → returns null AND key is cleared', () => {
+    // AC #1, AC #3
+    localStorageMock.setItem(PRIMARY_KEY, 'not-json{{{}}}');
     expect(() => loadPersistedSettings()).not.toThrow();
-    expect(loadPersistedSettings()).toBeNull();
+    const result = loadPersistedSettings();
+    expect(result).toBeNull();
+    expect(localStorageMock.getItem(PRIMARY_KEY)).toBeNull();
   });
 
-  it('migrates legacy storage key to new key', () => {
-    const settings = {
-      version: 3,
+  // ── migrateSettings contracts ─────────────────────────────────────────────
+
+  it('migrateSettings: version 10 → returns normalised PersistedSettings', () => {
+    // AC #2: migrateSettings accepts v10
+    const v10 = {
+      version: 10,
       endpoints: [{ url: 'https://example.com', enabled: true }],
-      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors' },
-      ui: { expandedCards: [], activeView: 'timeline' },
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
+      ui: { expandedCards: [], activeView: 'overview', focusedEndpointId: null, liveOptions: { split: false, timeRange: '5m' }, terminalFilters: [] },
     };
-    localStorageMock.setItem('chronoscope_v2_settings', JSON.stringify(settings));
-    const loaded = loadPersistedSettings();
-    expect(loaded?.version).toBe(9);
-    expect(localStorageMock.getItem('chronoscope_v2_settings')).toBeNull();
-    expect(localStorageMock.getItem('chronoscope_settings')).not.toBeNull();
+    const result = migrateSettings(v10);
+    expect(result).not.toBeNull();
+    expect(result?.version).toBe(10);
+    expect(result?.endpoints[0]?.url).toBe('https://example.com');
   });
 
-  it('migrates v1 data all the way to v9', () => {
-    const v1Data = { version: 1, endpoints: [{ url: 'https://example.com' }] };
-    const migrated = migrateSettings(v1Data);
-    expect(migrated?.version).toBe(9);
-    expect(migrated?.settings.burstRounds).toBe(50);
-    expect(migrated?.settings.monitorDelay).toBe(1000);
-    expect(migrated?.settings.healthThreshold).toBe(120);
-    expect('overviewMode' in (migrated?.settings ?? {})).toBe(false);
-    expect(migrated?.ui.activeView).toBe('overview');
-  });
-
-  it('migrates v2 data to v9 with old delay as monitorDelay', () => {
-    const v2Data = {
-      version: 2,
-      endpoints: [{ url: 'https://example.com', enabled: true }],
-      settings: { timeout: 5000, delay: 500, cap: 0, corsMode: 'no-cors' },
-      ui: { expandedCards: [], activeView: 'split' },
+  it('migrateSettings: unknown future version (99) → returns null', () => {
+    // AC #4: unknown-version → null
+    const future = {
+      version: 99,
+      endpoints: [],
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
+      ui: { expandedCards: [], activeView: 'overview' },
     };
-    const migrated = migrateSettings(v2Data);
-    expect(migrated?.version).toBe(9);
-    expect(migrated?.settings.monitorDelay).toBe(500);
-    expect(migrated?.settings.burstRounds).toBe(50);
-    expect(migrated?.settings.delay).toBe(0);
-    expect(migrated?.settings.healthThreshold).toBe(120);
-    // v2 'split' → v5 'lanes' → v7 'overview' → v9 still 'overview'.
-    expect(migrated?.ui.activeView).toBe('overview');
+    expect(migrateSettings(future)).toBeNull();
   });
 
-  describe('v4 → v9 migration (chain)', () => {
-    it('seeds healthThreshold default on a real v4 payload', () => {
-      const v4: unknown = {
-        version: 4,
-        endpoints: [{ url: 'https://cloudflare-dns.com', enabled: true }],
-        settings: {
-          timeout: 5000,
-          delay: 0,
-          burstRounds: 50,
-          monitorDelay: 1000,
-          cap: 0,
-          corsMode: 'no-cors',
-          region: 'north-america',
-        },
-        ui: { expandedCards: ['ep-1'], activeView: 'split' },
-      };
-      const migrated = migrateSettings(v4);
-      expect(migrated?.version).toBe(9);
-      expect(migrated?.settings.healthThreshold).toBe(120);
-      expect(migrated?.settings.region).toBe('north-america');
-      expect('overviewMode' in (migrated?.settings ?? {})).toBe(false);
-    });
-
-    it('rewrites deprecated activeView values through Lanes to "overview" (v7 collapse)', () => {
-      // v4→v5 rewrites the trio to 'lanes'; v6→v7 collapses 'lanes' to 'overview'.
-      for (const view of ['timeline', 'heatmap', 'split'] as const) {
-        const v4 = {
-          version: 4,
-          endpoints: [],
-          settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors' },
-          ui: { expandedCards: [], activeView: view },
-        };
-        const migrated = migrateSettings(v4);
-        expect(migrated?.ui.activeView).toBe('overview');
-      }
-    });
-
-    it('seeds focusedEndpointId as null, liveOptions defaults, empty terminalFilters', () => {
-      const v4 = {
-        version: 4,
-        endpoints: [],
-        settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors' },
-        ui: { expandedCards: [], activeView: 'split' },
-      };
-      const migrated = migrateSettings(v4);
-      expect(migrated?.ui.focusedEndpointId).toBeNull();
-      expect(migrated?.ui.liveOptions).toEqual({ split: false, timeRange: '5m' });
-      expect(migrated?.ui.terminalFilters).toEqual([]);
-    });
-
-    it('preserves expandedCards through migration', () => {
-      const v4 = {
-        version: 4,
-        endpoints: [],
-        settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors' },
-        ui: { expandedCards: ['a', 'b'], activeView: 'split' },
-      };
-      const migrated = migrateSettings(v4);
-      expect(migrated?.ui.expandedCards).toEqual(['a', 'b']);
-    });
-
-    it('coerces an unknown activeView value to the default "overview"', () => {
-      const v4 = {
-        version: 4,
-        endpoints: [],
-        settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors' },
-        ui: { expandedCards: [], activeView: 'garbage-string' },
-      };
-      const migrated = migrateSettings(v4);
-      expect(migrated?.ui.activeView).toBe('overview');
-    });
+  it('migrateSettings: missing version → returns null', () => {
+    // AC #4: missing-version → null
+    expect(migrateSettings({ endpoints: [] })).toBeNull();
   });
 
-  describe('v5 → v9 migration', () => {
-    it('preserves modern v5 fields and strips overviewMode at v8', () => {
-      const v5: unknown = {
-        version: 5,
-        endpoints: [{ url: 'https://a.example', enabled: true }],
-        settings: {
-          timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000,
-          cap: 0, corsMode: 'no-cors', healthThreshold: 180,
-          region: 'europe',
-        },
-        ui: {
-          expandedCards: ['ep-1'],
-          activeView: 'overview',
-          focusedEndpointId: 'ep-9',
-          liveOptions: { split: true, timeRange: '15m' },
-          terminalFilters: ['timeout'],
-        },
-      };
-      const migrated = migrateSettings(v5);
-      expect(migrated?.version).toBe(9);
-      expect('overviewMode' in (migrated?.settings ?? {})).toBe(false);
-      // Existing v5 fields survive intact.
-      expect(migrated?.settings.healthThreshold).toBe(180);
-      expect(migrated?.settings.region).toBe('europe');
-      expect(migrated?.ui.activeView).toBe('overview');
-      expect(migrated?.ui.focusedEndpointId).toBe('ep-9');
-      expect(migrated?.ui.liveOptions).toEqual({ split: true, timeRange: '15m' });
-      expect(migrated?.ui.terminalFilters).toEqual(['timeout']);
-      expect(migrated?.ui.expandedCards).toEqual(['ep-1']);
-    });
-
-    it('drops a forward-written overviewMode on v5 at the v8 boundary', () => {
-      // A future/debug tool may have injected overviewMode into a v5 payload;
-      // the chain carries it forward to v6/v7, then stepV7toV8 strips it.
-      const v5 = {
-        version: 5,
-        endpoints: [],
-        settings: {
-          timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000,
-          cap: 0, corsMode: 'no-cors', healthThreshold: 120,
-          overviewMode: 'enriched',
-        },
-        ui: { expandedCards: [], activeView: 'overview' },
-      };
-      const migrated = migrateSettings(v5);
-      expect('overviewMode' in (migrated?.settings ?? {})).toBe(false);
-    });
-
-    it('ignores a garbage overviewMode on v5 (coerced in the chain, dropped at v8)', () => {
-      const v5 = {
-        version: 5,
-        endpoints: [],
-        settings: {
-          timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000,
-          cap: 0, corsMode: 'no-cors', healthThreshold: 120,
-          overviewMode: 'not-a-real-mode',
-        },
-        ui: { expandedCards: [], activeView: 'overview' },
-      };
-      const migrated = migrateSettings(v5);
-      expect('overviewMode' in (migrated?.settings ?? {})).toBe(false);
-    });
+  it('migrateSettings: non-numeric version → returns null', () => {
+    // AC #4: non-numeric-version → null
+    expect(migrateSettings({ version: 'ten', endpoints: [] })).toBeNull();
   });
 
-  describe('v7 → v8 hop', () => {
-    it('drops overviewMode from a real v7 payload and debug-logs the transition', () => {
-      const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => undefined);
-      try {
-        const v7 = {
-          version: 7,
-          endpoints: [],
-          settings: {
-            timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000,
-            cap: 0, corsMode: 'no-cors', healthThreshold: 120,
-            overviewMode: 'enriched',
-          },
-          ui: { expandedCards: [], activeView: 'overview' },
-        };
-        const migrated = migrateSettings(v7);
-        expect(migrated?.version).toBe(9);
-        expect('overviewMode' in (migrated?.settings ?? {})).toBe(false);
-        expect(debugSpy).toHaveBeenCalledWith(
-          expect.stringMatching(/v8 migration: settings\.overviewMode 'enriched' retired/),
-        );
-      } finally {
-        debugSpy.mockRestore();
-      }
-    });
-
-    it('v7 payload without overviewMode passes through quietly', () => {
-      const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => undefined);
-      try {
-        const v7 = {
-          version: 7,
-          endpoints: [],
-          settings: {
-            timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000,
-            cap: 0, corsMode: 'no-cors', healthThreshold: 120,
-          },
-          ui: { expandedCards: [], activeView: 'live' },
-        };
-        const migrated = migrateSettings(v7);
-        expect(migrated?.version).toBe(9);
-        expect(migrated?.ui.activeView).toBe('live');
-        expect(debugSpy).not.toHaveBeenCalled();
-      } finally {
-        debugSpy.mockRestore();
-      }
-    });
+  it('migrateSettings: pre-v10 version (9) → returns null', () => {
+    // AC #1: any version < 10 is rejected by migrateSettings
+    const v9 = {
+      version: 9,
+      endpoints: [],
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
+      ui: { expandedCards: [], activeView: 'overview', focusedEndpointId: null, liveOptions: { split: false, timeRange: '5m' }, terminalFilters: [] },
+    };
+    expect(migrateSettings(v9)).toBeNull();
   });
 
-  describe('v9 pass-through', () => {
-    it('round-trips a v9 payload unchanged', () => {
-      const v9: PersistedSettings = {
-        version: 9,
-        endpoints: [{ url: 'https://a.example', enabled: true }],
-        settings: {
-          timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000,
-          cap: 0, corsMode: 'no-cors', healthThreshold: 200,
-        },
-        ui: {
-          expandedCards: [],
-          activeView: 'overview',
-          focusedEndpointId: 'ep-1',
-          liveOptions: { split: true, timeRange: '15m' },
-          terminalFilters: ['timeout', 'error'],
-        },
-      };
-      saveSettings(v9);
-      const loaded = loadPersistedSettings();
-      expect(loaded).toEqual(v9);
-    });
-
-    it('a stray overviewMode in a v8 payload is silently ignored by the reader', () => {
-      // Not a real migration path — a hand-edited or corrupted v8 payload
-      // shouldn't let the retired field leak back into the app.
-      const bad = {
-        version: 8,
-        endpoints: [],
-        settings: {
-          timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000,
-          cap: 0, corsMode: 'no-cors', healthThreshold: 120,
-          overviewMode: 'classic',
-        },
-        ui: { expandedCards: [], activeView: 'overview' },
-      };
-      const migrated = migrateSettings(bad);
-      expect('overviewMode' in (migrated?.settings ?? {})).toBe(false);
-    });
+  it('migrateSettings: null input → returns null', () => {
+    expect(migrateSettings(null)).toBeNull();
   });
 
-  describe('unknown-version fallback', () => {
-    it('version 99 returns null (no forward-compat coercion)', () => {
-      const future = {
-        version: 99,
-        endpoints: [{ url: 'https://example.com', enabled: true }],
-        settings: {
-          timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000,
-          cap: 0, corsMode: 'no-cors', healthThreshold: 120,
-        },
-        ui: { expandedCards: [], activeView: 'overview' },
-        unknownFutureField: 'ignored',
-      };
-      expect(migrateSettings(future)).toBeNull();
-    });
+  it('migrateSettings: non-object input → returns null', () => {
+    expect(migrateSettings(42)).toBeNull();
+    expect(migrateSettings('string')).toBeNull();
+  });
 
-    it('missing version number returns null', () => {
-      expect(migrateSettings({ endpoints: [] })).toBeNull();
-    });
+  // ── clearPersistedSettings ────────────────────────────────────────────────
 
-    it('non-numeric version returns null', () => {
-      expect(migrateSettings({ version: 'six', endpoints: [] })).toBeNull();
-    });
+  it('clearPersistedSettings removes both keys', () => {
+    localStorageMock.setItem(PRIMARY_KEY, '{}');
+    localStorageMock.setItem(LEGACY_KEY, '{}');
+    clearPersistedSettings();
+    expect(localStorageMock.getItem(PRIMARY_KEY)).toBeNull();
+    expect(localStorageMock.getItem(LEGACY_KEY)).toBeNull();
+  });
+
+  it('loadPersistedSettings does not throw when localStorage.removeItem throws (Safari private mode)', () => {
+    // AC #3: removeItem failure inside clearPersistedSettings must not propagate
+    // Seed a pre-v10 payload so the clear-on-reject path is exercised.
+    localStorageMock.setItem(PRIMARY_KEY, JSON.stringify({ version: 9, endpoints: [], settings: {}, ui: {} }));
+    // Poison removeItem to simulate Safari private-mode SecurityError.
+    const originalRemove = localStorageMock.removeItem;
+    localStorageMock.removeItem = () => { throw new Error('SecurityError: storage is disabled'); };
+    try {
+      expect(() => loadPersistedSettings()).not.toThrow();
+      expect(loadPersistedSettings()).toBeNull();
+    } finally {
+      localStorageMock.removeItem = originalRemove;
+    }
   });
 });
