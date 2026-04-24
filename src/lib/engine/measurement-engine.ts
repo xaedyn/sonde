@@ -11,11 +11,7 @@ import { defaultWorkerFactory } from './worker-factory';
 import type { WorkerFactory } from './worker-factory';
 import type { Endpoint } from '../types';
 import type { MainToWorkerMessage, WorkerToMainMessage } from '../types';
-
-function isHttpUrl(url: string): boolean {
-  const trimmed = url.trim();
-  return trimmed.startsWith('http://') || trimmed.startsWith('https://');
-}
+import { isSafeProbeUrl } from '../utils/url-safety';
 
 interface ManagedWorker {
   worker: Worker;
@@ -60,7 +56,7 @@ export class MeasurementEngine {
       measurementStore.setStartedAt(Date.now());
     }
 
-    const endpoints = get(endpointStore).filter(ep => ep.enabled && isHttpUrl(ep.url));
+    const endpoints = get(endpointStore).filter(ep => ep.enabled && isSafeProbeUrl(ep.url));
 
     // Only initialize endpoints that don't already have data — preserves
     // samples across stop/start cycles.
@@ -340,7 +336,7 @@ export class MeasurementEngine {
       return;
     }
 
-    const endpoints = get(endpointStore).filter(ep => ep.enabled && isHttpUrl(ep.url));
+    const endpoints = get(endpointStore).filter(ep => ep.enabled && isSafeProbeUrl(ep.url));
 
     // Count active workers for this round to know when the batch is complete
     const activeWorkers = this.workers.filter(m => endpoints.some(e => e.id === m.endpointId));

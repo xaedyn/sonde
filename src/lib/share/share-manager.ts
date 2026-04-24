@@ -4,6 +4,7 @@
 
 import LZString from 'lz-string';
 import type { SharePayload, Settings } from '../types';
+import { isSafeSharedUrl } from '../utils/url-safety';
 
 // ── Share settings helper ──────────────────────────────────────────────────
 // Explicitly destructures only the 6 allowed share fields.
@@ -51,11 +52,6 @@ function isNonNegativeFiniteNumber(v: unknown): boolean {
   return isFiniteNumber(v) && (v as number) >= 0;
 }
 
-function isHttpUrl(v: unknown): boolean {
-  if (typeof v !== 'string' || v === '') return false;
-  return v.startsWith('http://') || v.startsWith('https://');
-}
-
 function validateSharePayload(data: unknown): SharePayload | null {
   if (data === null || typeof data !== 'object') return null;
   const obj = data as Record<string, unknown>;
@@ -68,7 +64,7 @@ function validateSharePayload(data: unknown): SharePayload | null {
   for (const ep of obj['endpoints'] as unknown[]) {
     if (ep === null || typeof ep !== 'object') return null;
     const e = ep as Record<string, unknown>;
-    if (!isHttpUrl(e['url'])) return null;
+    if (!isSafeSharedUrl(e['url'])) return null;
     if (typeof e['enabled'] !== 'boolean') return null;
   }
 

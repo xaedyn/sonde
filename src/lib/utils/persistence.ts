@@ -6,6 +6,7 @@
 
 import { DEFAULT_SETTINGS } from '../types';
 import { isValidRegion } from '../regional-defaults';
+import { isSafeProbeUrl } from './url-safety';
 import type {
   ActiveView,
   LiveTimeRange,
@@ -121,10 +122,14 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 
 function readEndpointsField(record: Record<string, unknown>): { url: string; enabled: boolean }[] {
   const raw = Array.isArray(record['endpoints']) ? record['endpoints'] : [];
+  // Drop entries with malformed or unsafe URLs. localStorage is trivially
+  // writable by extensions, shared-machine users, or any XSS that gets past
+  // CSP — never round-trip a URL to fetch() without re-validating it here.
   return raw
     .filter((e): e is Record<string, unknown> => asRecord(e) !== null)
+    .filter((e) => isSafeProbeUrl(e['url']))
     .map((e) => ({
-      url: typeof e['url'] === 'string' ? e['url'] : '',
+      url: e['url'] as string,
       enabled: typeof e['enabled'] === 'boolean' ? e['enabled'] : true,
     }));
 }

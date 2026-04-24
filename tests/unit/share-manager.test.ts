@@ -179,6 +179,35 @@ describe('share-manager', () => {
       expect(decodeSharePayload(encoded)).not.toBeNull();
     });
 
+    // Private-host blocklist — share payload must never steer a victim's
+    // browser at internal infrastructure.
+    it.each([
+      'http://127.0.0.1/',
+      'http://localhost/',
+      'http://192.168.1.1/',
+      'http://10.0.0.1/',
+      'http://172.16.0.1/',
+      'http://169.254.169.254/', // AWS / Azure IMDS
+      'http://[::1]/',
+      'http://printer.local/',
+    ])('rejects private/loopback URL %s', async (url) => {
+      const encoded = await manualEncode({
+        v: 1, mode: 'config',
+        endpoints: [{ url, enabled: true }],
+        settings: validSettings,
+      });
+      expect(decodeSharePayload(encoded)).toBeNull();
+    });
+
+    it('rejects URLs carrying userinfo credentials', async () => {
+      const encoded = await manualEncode({
+        v: 1, mode: 'config',
+        endpoints: [{ url: 'http://user:pass@example.com/', enabled: true }],
+        settings: validSettings,
+      });
+      expect(decodeSharePayload(encoded)).toBeNull();
+    });
+
     // AC #2 — Non-negative finite numbers
     it('rejects Infinity timeout', async () => {
       const encoded = await manualEncode({
