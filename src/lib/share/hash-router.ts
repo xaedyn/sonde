@@ -11,6 +11,12 @@ import { DEFAULT_SETTINGS } from '../types';
 import type { SharePayload, MeasurementSample, SampleStatus, Endpoint } from '../types';
 import { tokens } from '../tokens';
 
+// Upper bound for the round counter materialized from a share payload.
+// Matches the sample cap (10 000 per endpoint × 50 endpoints) with generous
+// headroom — high enough that no legitimate payload hits it, low enough that
+// downstream arithmetic stays well inside safe-integer range.
+const MAX_SHARE_ROUND_COUNTER = 1_000_000;
+
 function pickColor(index: number): string {
   const palette = tokens.color.endpoint;
   return palette[index % palette.length] ?? (tokens.color.endpoint[0] as string);
@@ -32,13 +38,19 @@ function applySharePayload(payload: SharePayload): string[] {
   }));
 
   endpointStore.setEndpoints(endpoints);
+  // Explicit field copy — never spread an attacker-supplied object into
+  // settingsStore. validateSharePayload only validates the 6 known fields;
+  // a crafted payload can smuggle extras (region, healthThreshold, etc.)
+  // that spread would silently apply.
   settingsStore.set({
     ...DEFAULT_SETTINGS,
-    ...payload.settings,
+    timeout: payload.settings.timeout,
     delay: DEFAULT_SETTINGS.delay,
     burstRounds: payload.settings.burstRounds ?? DEFAULT_SETTINGS.burstRounds,
     monitorDelay:
       payload.settings.monitorDelay ?? payload.settings.delay ?? DEFAULT_SETTINGS.monitorDelay,
+    cap: payload.settings.cap,
+    corsMode: payload.settings.corsMode,
   });
 
   const ids = endpoints.map((ep) => ep.id);
@@ -83,11 +95,17 @@ function applySharePayload(payload: SharePayload): string[] {
     const snapshot = {
       lifecycle: 'completed' as const,
       epoch: 1,
-      roundCounter: Math.max(
-        ...payload.results.map((r) =>
-          r.samples.reduce((max, s) => Math.max(max, s.round), 0)
+      // Share payload carries attacker-controllable sample.round values.
+      // Bound the counter so a crafted payload can't push it to MAX_SAFE_INTEGER
+      // and break subsequent monotonicity / arithmetic assumptions.
+      roundCounter: Math.min(
+        Math.max(
+          ...payload.results.map((r) =>
+            r.samples.reduce((max, s) => Math.max(max, s.round), 0)
+          ),
+          0,
         ),
-        0,
+        MAX_SHARE_ROUND_COUNTER,
       ),
       endpoints: endpointsRecord,
       startedAt: null,
