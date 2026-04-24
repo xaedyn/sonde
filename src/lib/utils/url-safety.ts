@@ -73,7 +73,5 @@ function isPrivateHost(hostname: string): boolean {
   }
 
   // mDNS / corporate internal TLDs
-  if (h.endsWith('.local') || h.endsWith('.internal')) return true;
-
-  return false;
+  return h.endsWith('.local') || h.endsWith('.internal');
 }

@@ -13,20 +13,24 @@ describe('isSafeProbeUrl — user-typed URLs', () => {
     expect(isSafeProbeUrl('http://localhost:8080/')).toBe(true);
   });
 
-  it('rejects non-string / empty / oversized input', () => {
-    expect(isSafeProbeUrl(undefined)).toBe(false);
-    expect(isSafeProbeUrl(null)).toBe(false);
-    expect(isSafeProbeUrl(42)).toBe(false);
-    expect(isSafeProbeUrl('')).toBe(false);
-    expect(isSafeProbeUrl('http://example.com/' + 'a'.repeat(2048))).toBe(false);
+  it.each([
+    { label: 'undefined',    input: undefined },
+    { label: 'null',         input: null },
+    { label: 'number',       input: 42 },
+    { label: 'empty string', input: '' },
+    { label: 'oversized',    input: `http://example.com/${'a'.repeat(2048)}` },
+  ])('rejects non-string / empty / oversized input: $label', ({ input }) => {
+    expect(isSafeProbeUrl(input)).toBe(false);
   });
 
-  it('rejects non-http(s) protocols', () => {
-    expect(isSafeProbeUrl('javascript:alert(1)')).toBe(false);
-    expect(isSafeProbeUrl('file:///etc/passwd')).toBe(false);
-    expect(isSafeProbeUrl('data:text/html,<script>alert(1)</script>')).toBe(false);
-    expect(isSafeProbeUrl('ftp://example.com/')).toBe(false);
-    expect(isSafeProbeUrl('ws://example.com/')).toBe(false);
+  it.each([
+    'javascript:alert(1)',
+    'file:///etc/passwd',
+    'data:text/html,<script>alert(1)</script>',
+    'ftp://example.com/',
+    'ws://example.com/',
+  ])('rejects non-http(s) protocol: %s', (input) => {
+    expect(isSafeProbeUrl(input)).toBe(false);
   });
 
   it('rejects URLs carrying userinfo (exfil vector)', () => {
@@ -52,11 +56,13 @@ describe('isSafeSharedUrl — URLs from share-link or localStorage', () => {
     expect(isSafeSharedUrl('http://8.8.8.8/')).toBe(true);
   });
 
-  it('inherits every isSafeProbeUrl rejection', () => {
-    expect(isSafeSharedUrl('javascript:alert(1)')).toBe(false);
-    expect(isSafeSharedUrl('http://user:pass@example.com/')).toBe(false);
-    expect(isSafeSharedUrl('')).toBe(false);
-    expect(isSafeSharedUrl('http://example.com/' + 'a'.repeat(2048))).toBe(false);
+  it.each([
+    { label: 'javascript:',  input: 'javascript:alert(1)' },
+    { label: 'userinfo',     input: 'http://user:pass@example.com/' },
+    { label: 'empty string', input: '' },
+    { label: 'oversized',    input: `http://example.com/${'a'.repeat(2048)}` },
+  ])('inherits isSafeProbeUrl rejection: $label', ({ input }) => {
+    expect(isSafeSharedUrl(input)).toBe(false);
   });
 
   it('rejects loopback (127.0.0.0/8, localhost, ::1)', () => {
