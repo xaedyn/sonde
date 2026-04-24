@@ -69,10 +69,10 @@
   }
 </script>
 
-<section class="live-wrap" aria-label="Live oscilloscope">
+<section class="live-wrap" aria-label="Live latency trace">
   <header class="live-header">
     <div class="live-title-block">
-      <div class="live-kicker">Live · Oscilloscope</div>
+      <div class="live-kicker">Live · Trace</div>
       <h1 class="live-title">
         {#if soloEndpoint}
           <span class="live-title-solo">
@@ -80,7 +80,7 @@
             Tracing <span class="live-title-solo-label" style:color={soloEndpoint.color}>{soloEndpoint.label}</span>
           </span>
         {:else}
-          All endpoints · {liveOptions.split ? 'split' : 'unified'} scope
+          All endpoints · {liveOptions.split ? 'split' : 'unified'} view
         {/if}
       </h1>
     </div>
@@ -96,12 +96,12 @@
         </button>
       {/if}
 
-      <div class="live-control" role="group" aria-label="Scope mode">
+      <div class="live-control" role="group" aria-label="Layout mode">
         <span class="live-control-label">Mode</span>
         <div class="live-segment">
           <!--
             Pressed state tracks `liveOptions.split` (the user's stashed
-            preference), not the current `mode`. In solo mode the scope is
+            preference), not the current `mode`. In solo mode the trace is
             always a single full-height canvas regardless of the toggle, so
             we keep the toggle disabled + visually showing the stashed value
             so clicks are advisory — the preference will apply on unfocus.
@@ -123,8 +123,8 @@
         </div>
       </div>
 
-      <div class="live-control live-control-trig" aria-label="Trigger threshold, {threshold} milliseconds">
-        <span class="live-control-label">Trig</span>
+      <div class="live-control live-control-trig" aria-label="Health threshold, {threshold} milliseconds">
+        <span class="live-control-label">Threshold</span>
         <div class="trig-display">
           {threshold}<span>ms</span>
         </div>
