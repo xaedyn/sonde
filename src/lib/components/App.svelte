@@ -40,14 +40,10 @@
 
     // Accent
     root.style.setProperty('--accent-cyan',       tokens.color.accent.cyan);
-    root.style.setProperty('--accent-cyan-glow',  tokens.color.accent.cyanGlow);
-    root.style.setProperty('--accent-cyan-tone',  tokens.color.accent.cyanTone);
     root.style.setProperty('--accent-pink',       tokens.color.accent.pink);
     root.style.setProperty('--accent-pink-glow',  tokens.color.accent.pinkGlow);
-    root.style.setProperty('--accent-pink-tone',  tokens.color.accent.pinkTone);
     root.style.setProperty('--accent-amber',      tokens.color.accent.amber);
     root.style.setProperty('--accent-amber-glow', tokens.color.accent.amberGlow);
-    root.style.setProperty('--accent-amber-tone', tokens.color.accent.amberTone);
     root.style.setProperty('--accent-green',      tokens.color.accent.green);
     root.style.setProperty('--green-glow',        tokens.color.accent.greenGlow);
 
@@ -61,24 +57,16 @@
     root.style.setProperty('--mono', tokens.typography.mono.fontFamily);
 
     // Spacing
-    root.style.setProperty('--spacing-xxs', `${tokens.spacing.xxs}px`);
     root.style.setProperty('--spacing-xs',  `${tokens.spacing.xs}px`);
     root.style.setProperty('--spacing-sm',  `${tokens.spacing.sm}px`);
     root.style.setProperty('--spacing-md',  `${tokens.spacing.md}px`);
     root.style.setProperty('--spacing-lg',  `${tokens.spacing.lg}px`);
     root.style.setProperty('--spacing-xl',  `${tokens.spacing.xl}px`);
-    root.style.setProperty('--spacing-xxl', `${tokens.spacing.xxl}px`);
 
     // Radius
     root.style.setProperty('--radius-sm', `${tokens.radius.sm}px`);
     root.style.setProperty('--radius-md', `${tokens.radius.md}px`);
     root.style.setProperty('--radius-lg', `${tokens.radius.lg}px`);
-    root.style.setProperty('--radius-btn', `${tokens.radius.btn}px`);
-
-    // Timing
-    root.style.setProperty('--timing-fade-in',   `${tokens.timing.fadeIn}ms`);
-    root.style.setProperty('--easing-standard',  tokens.easing.standard);
-    root.style.setProperty('--easing-decelerate',tokens.easing.decelerate);
 
     // v2 typography scale (--ts-*) + tracking (--tr-*)
     root.style.setProperty('--ts-xs',   tokens.typography.scale.xs);
@@ -88,29 +76,22 @@
     root.style.setProperty('--ts-lg',   tokens.typography.scale.lg);
     root.style.setProperty('--ts-xl',   tokens.typography.scale.xl);
     root.style.setProperty('--ts-2xl',  tokens.typography.scale.xl2);
-    root.style.setProperty('--ts-3xl',  tokens.typography.scale.xl3);
-    root.style.setProperty('--ts-xxl',  tokens.typography.scale.xxl);
     root.style.setProperty('--tr-kicker',  tokens.typography.tracking.kicker);
     root.style.setProperty('--tr-label',   tokens.typography.tracking.label);
     root.style.setProperty('--tr-tight',   tokens.typography.tracking.tight);
-    root.style.setProperty('--tr-display', tokens.typography.tracking.display);
     root.style.setProperty('--tr-body',    tokens.typography.tracking.body);
 
     // v2 structural chrome + surface border (used by topbar/rail/switcher)
     root.style.setProperty('--topbar-height',       `${tokens.lane.topbarHeight}px`);
     root.style.setProperty('--rail-width',          `${tokens.lane.railWidth}px`);
-    root.style.setProperty('--border-dim',          tokens.color.surface.border.dim);
     root.style.setProperty('--border-mid',          tokens.color.surface.border.mid);
     root.style.setProperty('--border-bright',       tokens.color.surface.border.bright);
     root.style.setProperty('--surface-topbar-bg',   tokens.color.surface.overlayDeep);
 
-    // v2 surface + tooltip variants
-    root.style.setProperty('--surface-dial-face',    tokens.color.surface.dialFace);
-    root.style.setProperty('--surface-overlay-deep', tokens.color.surface.overlayDeep);
+    // v2 tooltip variants
     root.style.setProperty('--tooltip-bg-deep',      tokens.color.tooltip.bgDeep);
     root.style.setProperty('--tooltip-border',       tokens.color.tooltip.border);
     root.style.setProperty('--tooltip-text',         tokens.color.tooltip.text);
-    root.style.setProperty('--tooltip-text-dim',     tokens.color.tooltip.textDim);
 
     // v2 SVG primitives (dial, orbit ring, scope)
     root.style.setProperty('--svg-grid-line', tokens.color.svg.gridLine);
@@ -129,28 +110,14 @@
     root.style.setProperty('--glass-bg-rail-selected', tokens.color.glass.bgRailSelected);
 
     // v2 motion primitives
-    root.style.setProperty('--timing-hand-lerp',        String(tokens.timing.handLerp));
     root.style.setProperty('--timing-pulse-rim',        `${tokens.timing.pulseRim}ms`);
     root.style.setProperty('--timing-pulse-dial-glow',  `${tokens.timing.pulseDialGlow}ms`);
-    root.style.setProperty('--timing-orbit-pulse',      `${tokens.timing.orbitPulse}ms`);
-    root.style.setProperty('--timing-trace-repaint',    `${tokens.timing.traceRepaint}ms`);
 
-    // Legacy properties (Settings/Share drawers not yet redesigned)
+    // Shared with Settings/Share drawers
     root.style.setProperty('--surface-raised',   tokens.color.surface.raised);
-    root.style.setProperty('--surface-elevated', tokens.color.surface.elevated);
-    root.style.setProperty('--text-primary',     tokens.color.text.t1);
-    root.style.setProperty('--text-secondary',   tokens.color.text.t2);
-    root.style.setProperty('--text-muted',       tokens.color.text.t3);
-    root.style.setProperty('--border',           tokens.color.chrome.border);
-    root.style.setProperty('--accent',           tokens.color.chrome.accent);
-    root.style.setProperty('--accent-hover',     tokens.color.chrome.accentHover);
-    root.style.setProperty('--status-success',   tokens.color.status.success);
-    root.style.setProperty('--status-error',     tokens.color.status.error);
     root.style.setProperty('--status-timeout',   tokens.color.status.timeout);
     root.style.setProperty('--surface-overlay', tokens.color.surface.overlay);
-    root.style.setProperty('--spacing-lg2', `${tokens.spacing.lg2}px`);
     root.style.setProperty('--timing-btn',           `${tokens.timing.btnHover}ms`);
-    root.style.setProperty('--shadow-low', tokens.shadow.low);
     root.style.setProperty('--radius-xs', `${tokens.radius.xs}px`);
   }
 

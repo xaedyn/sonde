@@ -618,12 +618,6 @@
     letter-spacing: 0.08em;
   }
 
-  .danger-desc {
-    font-family: var(--sans);
-    font-size: 11px;
-    color: var(--t3);
-  }
-
   .field-label {
     display: flex;
     align-items: center;
@@ -662,13 +656,6 @@
     outline: none;
     border-color: var(--accent-cyan);
     box-shadow: inset 0 1px 4px rgba(0,0,0,.3), 0 0 12px rgba(103,232,249,.15);
-  }
-
-  .field-description {
-    font-family: var(--sans);
-    font-size: 11px;
-    color: var(--t3);
-    line-height: 1.6;
   }
 
   /* ── CORS fieldset ───────────────────────────────────────────────────────── */
