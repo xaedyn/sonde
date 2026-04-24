@@ -1,5 +1,32 @@
 version = 1
 
+# Rule suppression
+# ────────────────
+# DeepSource does NOT support disabling specific rules via .deepsource.toml.
+# The only supported suppression paths are `// skipcq: <rule-id>` inline
+# comments (per-site) or the dashboard "Ignore Issue" action (project-wide):
+#   https://app.deepsource.com/gh/xaedyn/chronoscope/
+#
+# Rules intentionally silenced for this project (apply via dashboard):
+#   JS-0067   — no-implicit-globals; module-level function/var declarations
+#               are NOT actually global in ES modules. False positive for
+#               our Svelte 5 + Vite ESM build.
+#   JS-C1002  — short variable names (i, r, s) are fine in math-heavy
+#               renderers and SVG geometry code.
+#   JS-R1005  — cyclomatic complexity threshold too aggressive for this
+#               codebase's data-pipeline / state-machine functions.
+#   JS-0331   — explicit type declarations are often required in TypeScript.
+#   JS-0339   — non-null assertions in test files are intentional.
+#   JS-0047   — switch exhaustiveness is enforced by TypeScript's type
+#               narrowing, not needed at runtime.
+#   JS-0042,  — array .map() callbacks with switch returns; TypeScript
+#   JS-0045     validates every branch.
+#
+# If any of these reappear on a PR, re-apply the Ignore Issue action in the
+# DeepSource dashboard — a previous `skip_rules = [...]` block under
+# [analyzers.meta] was silently ignored (not a valid DeepSource config field)
+# for an unknown amount of time before this cleanup.
+
 [[analyzers]]
 name = "javascript"
 enabled = true
@@ -8,23 +35,6 @@ enabled = true
   environment = ["browser"]
   dialect = "typescript"
   plugins = ["svelte"]
-  skip_rules = [
-    # Module-level const exports are not "global scope" — false positive for ES modules
-    "JS-0067",
-    # Short variable names (i, r, s) are appropriate in math-heavy renderers
-    "JS-C1002",
-    # Cyclomatic complexity threshold is too aggressive for data pipelines
-    "JS-R1005",
-    # Explicit type declarations are often required in TypeScript
-    "JS-0331",
-    # Non-null assertions in test files are intentional
-    "JS-0339",
-    # Switch exhaustiveness is enforced by TypeScript's type narrowing
-    "JS-0047",
-    # Array .map() callbacks with switch returns — TypeScript validates all paths
-    "JS-0042",
-    "JS-0045",
-  ]
 
 [[analyzers]]
 name = "secrets"
