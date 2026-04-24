@@ -3,8 +3,8 @@
 <!-- CausalVerdictStrip, the RacingStrip, and the EventFeed. Score-history /    -->
 <!-- baseline / events are derived locally here; the underlying stats + samples -->
 <!-- flow through the monitoredEndpointsStore invariant.                        -->
-<!-- The classic Overview mode was retired in v8 — see stepV7toV8 in            -->
-<!-- persistence.ts for the migration.                                          -->
+<!-- The classic Overview mode was retired in v8; pre-v10 payloads that         -->
+<!-- carried overviewMode are reset to defaults on load via persistence.ts.     -->
 <script lang="ts">
   import { onDestroy, untrack } from 'svelte';
   import { measurementStore } from '$lib/stores/measurements';

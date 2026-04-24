@@ -182,7 +182,7 @@ export type StatisticsState = Record<string, EndpointStatistics>;
 // ── Settings store ─────────────────────────────────────────────────────────
 // `overviewMode` was v6–v7 only. The Classic dial was retired in v8; Overview
 // now ships a single layout (the former "enriched"), so the toggle was
-// removed from Settings and stripped from persisted payloads by stepV7toV8.
+// removed from Settings. Pre-v10 payloads are reset to defaults on load.
 export interface Settings {
   timeout: number;
   delay: number;
@@ -209,9 +209,9 @@ export const DEFAULT_SETTINGS: Settings = {
 
 // ── UI store ───────────────────────────────────────────────────────────────
 // v2 view union — post-Phase-7 (Lanes retired) and post-v9 (Atlas renamed
-// to Diagnose to match the v2 prototype vocabulary). Persisted payloads
-// with retired values are coerced/renamed by stepV6toV7 (Lanes family →
-// 'overview') and stepV8toV9 ('atlas' → 'diagnose') in persistence.ts.
+// to Diagnose to match the v2 prototype vocabulary). Invalid or retired
+// activeView values in persisted payloads are coerced to 'overview' by
+// readActiveView in persistence.ts.
 export type ActiveView =
   | 'overview'
   | 'live'
@@ -297,17 +297,12 @@ export interface SharePayload {
 }
 
 // ── Persistence schema ─────────────────────────────────────────────────────
-// v5 adds `healthThreshold` (settings) and `focusedEndpointId`, `liveOptions`,
-// `terminalFilters` (ui). v6 adds `settings.overviewMode` (classic | enriched).
-// v7 retires the Lanes view family (collapses 'lanes'/'timeline'/'heatmap'/
-// 'split' activeView values to 'overview'). v8 retires
-// `settings.overviewMode` — the Classic dial was dropped; Overview is a
-// single layout. v9 renames `activeView: 'atlas'` to `'diagnose'` to align
-// with the v2 prototype vocabulary.
-// Older versions migrate forward via persistence.ts. Sets serialize as arrays
-// on disk; `ui.terminalFilters` round-trips accordingly.
+// v10 is the sole supported version. Payloads at any earlier version are
+// rejected on load (both storage keys cleared) so the app seeds fresh
+// region-aware defaults — see persistence.ts. Sets serialize as arrays on
+// disk; `ui.terminalFilters` round-trips accordingly.
 export interface PersistedSettings {
-  version: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+  version: 10;
   endpoints: { url: string; enabled: boolean }[];
   settings: Settings;
   ui: {
