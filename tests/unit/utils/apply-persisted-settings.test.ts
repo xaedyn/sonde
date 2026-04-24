@@ -15,7 +15,7 @@ beforeEach(() => {
 describe('applyPersistedSettings — G6 label hydration via brandFor', () => {
   it('should derive label "Google" for https://www.google.com from regional-defaults', () => {
     const persisted: PersistedSettings = {
-      version: 4,
+      version: 10,
       endpoints: [{ url: 'https://www.google.com', enabled: true }],
       settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
       ui: { expandedCards: [], activeView: 'overview' },
@@ -31,7 +31,7 @@ describe('applyPersistedSettings — G6 label hydration via brandFor', () => {
 
   it('should derive label "Google" for mixed-case URL via normalizeUrlForBrandLookup', () => {
     const persisted: PersistedSettings = {
-      version: 4,
+      version: 10,
       endpoints: [{ url: 'https://WWW.Google.COM/', enabled: true }],
       settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
       ui: { expandedCards: [], activeView: 'overview' },
@@ -46,7 +46,7 @@ describe('applyPersistedSettings — G6 label hydration via brandFor', () => {
 
   it('should fall back label to URL for unknown domain not in BRAND_LABELS', () => {
     const persisted: PersistedSettings = {
-      version: 4,
+      version: 10,
       endpoints: [{ url: 'https://unknown-domain.example.com', enabled: true }],
       settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
       ui: { expandedCards: [], activeView: 'overview' },
@@ -64,7 +64,7 @@ describe('applyPersistedSettings — G6 label hydration via brandFor', () => {
     // leading/trailing whitespace must both (a) be stored as the trimmed form
     // and (b) still match brandFor so the label resolves correctly.
     const persisted: PersistedSettings = {
-      version: 4,
+      version: 10,
       endpoints: [{ url: '  https://www.google.com  ', enabled: true }],
       settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
       ui: { expandedCards: [], activeView: 'overview' },
@@ -82,7 +82,7 @@ describe('applyPersistedSettings — G6 label hydration via brandFor', () => {
 describe('applyPersistedSettings — AC2 empty-endpoints contract (§6.2)', () => {
   it('persisted v4 with endpoints:[] results in empty endpoint store', () => {
     const persisted: PersistedSettings = {
-      version: 4,
+      version: 10,
       endpoints: [],
       settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors' },
       ui: { expandedCards: [], activeView: 'split' },
@@ -96,7 +96,7 @@ describe('applyPersistedSettings — AC2 empty-endpoints contract (§6.2)', () =
 
   it('persisted v4 with endpoints:[{url,enabled}, ...] replaces placeholder', () => {
     const persisted: PersistedSettings = {
-      version: 4,
+      version: 10,
       endpoints: [
         { url: 'https://user-added.example', enabled: true },
         { url: 'https://another.example', enabled: false },
@@ -117,7 +117,7 @@ describe('applyPersistedSettings — AC2 empty-endpoints contract (§6.2)', () =
 
   it('applies persisted settings (including region) to settingsStore', () => {
     const persisted: PersistedSettings = {
-      version: 4,
+      version: 10,
       endpoints: [],
       settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', region: 'europe' },
       ui: { expandedCards: [], activeView: 'split' },
