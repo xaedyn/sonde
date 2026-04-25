@@ -22,7 +22,7 @@
   const VIEWS: readonly ViewDef[] = [
     { id: 'overview', key: '1', label: 'Overview', hint: 'Is everything okay?',         enabled: true  },
     { id: 'live',     key: '2', label: 'Live',     hint: "What's happening right now?", enabled: true  },
-    { id: 'diagnose', key: '3', label: 'Diagnose', hint: 'Why is it slow?',             enabled: true  },
+    { id: 'diagnose', key: '3', label: 'Diagnose', hint: 'Is it me or them?',            enabled: true  },
     { id: 'strata',   key: '4', label: 'Strata',   hint: 'How is the distribution?',    enabled: false },
     { id: 'terminal', key: '5', label: 'Terminal', hint: "What's in the log?",          enabled: false },
   ];

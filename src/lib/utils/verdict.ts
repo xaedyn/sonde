@@ -132,7 +132,7 @@ export function computeCausalVerdict(
   threshold: number,
 ): Verdict {
   if (rows.length === 0) {
-    return { tone: 'good', headline: 'Calibrating…' };
+    return { tone: 'good', headline: 'Measuring…' };
   }
 
   const overRows = rows.filter((r) => r.stats.p50 > threshold);
@@ -141,16 +141,19 @@ export function computeCausalVerdict(
   const avgJit = mean(rows.map((r) => r.stats.stddev));
 
   if (overCount === 0 && avgLoss < LOSS_WARN_PERCENT && avgJit < JITTER_WARN_MS) {
-    return { tone: 'good', headline: 'All links within tolerance.' };
+    return { tone: 'good', headline: 'Everything looks normal.' };
   }
 
   const phaseCounts = countByPhase(rows, threshold);
   const topPhase = topPhaseWithCount(phaseCounts);
 
+  // ≥2 endpoints sharing a slow phase → likely shared cause (network/local infra),
+  // not a per-site issue. Phrase this from the user's perspective rather than
+  // citing the technical phase ("DNS", "TCP") which doesn't help non-engineers act.
   if (overCount >= 2 && topPhase !== null && topPhase.count >= 2) {
     return {
       tone: 'warn',
-      headline: `${PHASE_LABELS[topPhase.phase]} slow on ${topPhase.count} endpoints — likely upstream.`,
+      headline: `${topPhase.count} sites slow at the same time — likely your network.`,
       phase: topPhase.phase,
     };
   }
@@ -159,7 +162,7 @@ export function computeCausalVerdict(
     const bad = overRows[0];
     return {
       tone: 'warn',
-      headline: `${bad.ep.label} degraded alone — endpoint-specific.`,
+      headline: `Only ${bad.ep.label} looks slow — likely that site, not you.`,
       worstEpId: bad.ep.id,
     };
   }
@@ -167,22 +170,30 @@ export function computeCausalVerdict(
   if (avgLoss > LOSS_WARN_PERCENT) {
     return {
       tone: 'warn',
-      headline: `Packet loss elevated to ${avgLoss.toFixed(1)}%.`,
+      headline: `Some requests are failing — ${avgLoss.toFixed(1)}% so far.`,
     };
   }
 
   if (avgJit > JITTER_WARN_MS) {
     return {
       tone: 'warn',
-      headline: `Jitter elevated — σ ${avgJit.toFixed(1)}ms.`,
+      headline: "Latency is bouncing around — connection isn't steady.",
     };
+  }
+
+  // Equality-edge guard: if everyone's under threshold AND the strict-greater-than
+  // loss/jitter checks didn't match (because avgLoss === LOSS_WARN_PERCENT or
+  // avgJit === JITTER_WARN_MS exactly), we'd otherwise render a nonsensical
+  // "0 sites are slow." Surface the all-healthy verdict instead.
+  if (overCount === 0) {
+    return { tone: 'good', headline: 'Everything looks normal.' };
   }
 
   return {
     tone: 'warn',
     // Singular form is unreachable — overCount === 1 is handled above by the
-    // endpoint-specific branch; this fallback only fires for 0 or ≥2.
-    headline: `${overCount} endpoints above threshold.`,
+    // endpoint-specific branch; this fallback only fires for ≥2.
+    headline: `${overCount} sites are slow.`,
   };
 }
 

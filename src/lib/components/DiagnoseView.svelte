@@ -11,6 +11,7 @@
   import { statisticsStore } from '$lib/stores/statistics';
   import { uiStore } from '$lib/stores/ui';
   import { phaseHypothesis, PHASE_LABELS, type PhaseBreakdown, type Tier2Phase } from '$lib/utils/verdict';
+  import { buildHistogram, buildCorrelation } from '$lib/utils/diagnose-stats';
   import { fmt } from '$lib/utils/format';
   import { tokens } from '$lib/tokens';
   import type { MeasurementSample } from '$lib/types';
@@ -92,6 +93,58 @@
     return m.samples.toArray().slice(-8);
   });
 
+  // ── Histogram of focused endpoint's recent latency distribution ───────────
+  // Last 50 samples — long enough to be statistically meaningful, short enough
+  // to reflect "current" behavior rather than the whole session.
+  const focusedAllSamples: readonly MeasurementSample[] = $derived.by(() => {
+    if (!focusedEndpoint) return [];
+    const m = measurements.endpoints[focusedEndpoint.id];
+    if (!m) return [];
+    return m.samples.toArray().slice(-50);
+  });
+  const histogram = $derived(buildHistogram(focusedAllSamples, 10));
+
+  // p50 / p95 / spread — recompute locally so the histogram and the readout
+  // share a single source of truth (focusedStats may use a different window).
+  const distroStats = $derived.by(() => {
+    const oks: number[] = [];
+    for (const s of focusedAllSamples) if (s.status === 'ok' && typeof s.latency === 'number') oks.push(s.latency);
+    if (oks.length === 0) return null;
+    const sorted = [...oks].sort((a, b) => a - b);
+    const pickQ = (q: number): number => {
+      const idx = Math.min(sorted.length - 1, Math.max(0, Math.floor(q * sorted.length)));
+      // sorted is non-empty (checked above), and idx is clamped, so a default of 0 is unreachable.
+      return sorted[idx] ?? 0;
+    };
+    const p50 = pickQ(0.5);
+    const p95 = pickQ(0.95);
+    return { p50, p95, spread: p50 > 0 ? p95 / p50 : 0, n: oks.length };
+  });
+
+  // ── Cross-endpoint correlation grid ─────────────────────────────────────
+  // For each enabled endpoint, build a per-round comparison so the user can
+  // see whether the focused endpoint's spikes are isolated (likely the site)
+  // or shared with others (likely the network).
+  const correlation = $derived.by(() => {
+    if (!focusedEndpoint) return null;
+    const others = monitored
+      .filter(ep => ep.id !== focusedEndpoint.id)
+      .map(ep => ({
+        id: ep.id,
+        label: ep.label,
+        samples: measurements.endpoints[ep.id]?.samples.toArray().slice(-16) ?? [],
+      }));
+    return buildCorrelation(
+      {
+        id: focusedEndpoint.id,
+        label: focusedEndpoint.label,
+        samples: measurements.endpoints[focusedEndpoint.id]?.samples.toArray().slice(-16) ?? [],
+      },
+      others,
+      16,
+    );
+  });
+
   interface SampleRow { round: number; total: number; segs: { phase: Tier2Phase; pctWidth: number; color: string; }[]; status: 'ok' | 'timeout' | 'error' | 'no-tier2'; }
   const sampleRows: readonly SampleRow[] = $derived.by(() => {
     return recentSamples.map((s) => {
@@ -135,7 +188,7 @@
 <section class="diagnose" aria-label="Diagnose">
   <header class="diagnose-header">
     <div class="diagnose-title-block">
-      <div class="diagnose-kicker">Diagnose · Request waterfall</div>
+      <div class="diagnose-kicker">Diagnose · Distribution and correlation</div>
       <h1 class="diagnose-title">
         {#if focusedEndpoint}
           <span class="diagnose-title-pip" style:background={focusedEndpoint.color || tokens.color.endpoint[0]} aria-hidden="true"></span>
@@ -149,6 +202,95 @@
 
     {#if focusedEndpoint}
       <div class="diagnose-actions">
+        <button
+          type="button" class="diagnose-chip diagnose-chip-action"
+          onclick={handleBack}
+          aria-label="Back to live"
+        >← Back to Live</button>
+      </div>
+    {/if}
+  </header>
+
+  {#if !focusedEndpoint}
+    <div class="diagnose-empty" role="note">
+      <p class="diagnose-empty-title">Pick an endpoint from the left rail to look at it closely.</p>
+      <p class="diagnose-empty-hint">Detail shows you the latency distribution and whether spikes line up across other endpoints.</p>
+    </div>
+  {:else}
+    <!-- Distribution histogram — answers "what's this endpoint's typical latency,
+         and how much does it vary?" -->
+    <section class="diagnose-distro" aria-label="Latency distribution">
+      <div class="diagnose-section-kicker">Distribution</div>
+      {#if distroStats && histogram.bins.length > 0}
+        <div class="distro-stats">
+          <span class="distro-stat"><span class="distro-stat-label">p50</span> {fmt(distroStats.p50)} ms</span>
+          <span class="distro-stat"><span class="distro-stat-label">p95</span> {fmt(distroStats.p95)} ms</span>
+          <span class="distro-stat"><span class="distro-stat-label">spread</span> {distroStats.spread.toFixed(1)}×</span>
+          <span class="distro-stat-meta">over last {distroStats.n} samples</span>
+        </div>
+        <div class="distro-chart" role="img" aria-label="Latency histogram across last {distroStats.n} samples">
+          {#each histogram.bins as bin, i (i)}
+            <div class="distro-bin" title="{Math.round(bin.fromMs)}–{Math.round(bin.toMs)} ms · {bin.count} samples">
+              <div class="distro-bar" style:height="{histogram.maxCount > 0 ? (bin.count / histogram.maxCount) * 100 : 0}%"></div>
+            </div>
+          {/each}
+        </div>
+        <div class="distro-axis" aria-hidden="true">
+          <span>{fmt(histogram.bins[0]?.fromMs ?? 0)} ms</span>
+          <span>{fmt(histogram.bins[histogram.bins.length - 1]?.toMs ?? 0)} ms</span>
+        </div>
+      {:else}
+        <p class="distro-empty">Need at least 2 samples with different latencies before a distribution chart is meaningful. Run for a few more rounds.</p>
+      {/if}
+    </section>
+
+    <!-- Cross-endpoint correlation — answers "is this slowness specific to this
+         site, or shared across multiple sites at once (likely my network)?" -->
+    {#if correlation}
+      <section class="diagnose-correlation" aria-label="Cross-endpoint comparison">
+        <div class="diagnose-section-kicker">Compare with other endpoints</div>
+        <p class="correlation-headline">{correlation.verdict.headline}</p>
+        {#if correlation.rows[0]?.cells.length > 0}
+          <div class="correlation-grid" role="table" aria-label="Per-round latency across endpoints">
+            {#each correlation.rows as row, rowIdx (row.endpointId)}
+              <div class="correlation-row" class:focused={rowIdx === 0} role="row">
+                <span class="correlation-label" role="rowheader">{row.label}</span>
+                <div class="correlation-cells">
+                  {#each row.cells as cell (cell.round)}
+                    <span
+                      class="correlation-cell"
+                      class:spike={cell.isSpike}
+                      class:missing={cell.latencyMs === null}
+                      title="R{cell.round}{cell.latencyMs !== null ? ` · ${fmt(cell.latencyMs)} ms${cell.isSpike ? ' (spike)' : ''}` : ' · no data'}"
+                      role="cell"
+                    ></span>
+                  {/each}
+                </div>
+              </div>
+            {/each}
+          </div>
+          <p class="correlation-legend" aria-hidden="true">
+            <span class="correlation-legend-swatch correlation-legend-normal"></span> normal
+            <span class="correlation-legend-swatch correlation-legend-spike"></span> spike (>1.5× this endpoint's median)
+            <span class="correlation-legend-swatch correlation-legend-missing"></span> no data
+          </p>
+        {/if}
+      </section>
+    {/if}
+
+    <!-- Phase breakdown — only meaningful for endpoints that send Timing-Allow-Origin
+         (or are same-origin). Collapsed by default since it's frequently empty
+         for cross-origin endpoints and can be tautological for same-origin
+         endpoints over warm QUIC connections. -->
+    {#if phases !== null}
+      <details class="diagnose-phases">
+        <summary>
+          <span class="diagnose-section-kicker">Phase breakdown (advanced)</span>
+          <span class="phases-summary-hint">DNS · TCP · TLS · Server · Transfer</span>
+        </summary>
+        <!-- Percentile toggle lives inside the details so it only appears when the
+             section is expanded (it has no effect on Distribution or Correlation
+             panels — only on this waterfall). -->
         <div class="diagnose-segment" role="group" aria-label="Percentile mode">
           <button
             type="button" class="diagnose-chip"
@@ -161,81 +303,50 @@
             onclick={() => handleSelectMode('p95')}
           >P95</button>
         </div>
-        <button
-          type="button" class="diagnose-chip diagnose-chip-action"
-          onclick={handleBack}
-          aria-label="Back to live"
-        >← Back to Live</button>
-      </div>
-    {/if}
-  </header>
-
-  {#if !focusedEndpoint}
-    <div class="diagnose-empty" role="note">
-      <p class="diagnose-empty-title">Select an endpoint from the left rail to diagnose a specific link.</p>
-      <p class="diagnose-empty-hint">Diagnose breaks one request into DNS · TCP · TLS · Server · Transfer phases and points at the slow one.</p>
-    </div>
-  {:else if phases === null}
-    <div class="diagnose-empty" role="note">
-      {#if mode === 'p95' && focusedStats?.tier2Averages}
-        <!-- P50 data exists, P95 hasn't been computed yet. Without this branch -->
-        <!-- the view reads as a regression when the user toggles to P95.      -->
-        <p class="diagnose-empty-title">P95 phase breakdown not yet available.</p>
-        <p class="diagnose-empty-hint">Switch to P50 to view the current breakdown, or wait for more samples.</p>
-      {:else}
-        <p class="diagnose-empty-title">Awaiting tier-2 samples…</p>
-        <p class="diagnose-empty-hint">Phase breakdown appears once the first tier-2 measurement lands.</p>
-      {/if}
-    </div>
-  {:else}
-    <!-- Hero waterfall -->
-    <div class="diagnose-waterfall" role="img" aria-label={heroAria}>
-      <div class="diagnose-bar">
-        {#each segments as seg (seg.phase)}
-          <div
-            class="diagnose-bar-seg"
-            class:dominant={seg.dominant}
-            style:width="{seg.pctWidth}%"
-            style:background={seg.color}
-          >
-            {#if seg.pctWidth >= 8}
-              <span class="diagnose-bar-label" style:color={tokens.color.tier2.labelText}>
-                {seg.short} · {fmt(seg.ms)}<span class="diagnose-bar-ms">ms</span>
-              </span>
-            {/if}
+        <div class="diagnose-waterfall" role="img" aria-label={heroAria}>
+          <div class="diagnose-bar">
+            {#each segments as seg (seg.phase)}
+              <div
+                class="diagnose-bar-seg"
+                class:dominant={seg.dominant}
+                style:width="{seg.pctWidth}%"
+                style:background={seg.color}
+              >
+                {#if seg.pctWidth >= 8}
+                  <span class="diagnose-bar-label" style:color={tokens.color.tier2.labelText}>
+                    {seg.short} · {fmt(seg.ms)}<span class="diagnose-bar-ms">ms</span>
+                  </span>
+                {/if}
+              </div>
+            {/each}
           </div>
-        {/each}
-      </div>
-      <div class="diagnose-bar-scale">
-        {#each segments as seg (seg.phase)}
-          <span class="diagnose-bar-tick" style:flex="{seg.pctWidth}">
-            <span class="diagnose-bar-tick-label">{seg.short}</span>
-          </span>
-        {/each}
-      </div>
-    </div>
-
-    <!-- Hypothesis + evidence -->
-    {#if hypothesis}
-      <section class="diagnose-hypothesis" aria-label="Phase hypothesis">
-        <div class="diagnose-hypothesis-kicker">Verdict</div>
-        <p class="diagnose-hypothesis-text">{hypothesis.text}</p>
-
-        <div class="diagnose-hypothesis-kicker">Evidence</div>
-        <ul class="diagnose-evidence">
-          {#each segments as seg (seg.phase)}
-            <li class="diagnose-evidence-row" class:dominant={seg.dominant}>
-              <span class="diagnose-evidence-pip" style:background={seg.color} aria-hidden="true"></span>
-              <span class="diagnose-evidence-name">{PHASE_LABELS[seg.phase]}</span>
-              <span class="diagnose-evidence-ms">{fmt(seg.ms)} ms</span>
-              <span class="diagnose-evidence-bar" aria-hidden="true">
-                <span class="diagnose-evidence-fill" style:width="{seg.pctWidth}%" style:background={seg.color}></span>
+          <div class="diagnose-bar-scale">
+            {#each segments as seg (seg.phase)}
+              <span class="diagnose-bar-tick" style:flex="{seg.pctWidth}">
+                <span class="diagnose-bar-tick-label">{seg.short}</span>
               </span>
-              <span class="diagnose-evidence-pct">{Math.round(seg.pct * 100)}%</span>
-            </li>
-          {/each}
-        </ul>
-      </section>
+            {/each}
+          </div>
+        </div>
+        {#if hypothesis}
+          <ul class="diagnose-evidence">
+            {#each segments as seg (seg.phase)}
+              <li class="diagnose-evidence-row" class:dominant={seg.dominant}>
+                <span class="diagnose-evidence-pip" style:background={seg.color} aria-hidden="true"></span>
+                <span class="diagnose-evidence-name">{PHASE_LABELS[seg.phase]}</span>
+                <span class="diagnose-evidence-ms">{fmt(seg.ms)} ms</span>
+                <span class="diagnose-evidence-bar" aria-hidden="true">
+                  <span class="diagnose-evidence-fill" style:width="{seg.pctWidth}%" style:background={seg.color}></span>
+                </span>
+                <span class="diagnose-evidence-pct">{Math.round(seg.pct * 100)}%</span>
+              </li>
+            {/each}
+          </ul>
+          <p class="phases-caveat">
+            On warm-connection samples the browser reports zero for DNS/TCP/TLS — only TTFB and Transfer reflect per-request work. Cross-origin endpoints without <code>Timing-Allow-Origin</code> headers report only the total.
+          </p>
+        {/if}
+      </details>
     {/if}
 
     <!-- Sample strip -->
@@ -300,6 +411,218 @@
     color: var(--accent-cyan);
     text-transform: uppercase;
     margin-bottom: 4px;
+  }
+
+  /* Section kicker — used by the Distribution / Compare / Phase breakdown
+     section headers. Matches the diagnose-kicker visual rhythm but hangs off
+     a sibling element rather than the title. */
+  .diagnose-section-kicker {
+    font-family: var(--mono);
+    font-size: var(--ts-xs);
+    letter-spacing: var(--tr-kicker);
+    color: var(--t3);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  /* ── Distribution histogram ────────────────────────────────────────────── */
+  .diagnose-distro {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid var(--border-mid);
+    border-radius: 10px;
+  }
+  .distro-stats {
+    display: flex;
+    align-items: baseline;
+    gap: 18px;
+    flex-wrap: wrap;
+    font-family: var(--mono);
+    font-size: var(--ts-sm);
+    color: var(--t1);
+  }
+  .distro-stat-label {
+    color: var(--t3);
+    font-size: var(--ts-xs);
+    letter-spacing: var(--tr-kicker);
+    text-transform: uppercase;
+    margin-right: 6px;
+  }
+  .distro-stat-meta {
+    color: var(--t4);
+    font-size: var(--ts-xs);
+    margin-left: auto;
+  }
+  .distro-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 96px;
+    padding: 4px 0;
+  }
+  .distro-bin {
+    flex: 1;
+    display: flex;
+    align-items: flex-end;
+    height: 100%;
+  }
+  .distro-bar {
+    width: 100%;
+    background: linear-gradient(to top, color-mix(in srgb, var(--accent-cyan) 30%, transparent), color-mix(in srgb, var(--accent-cyan) 12%, transparent));
+    border: 1px solid color-mix(in srgb, var(--accent-cyan) 40%, transparent);
+    border-radius: 2px;
+    min-height: 1px;
+    transition: height 200ms ease;
+  }
+  .distro-axis {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: var(--ts-xs);
+    color: var(--t4);
+  }
+  .distro-empty {
+    color: var(--t3);
+    font-size: var(--ts-sm);
+    margin: 0;
+    padding: 8px 0;
+  }
+
+  /* ── Cross-endpoint correlation ────────────────────────────────────────── */
+  .diagnose-correlation {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid var(--border-mid);
+    border-radius: 10px;
+  }
+  .correlation-headline {
+    margin: 0;
+    color: var(--t1);
+    font-size: var(--ts-md);
+    line-height: 1.4;
+  }
+  .correlation-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 4px;
+  }
+  .correlation-row {
+    display: grid;
+    grid-template-columns: 100px minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+  }
+  .correlation-label {
+    font-family: var(--mono);
+    font-size: var(--ts-xs);
+    color: var(--t3);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .correlation-row.focused .correlation-label {
+    color: var(--accent-cyan);
+    font-weight: 500;
+  }
+  .correlation-cells {
+    display: grid;
+    grid-template-columns: repeat(16, minmax(0, 1fr));
+    gap: 2px;
+  }
+  .correlation-cell {
+    height: 16px;
+    background: color-mix(in srgb, var(--t1) 12%, transparent);
+    border-radius: 2px;
+  }
+  .correlation-cell.spike {
+    background: var(--accent-pink);
+    box-shadow: 0 0 6px color-mix(in srgb, var(--accent-pink) 50%, transparent);
+  }
+  .correlation-cell.missing {
+    background: transparent;
+    border: 1px dashed color-mix(in srgb, var(--t1) 12%, transparent);
+  }
+  .correlation-row.focused .correlation-cell:not(.spike):not(.missing) {
+    background: color-mix(in srgb, var(--accent-cyan) 35%, transparent);
+  }
+  .correlation-legend {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 4px 0 0;
+    font-family: var(--mono);
+    font-size: var(--ts-xs);
+    color: var(--t4);
+    flex-wrap: wrap;
+  }
+  .correlation-legend-swatch {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    margin-right: 4px;
+    vertical-align: middle;
+  }
+  .correlation-legend-normal { background: color-mix(in srgb, var(--t1) 12%, transparent); }
+  .correlation-legend-spike { background: var(--accent-pink); }
+  .correlation-legend-missing { background: transparent; border: 1px dashed color-mix(in srgb, var(--t1) 12%, transparent); }
+
+  /* ── Phase breakdown (collapsed by default) ────────────────────────────── */
+  .diagnose-phases {
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid var(--border-mid);
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .diagnose-phases summary {
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .diagnose-phases summary::-webkit-details-marker { display: none; }
+  .diagnose-phases summary::before {
+    content: '▸';
+    color: var(--t3);
+    transition: transform 150ms ease;
+    display: inline-block;
+  }
+  .diagnose-phases[open] summary::before {
+    transform: rotate(90deg);
+  }
+  .phases-summary-hint {
+    font-family: var(--mono);
+    font-size: var(--ts-xs);
+    color: var(--t4);
+  }
+  .diagnose-phases[open] > *:not(summary) {
+    margin-top: 12px;
+  }
+  .phases-caveat {
+    margin: 12px 0 0;
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.025);
+    border-left: 2px solid var(--t4);
+    border-radius: 4px;
+    color: var(--t3);
+    font-size: var(--ts-xs);
+    line-height: 1.5;
+  }
+  .phases-caveat code {
+    font-family: var(--mono);
+    font-size: 0.95em;
+    background: rgba(255, 255, 255, 0.06);
+    padding: 1px 4px;
+    border-radius: 3px;
   }
   .diagnose-title {
     margin: 0;

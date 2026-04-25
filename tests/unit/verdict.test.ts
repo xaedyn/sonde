@@ -56,10 +56,10 @@ const THRESHOLD = 120;
 
 // ── Branch 1: empty rows ────────────────────────────────────────────────────
 describe('computeCausalVerdict — empty', () => {
-  it('returns Calibrating… when no rows', () => {
+  it('returns Measuring… when no rows', () => {
     const v = computeCausalVerdict([], THRESHOLD);
     expect(v.tone).toBe('good');
-    expect(v.headline).toBe('Calibrating…');
+    expect(v.headline).toBe('Measuring…');
     expect(v.phase).toBeUndefined();
     expect(v.worstEpId).toBeUndefined();
   });
@@ -67,20 +67,20 @@ describe('computeCausalVerdict — empty', () => {
 
 // ── Branch 2: all-healthy happy path ────────────────────────────────────────
 describe('computeCausalVerdict — all healthy', () => {
-  it('returns "All links within tolerance." when no one is over threshold and loss+jit are low', () => {
+  it('returns "Everything looks normal." when no one is over threshold and loss+jit are low', () => {
     const rows = [
       makeRow({ id: 'a', label: 'a' }, { p50: 40, stddev: 4, lossPercent: 0.2 }),
       makeRow({ id: 'b', label: 'b' }, { p50: 60, stddev: 6, lossPercent: 0.5 }),
     ];
     const v = computeCausalVerdict(rows, THRESHOLD);
     expect(v.tone).toBe('good');
-    expect(v.headline).toBe('All links within tolerance.');
+    expect(v.headline).toBe('Everything looks normal.');
   });
 });
 
 // ── Branch 3: shared-phase upstream ─────────────────────────────────────────
 describe('computeCausalVerdict — shared upstream phase', () => {
-  it('calls out "DNS slow on N endpoints — likely upstream." when ≥2 share DNS dominance', () => {
+  it('calls out shared-network slowness when ≥2 share DNS dominance', () => {
     const rows = [
       makeRow({ id: 'a', label: 'a' }, { p50: 200, tier2Averages: tier2Dominating('dns') }),
       makeRow({ id: 'b', label: 'b' }, { p50: 180, tier2Averages: tier2Dominating('dns') }),
@@ -88,7 +88,8 @@ describe('computeCausalVerdict — shared upstream phase', () => {
     ];
     const v = computeCausalVerdict(rows, THRESHOLD);
     expect(v.tone).toBe('warn');
-    expect(v.headline).toBe('DNS slow on 2 endpoints — likely upstream.');
+    expect(v.headline).toBe('2 sites slow at the same time — likely your network.');
+    // phase still propagates so consumers (color cues, accents) stay deterministic
     expect(v.phase).toBe('dns');
   });
 
@@ -101,7 +102,7 @@ describe('computeCausalVerdict — shared upstream phase', () => {
       makeRow({ id: 'c', label: 'c' }, { p50: 90,  tier2Averages: tier2Dominating('ttfb') }),
     ];
     const v = computeCausalVerdict(rows, THRESHOLD);
-    expect(v.headline).toBe('TTFB slow on 3 endpoints — likely upstream.');
+    expect(v.headline).toBe('3 sites slow at the same time — likely your network.');
     expect(v.phase).toBe('ttfb');
   });
 
@@ -112,7 +113,7 @@ describe('computeCausalVerdict — shared upstream phase', () => {
     ];
     const v = computeCausalVerdict(rows, THRESHOLD);
     // Should fall through to "endpoint-specific" branch (overCount === 1).
-    expect(v.headline).toBe('a degraded alone — endpoint-specific.');
+    expect(v.headline).toBe('Only a looks slow — likely that site, not you.');
     expect(v.worstEpId).toBe(rows[0].ep.id);
   });
 });
@@ -165,7 +166,7 @@ describe('computeCausalVerdict — endpoint-specific', () => {
       makeRow({ id: 'c', label: 'api' },         { p50: 40 }),
     ];
     const v = computeCausalVerdict(rows, THRESHOLD);
-    expect(v.headline).toBe('auth-service degraded alone — endpoint-specific.');
+    expect(v.headline).toBe('Only auth-service looks slow — likely that site, not you.');
     expect(v.worstEpId).toBe(rows[0].ep.id);
   });
 });
@@ -178,7 +179,7 @@ describe('computeCausalVerdict — packet loss', () => {
       makeRow({ id: 'b', label: 'b' }, { p50: 50, lossPercent: 1.2 }),
     ];
     const v = computeCausalVerdict(rows, THRESHOLD);
-    expect(v.headline).toBe('Packet loss elevated to 2.1%.');
+    expect(v.headline).toBe('Some requests are failing — 2.1% so far.');
   });
 
   it('does not cite packet loss when exactly 1 endpoint is over — that branch wins first', () => {
@@ -187,19 +188,19 @@ describe('computeCausalVerdict — packet loss', () => {
       makeRow({ id: 'b', label: 'b' }, { p50: 30,  lossPercent: 0 }),
     ];
     const v = computeCausalVerdict(rows, THRESHOLD);
-    expect(v.headline).toContain('degraded alone');
+    expect(v.headline).toContain('looks slow');
   });
 });
 
 // ── Branch 6: jitter ────────────────────────────────────────────────────────
 describe('computeCausalVerdict — jitter', () => {
-  it('cites jitter when avg stddev > 25ms and no other branch matched', () => {
+  it('cites jitter in plain language when avg stddev > 25ms and no other branch matched', () => {
     const rows = [
       makeRow({ id: 'a', label: 'a' }, { p50: 40, stddev: 30 }),
       makeRow({ id: 'b', label: 'b' }, { p50: 50, stddev: 40 }),
     ];
     const v = computeCausalVerdict(rows, THRESHOLD);
-    expect(v.headline).toBe('Jitter elevated — σ 35.0ms.');
+    expect(v.headline).toBe("Latency is bouncing around — connection isn't steady.");
   });
 
   it('packet loss takes precedence over jitter when both elevated', () => {
@@ -207,7 +208,7 @@ describe('computeCausalVerdict — jitter', () => {
       makeRow({ id: 'a', label: 'a' }, { p50: 40, stddev: 40, lossPercent: 5 }),
     ];
     const v = computeCausalVerdict(rows, THRESHOLD);
-    expect(v.headline).toContain('Packet loss');
+    expect(v.headline).toContain('failing');
   });
 });
 
@@ -220,7 +221,30 @@ describe('computeCausalVerdict — fallback', () => {
       makeRow({ id: 'b', label: 'b' }, { p50: 200, tier2Averages: undefined }),
     ];
     const v = computeCausalVerdict(rows, THRESHOLD);
-    expect(v.headline).toBe('2 endpoints above threshold.');
+    expect(v.headline).toBe('2 sites are slow.');
+  });
+
+  it('returns the all-healthy verdict on equality-edge avgLoss === LOSS_WARN_PERCENT', () => {
+    // Strict comparisons in the all-healthy guard and the loss branch both use
+    // strict <, > — so avgLoss === 1.0 (the threshold) used to fall through to
+    // the "0 sites are slow." fallback nonsense. Regression guard.
+    const rows = [
+      makeRow({ id: 'a', label: 'a' }, { p50: 40, lossPercent: 1.0 }),
+      makeRow({ id: 'b', label: 'b' }, { p50: 50, lossPercent: 1.0 }),
+    ];
+    const v = computeCausalVerdict(rows, THRESHOLD);
+    expect(v.tone).toBe('good');
+    expect(v.headline).toBe('Everything looks normal.');
+  });
+
+  it('returns the all-healthy verdict on equality-edge avgJit === JITTER_WARN_MS', () => {
+    const rows = [
+      makeRow({ id: 'a', label: 'a' }, { p50: 40, stddev: 25 }),
+      makeRow({ id: 'b', label: 'b' }, { p50: 50, stddev: 25 }),
+    ];
+    const v = computeCausalVerdict(rows, THRESHOLD);
+    expect(v.tone).toBe('good');
+    expect(v.headline).toBe('Everything looks normal.');
   });
 
   it('endpoint-specific branch pre-empts the count fallback when overCount=1', () => {
@@ -233,7 +257,7 @@ describe('computeCausalVerdict — fallback', () => {
       makeRow({ id: 'a', label: 'a' }, { p50: 200, tier2Averages: undefined }),
     ];
     const v = computeCausalVerdict(rows, THRESHOLD);
-    expect(v.headline).toBe('a degraded alone — endpoint-specific.');
+    expect(v.headline).toBe('Only a looks slow — likely that site, not you.');
     expect(v.worstEpId).toBe(rows[0].ep.id);
   });
 });
