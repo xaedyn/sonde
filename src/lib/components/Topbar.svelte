@@ -67,7 +67,7 @@
     </div>
     <div class="brand-meta">
       <div class="brand-name">Chronoscope</div>
-      <div class="brand-sub">HTTP latency diagnostic · v2</div>
+      <div class="brand-sub">HTTP latency monitor · multi-site</div>
     </div>
   </div>
 
