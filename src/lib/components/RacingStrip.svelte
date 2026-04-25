@@ -349,7 +349,10 @@
     .racing-header { margin-bottom: 4px; }
     .racing-sub, .racing-hint { display: none; }
     .racing-axis { padding: 2px 0 4px; margin-bottom: 3px; }
-    .racing-row { padding: 2px 6px; gap: 8px; grid-template-columns: 108px minmax(0, 1fr) max-content; }
+    /* Padding 3px keeps row height at 24px (3 + 18 + 3) — meets WCAG 2.5.8 AA
+       (24×24 minimum touch target). Racing rows are clickable (Shift-click →
+       Diagnose), so the per-axis floor applies. Don't tighten further. */
+    .racing-row { padding: 3px 6px; gap: 8px; grid-template-columns: 108px minmax(0, 1fr) max-content; }
     .racing-track { height: 18px; }
     .racing-rows { gap: 1px; }
   }
