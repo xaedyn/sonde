@@ -34,11 +34,32 @@ function pickColor(index: number): string {
   return palette[index % palette.length] ?? (tokens.color.endpoint[0] as string);
 }
 
+/**
+ * Dedupe by URL and cap at MAX_ENDPOINTS. Validation accepts duplicate URLs
+ * (it only checks each entry individually), so a crafted payload could cause
+ * Svelte's keyed `#each` block in the staging banner — or the rail — to
+ * throw at runtime when it sees two children with the same key. Deduping
+ * here makes "endpoints are unique" an invariant of every downstream
+ * consumer.
+ */
+function uniqueEndpoints(
+  payloadEndpoints: readonly { url: string; enabled: boolean }[],
+): { url: string; enabled: boolean }[] {
+  const seen = new Set<string>();
+  const out: { url: string; enabled: boolean }[] = [];
+  for (const ep of payloadEndpoints) {
+    if (seen.has(ep.url)) continue;
+    seen.add(ep.url);
+    out.push({ url: ep.url, enabled: ep.enabled });
+    if (out.length >= MAX_ENDPOINTS) break;
+  }
+  return out;
+}
+
 function buildEndpoints(
   payloadEndpoints: readonly { url: string; enabled: boolean }[],
 ): Endpoint[] {
-  const capped = payloadEndpoints.slice(0, MAX_ENDPOINTS);
-  return capped.map((ep, i) => ({
+  return uniqueEndpoints(payloadEndpoints).map((ep, i) => ({
     id: `shared-ep-${i}-${Date.now()}`,
     url: ep.url,
     enabled: ep.enabled,
@@ -68,10 +89,7 @@ export function applySharePayload(payload: SharePayload): string[] {
   if (payload.mode === 'config') {
     uiStore.setPendingShare({
       mode: 'config',
-      endpoints: payload.endpoints.slice(0, MAX_ENDPOINTS).map((ep) => ({
-        url: ep.url,
-        enabled: ep.enabled,
-      })),
+      endpoints: uniqueEndpoints(payload.endpoints),
     });
     return [];
   }

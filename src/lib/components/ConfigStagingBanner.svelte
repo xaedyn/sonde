@@ -18,7 +18,7 @@
     <div class="banner-header">
       <span class="banner-icon" aria-hidden="true">⚠</span>
       <span class="banner-text">
-        Shared link wants to add {count} endpoint{count === 1 ? '' : 's'}. Review before accepting.
+        Shared link with {count} endpoint{count === 1 ? '' : 's'}. Accepting replaces your current rail.
       </span>
       <div class="banner-actions">
         <button type="button" class="btn-dismiss" onclick={dismissPendingShare}>
@@ -127,7 +127,11 @@
     list-style: none;
     margin: 0;
     padding: 0 0 0 calc(var(--spacing-sm) + 14px);
-    max-height: 96px;
+    /* MAX_ENDPOINTS = 10 × ~17px row height = ~170px; 200px fits all 10
+       comfortably without forcing the user to scroll past hidden URLs
+       before clicking Accept. Scroll fallback retained for safety, but
+       in practice it shouldn't trigger. */
+    max-height: 200px;
     overflow-y: auto;
     display: flex;
     flex-direction: column;

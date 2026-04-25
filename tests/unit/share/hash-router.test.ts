@@ -30,13 +30,18 @@ import { uiStore } from '../../../src/lib/stores/ui';
 import { DEFAULT_SETTINGS } from '../../../src/lib/types';
 import type { SharePayload } from '../../../src/lib/types';
 
+// Each field is deliberately distinct from DEFAULT_SETTINGS so the cadence-
+// strip invariant fails closed: if a future change accidentally writes any
+// field from a payload into settingsStore, the corresponding assertion
+// flips. Picking values that overlap defaults (e.g. delay: 0 when
+// DEFAULT_SETTINGS.delay is also 0) silently weakens the test.
 const MALICIOUS_CADENCE = {
   timeout: 100,
-  delay: 0,
+  delay: 9999,
   burstRounds: 500,
-  monitorDelay: 0,
-  cap: 0,
-  corsMode: 'no-cors' as const,
+  monitorDelay: 1,
+  cap: 9999,
+  corsMode: 'cors' as const,
 };
 
 const ATTACKER_URLS = [
@@ -81,6 +86,7 @@ describe('hash-router: cadence write invariant', () => {
     applySharePayload(configPayload());
     const s = get(settingsStore);
     expect(s.timeout).toBe(DEFAULT_SETTINGS.timeout);
+    expect(s.delay).toBe(DEFAULT_SETTINGS.delay);
     expect(s.burstRounds).toBe(DEFAULT_SETTINGS.burstRounds);
     expect(s.monitorDelay).toBe(DEFAULT_SETTINGS.monitorDelay);
     expect(s.cap).toBe(DEFAULT_SETTINGS.cap);
@@ -92,13 +98,17 @@ describe('hash-router: cadence write invariant', () => {
     acceptPendingShare();
     const s = get(settingsStore);
     expect(s.timeout).toBe(DEFAULT_SETTINGS.timeout);
+    expect(s.delay).toBe(DEFAULT_SETTINGS.delay);
     expect(s.burstRounds).toBe(DEFAULT_SETTINGS.burstRounds);
+    expect(s.cap).toBe(DEFAULT_SETTINGS.cap);
+    expect(s.corsMode).toBe(DEFAULT_SETTINGS.corsMode);
   });
 
   it('results mode: settingsStore stays at user defaults', () => {
     applySharePayload(resultsPayload());
     const s = get(settingsStore);
     expect(s.timeout).toBe(DEFAULT_SETTINGS.timeout);
+    expect(s.delay).toBe(DEFAULT_SETTINGS.delay);
     expect(s.burstRounds).toBe(DEFAULT_SETTINGS.burstRounds);
     expect(s.monitorDelay).toBe(DEFAULT_SETTINGS.monitorDelay);
     expect(s.cap).toBe(DEFAULT_SETTINGS.cap);
@@ -153,6 +163,44 @@ describe('hash-router: config-mode staging', () => {
   it('acceptPendingShare is a no-op when nothing is staged', () => {
     expect(() => acceptPendingShare()).not.toThrow();
     expect(get(endpointStore)).toEqual([]);
+  });
+
+  // Validation accepts duplicate URLs in the endpoints array (it only checks
+  // each entry individually). Without dedupe, Svelte's keyed `#each` block
+  // in the staging banner — and the rail after accept — would throw at
+  // runtime on the second child with the same key, leaving the user
+  // staring at a broken page. Worse, a default-Accept reflex would then
+  // populate the rail from a partially-rendered banner.
+  it('dedupes duplicate URLs in the staged payload', () => {
+    const dupePayload: SharePayload = {
+      v: 1,
+      mode: 'config',
+      endpoints: [
+        { url: 'https://a.example.com', enabled: true },
+        { url: 'https://a.example.com', enabled: false },
+        { url: 'https://b.example.com', enabled: true },
+        { url: 'https://a.example.com', enabled: true },
+      ],
+      settings: MALICIOUS_CADENCE,
+    };
+    applySharePayload(dupePayload);
+    const staged = get(uiStore).pendingShare?.endpoints ?? [];
+    expect(staged.map((e) => e.url)).toEqual(['https://a.example.com', 'https://b.example.com']);
+  });
+
+  it('accepted endpoints are unique even when the payload had duplicates', () => {
+    const dupePayload: SharePayload = {
+      v: 1,
+      mode: 'config',
+      endpoints: [
+        { url: 'https://a.example.com', enabled: true },
+        { url: 'https://a.example.com', enabled: true },
+      ],
+      settings: MALICIOUS_CADENCE,
+    };
+    applySharePayload(dupePayload);
+    acceptPendingShare();
+    expect(get(endpointStore).map((e) => e.url)).toEqual(['https://a.example.com']);
   });
 });
 
