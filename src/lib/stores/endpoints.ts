@@ -6,6 +6,7 @@ import { tokens } from '../tokens';
 import { REGIONAL_DEFAULTS } from '../regional-defaults';
 import type { Region } from '../regional-defaults';
 import type { Endpoint } from '../types';
+import { displayLabel } from '../endpoint/displayLabel';
 
 let _idCounter = 0;
 
@@ -40,7 +41,7 @@ function createEndpointStore() {
   return {
     subscribe,
 
-    addEndpoint(url: string, label?: string): string {
+    addEndpoint(url: string, label?: string, nickname?: string): string {
       let newId = '';
       update(endpoints => {
         if (endpoints.length >= MAX_ENDPOINTS) return endpoints; // no-op at cap
@@ -51,8 +52,9 @@ function createEndpointStore() {
           id,
           url,
           enabled: true,
-          label: label ?? url,
+          label: label ?? displayLabel({ url, nickname }),
           color,
+          ...(nickname !== undefined ? { nickname } : {}),
         };
         return [...endpoints, newEndpoint];
       });
@@ -65,7 +67,18 @@ function createEndpointStore() {
 
     updateEndpoint(id: string, patch: Partial<Omit<Endpoint, 'id'>>): void {
       update(endpoints =>
-        endpoints.map(ep => (ep.id === id ? { ...ep, ...patch } : ep))
+        endpoints.map(ep => {
+          if (ep.id !== id) return ep;
+          const merged = { ...ep, ...patch };
+          // Recompute label whenever url or nickname changes so the displayed
+          // name stays in sync. A caller-supplied label in the patch takes
+          // precedence (explicit wins), but if no label is patched we derive
+          // one from the merged url + nickname.
+          if (('url' in patch || 'nickname' in patch) && !('label' in patch)) {
+            merged.label = displayLabel({ url: merged.url, nickname: merged.nickname });
+          }
+          return merged;
+        })
       );
     },
 

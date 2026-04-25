@@ -1,0 +1,125 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, fireEvent } from '@testing-library/svelte';
+import type { Endpoint } from '../../../src/lib/types';
+import EndpointRow from '../../../src/lib/components/EndpointRow.svelte';
+
+function makeEndpoint(overrides: Partial<Endpoint> = {}): Endpoint {
+  return {
+    id: 'ep-1',
+    url: 'https://api.example.com',
+    enabled: true,
+    color: '#67e8f9',
+    label: 'Prod API',
+    nickname: 'Prod API',
+    ...overrides,
+  };
+}
+
+function renderRow(overrides: Partial<Endpoint> = {}, props: Record<string, unknown> = {}) {
+  const endpoint = makeEndpoint(overrides);
+  return render(EndpointRow, {
+    props: {
+      endpoint,
+      isRunning: false,
+      isLast: false,
+      ...props,
+    },
+  });
+}
+
+describe('EndpointRow — edit affordance (AC2)', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('renders a pencil/edit button in read mode', () => {
+    const { container } = renderRow();
+    const editBtn = container.querySelector('.edit-btn');
+    expect(editBtn).not.toBeNull();
+  });
+
+  it('clicking pencil reveals URL input and nickname input', async () => {
+    const { container } = renderRow();
+    const editBtn = container.querySelector('.edit-btn') as HTMLButtonElement;
+    await fireEvent.click(editBtn);
+
+    expect(container.querySelector('.url-input')).not.toBeNull();
+    const nickInput = container.querySelector('.nickname-input') as HTMLInputElement | null;
+    expect(nickInput).not.toBeNull();
+    expect(nickInput?.placeholder).toMatch(/nickname/i);
+  });
+
+  it('URL input shows endpoint URL while editing', async () => {
+    const { container } = renderRow({ url: 'https://api.example.com' });
+    const editBtn = container.querySelector('.edit-btn') as HTMLButtonElement;
+    await fireEvent.click(editBtn);
+
+    const urlInput = container.querySelector('.url-input') as HTMLInputElement | null;
+    expect(urlInput).not.toBeNull();
+    expect(urlInput?.value).toBe('https://api.example.com');
+  });
+
+  it('pressing Enter in nickname input calls onUpdate with nickname', async () => {
+    const onUpdate = vi.fn();
+    const { container } = renderRow({}, { onUpdate });
+    const editBtn = container.querySelector('.edit-btn') as HTMLButtonElement;
+    await fireEvent.click(editBtn);
+
+    const nickInput = container.querySelector('.nickname-input') as HTMLInputElement;
+    await fireEvent.input(nickInput, { target: { value: 'Prod API' } });
+    await fireEvent.keyDown(nickInput, { key: 'Enter' });
+
+    expect(onUpdate).toHaveBeenCalledOnce();
+    const [, patch] = onUpdate.mock.calls[0] as [string, { nickname: string }];
+    expect(patch.nickname).toBe('Prod API');
+  });
+
+  it('pressing Escape cancels edit without calling onUpdate', async () => {
+    const onUpdate = vi.fn();
+    const { container } = renderRow({}, { onUpdate });
+    const editBtn = container.querySelector('.edit-btn') as HTMLButtonElement;
+    await fireEvent.click(editBtn);
+
+    const nickInput = container.querySelector('.nickname-input') as HTMLInputElement;
+    await fireEvent.keyDown(nickInput, { key: 'Escape' });
+
+    expect(onUpdate).not.toHaveBeenCalled();
+    // Pencil button should be visible again (not in editing mode)
+    expect(container.querySelector('.edit-btn')).not.toBeNull();
+    expect(container.querySelector('.nickname-input')).toBeNull();
+  });
+
+  it('invalid nickname (too long) sets aria-invalid', async () => {
+    const onUpdate = vi.fn();
+    const { container } = renderRow({}, { onUpdate });
+    const editBtn = container.querySelector('.edit-btn') as HTMLButtonElement;
+    await fireEvent.click(editBtn);
+
+    const nickInput = container.querySelector('.nickname-input') as HTMLInputElement;
+    const longNick = 'a'.repeat(81);
+    await fireEvent.input(nickInput, { target: { value: longNick } });
+    await fireEvent.keyDown(nickInput, { key: 'Enter' });
+
+    expect(nickInput.getAttribute('aria-invalid')).toBe('true');
+    expect(onUpdate).not.toHaveBeenCalled();
+  });
+
+  it('remove button aria-label uses ep.label not ep.url', () => {
+    const { container } = renderRow({ label: 'Prod API', url: 'https://api.example.com' });
+    const removeBtn = container.querySelector('.remove-btn');
+    expect(removeBtn).not.toBeNull();
+    const label = removeBtn?.getAttribute('aria-label') ?? '';
+    expect(label).toContain('Prod API');
+    expect(label).not.toContain('https://');
+  });
+
+  // jsdom can't measure computed dimensions; this test only verifies the class
+  // is applied. The actual 44×44 WCAG 2.5.5 target size is enforced by the
+  // .edit-btn CSS rule and observable via the Playwright sweep, not here.
+  it('edit button is rendered with edit-btn class', () => {
+    const { container } = renderRow();
+    const editBtn = container.querySelector('.edit-btn');
+    expect(editBtn).not.toBeNull();
+    expect(editBtn?.classList.contains('edit-btn')).toBe(true);
+  });
+});

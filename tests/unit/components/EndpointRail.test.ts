@@ -80,6 +80,51 @@ describe('EndpointRail — G6 URL subtitle dedup truth table', () => {
   });
 });
 
+describe('EndpointRail — hostname-derived labels (post-construction behavior)', () => {
+  // These tests exercise the normal path after EndpointPanel constructs an
+  // endpoint: ep.label is set to displayLabel(ep) at save time, which produces
+  // the hostname (or brand) rather than the raw URL. The defensive ternary in
+  // EndpointRail still guards the blank/equal cases for stale fixtures.
+
+  it('primary line shows ep.label when label is hostname-derived', () => {
+    const { container } = renderRailWith([
+      { id: 'ep1', url: 'https://api.example.com/v1/health', label: 'api.example.com', enabled: true, color: '#fff' },
+    ]);
+    const labelSpan = container.querySelector('.rail-row-label');
+    expect(labelSpan?.textContent).toBe('api.example.com');
+    expect(labelSpan?.textContent).not.toContain('https://');
+  });
+
+  it('URL subtitle rendered when hostname-derived label differs from url', () => {
+    const { container } = renderRailWith([
+      { id: 'ep1', url: 'https://api.example.com/v1/health', label: 'api.example.com', enabled: true, color: '#fff' },
+    ]);
+    const urlSpan = container.querySelector('.rail-row-url');
+    expect(urlSpan).not.toBeNull();
+    expect(urlSpan?.textContent).toBe('https://api.example.com/v1/health');
+  });
+
+  it('aria-label contains hostname-derived label as primary identifier', () => {
+    const { container } = renderRailWith([
+      { id: 'ep1', url: 'https://api.example.com/v1/health', label: 'api.example.com', enabled: true, color: '#fff' },
+    ]);
+    const row = container.querySelector('.rail-row');
+    const aria = row?.getAttribute('aria-label') ?? '';
+    expect(aria).toContain('api.example.com');
+    expect(aria).toContain('https://api.example.com/v1/health');
+  });
+
+  it('brand-labeled endpoint shows brand in primary, URL in subtitle', () => {
+    const { container } = renderRailWith([
+      { id: 'ep1', url: 'https://www.google.com', label: 'Google', enabled: true, color: '#fff' },
+    ]);
+    const labelSpan = container.querySelector('.rail-row-label');
+    const urlSpan = container.querySelector('.rail-row-url');
+    expect(labelSpan?.textContent).toBe('Google');
+    expect(urlSpan?.textContent).toBe('https://www.google.com');
+  });
+});
+
 describe('EndpointRail — G6 aria-label dedup (SR double-voice prevention)', () => {
   // aria-label used to be `"{label}, {url}, status: ..."` which reads the URL
   // twice for user-added rows where label === url. Dedup the aria-label in

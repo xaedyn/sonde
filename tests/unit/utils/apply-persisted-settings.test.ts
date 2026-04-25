@@ -56,7 +56,8 @@ describe('applyPersistedSettings — G6 label hydration via brandFor', () => {
 
     const eps = get(endpointStore);
     expect(eps).toHaveLength(1);
-    expect(eps[0]?.label).toBe('https://unknown-domain.example.com');
+    // displayLabel now returns the hostname for unknown domains (not the raw URL)
+    expect(eps[0]?.label).toBe('unknown-domain.example.com');
   });
 
   it('should trim surrounding whitespace from url AND still derive brand label', () => {

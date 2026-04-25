@@ -20,6 +20,7 @@ export interface Endpoint {
   enabled: boolean;
   label: string;
   color: string;
+  nickname?: string;
 }
 
 // ── Worker message contracts ───────────────────────────────────────────────
@@ -295,13 +296,15 @@ export interface SharePayload {
 }
 
 // ── Persistence schema ─────────────────────────────────────────────────────
-// v10 is the sole supported version. Payloads at any earlier version are
-// rejected on load (both storage keys cleared) so the app seeds fresh
+// version is a permanent 10 | 11 union. v10 payloads remain valid because
+// normalizeV10 legitimately returns { version: 10 } as an intermediate value
+// before the migration chain stamps version 11. Payloads at any version < 10
+// are rejected on load (both storage keys cleared) so the app seeds fresh
 // region-aware defaults — see persistence.ts. Sets serialize as arrays on
 // disk; `ui.terminalFilters` round-trips accordingly.
 export interface PersistedSettings {
-  version: 10;
-  endpoints: { url: string; enabled: boolean }[];
+  version: 10 | 11;
+  endpoints: { url: string; enabled: boolean; nickname?: string }[];
   settings: Settings;
   ui: {
     expandedCards: string[];

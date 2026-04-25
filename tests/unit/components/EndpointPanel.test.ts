@@ -19,7 +19,7 @@ beforeEach(() => {
 });
 
 describe('EndpointPanel — G6 add endpoint call signature', () => {
-  it('should create new endpoint with label === url when Add endpoint is clicked', async () => {
+  it('should create new endpoint with a non-empty label when Add endpoint is clicked', async () => {
     const { getByText } = render(EndpointPanel);
     const addButton = getByText('+ Add endpoint');
 
@@ -30,9 +30,9 @@ describe('EndpointPanel — G6 add endpoint call signature', () => {
     expect(eps).toHaveLength(1);
     const newEp = eps.find(e => e.url === 'https://');
     expect(newEp).toBeTruthy();
-    // label must equal url so rail dedup collapses to single line (G6 fix:
-    // second arg removed from addEndpoint call, so label ?? url falls through
-    // to url — not empty string).
-    expect(newEp?.label).toBe('https://');
+    // displayLabel returns '(invalid URL)' for malformed placeholder URLs —
+    // the fail-closed sentinel prevents raw URLs from leaking through as labels.
+    expect(newEp?.label).toBe('(invalid URL)');
+    expect(newEp?.label).not.toBe('');
   });
 });

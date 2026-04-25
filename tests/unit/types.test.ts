@@ -126,6 +126,31 @@ describe('types', () => {
   });
 });
 
+describe('types — Endpoint.nickname', () => {
+  it('Endpoint type accepts optional nickname field', () => {
+    const ep: Endpoint = {
+      id: 'ep-1',
+      url: 'https://example.com',
+      enabled: true,
+      label: 'example.com',
+      color: '#fff',
+      nickname: 'My API',
+    };
+    expect(ep.nickname).toBe('My API');
+  });
+
+  it('Endpoint type allows nickname to be undefined', () => {
+    const ep: Endpoint = {
+      id: 'ep-1',
+      url: 'https://example.com',
+      enabled: true,
+      label: 'example.com',
+      color: '#fff',
+    };
+    expect(ep.nickname).toBeUndefined();
+  });
+});
+
 describe('types — timingFallback additions', () => {
   it('WorkerToMainMessage result variant accepts timingFallback: boolean', () => {
     const msg: WorkerToMainMessage = {

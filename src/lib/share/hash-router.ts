@@ -22,6 +22,7 @@ import { uiStore } from '../stores/ui';
 import type { SharePayload, MeasurementSample, SampleStatus, Endpoint } from '../types';
 import { tokens } from '../tokens';
 import { get } from 'svelte/store';
+import { displayLabel } from '../endpoint/displayLabel';
 
 // Upper bound for the round counter materialized from a share payload.
 // Matches the sample cap (10 000 per endpoint × 50 endpoints) with generous
@@ -70,7 +71,7 @@ function buildEndpoints(
     id: `shared-ep-${i}-${Date.now()}`,
     url: ep.url,
     enabled: ep.enabled,
-    label: ep.url,
+    label: displayLabel({ url: ep.url }),
     color: pickColor(i),
   }));
 }

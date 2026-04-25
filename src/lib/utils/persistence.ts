@@ -1,5 +1,6 @@
 // src/lib/utils/persistence.ts
-// Versioned localStorage persistence. v10 is the sole supported version.
+// Versioned localStorage persistence. v11 is the current version.
+// v10 payloads are migrated to v11 on load (nickname field added, set to undefined).
 // Payloads with any other version (including all prior v1–v9 builds) are
 // rejected: both storage keys are cleared and the caller receives null,
 // which triggers the first-install / region-aware defaults path in App.svelte.
@@ -7,6 +8,7 @@
 import { DEFAULT_SETTINGS } from '../types';
 import { isValidRegion } from '../regional-defaults';
 import { isSafeProbeUrl } from './url-safety';
+import { isValidNickname } from '../endpoint/displayLabel';
 import type {
   ActiveView,
   LiveTimeRange,
@@ -18,9 +20,9 @@ import type { Region } from '../regional-defaults';
 
 const STORAGE_KEY = 'chronoscope_settings'; // skipcq: JS-0860 — localStorage key, not a credential
 const LEGACY_STORAGE_KEY = 'chronoscope_v2_settings'; // skipcq: JS-0860 — localStorage key, not a credential
-export const CURRENT_VERSION = 10;
+export const CURRENT_VERSION = 11;
 
-// Views valid at v10. Used by readActiveView to validate the persisted value.
+// Views valid at v10/v11. Used by readActiveView to validate the persisted value.
 const V10_VIEWS: ReadonlySet<string> = new Set<ActiveView>([
   'overview', 'live', 'diagnose', 'strata', 'terminal',
 ]);
@@ -84,15 +86,27 @@ export function migrateSettings(data: unknown): PersistedSettings | null {
   const record = data as Record<string, unknown>;
   const version = typeof record['version'] === 'number' ? record['version'] : 0;
 
-  if (version === CURRENT_VERSION) return normalizeV10(record);
+  if (version === 10) {
+    // Migrate v10 → v11: run v10 normalizer then stamp version 11 and clear nicknames.
+    const v10result = normalizeV10(record);
+    if (v10result === null) return null;
+    return {
+      ...v10result,
+      version: 11,
+      endpoints: v10result.endpoints.map((ep) => ({ ...ep, nickname: undefined })),
+    };
+  }
 
-  // Unknown or pre-v10 version — return null (triggers first-install path).
+  if (version === CURRENT_VERSION) return normalizeV11(record);
+
+  // Unknown, pre-v10, or future version — return null (triggers first-install path).
   return null;
 }
 
 // ── v10 normalizer ────────────────────────────────────────────────────────────
 // Reads and validates a v10 payload. Any field that fails validation falls back
 // to a safe default. Returns null only if an unexpected exception is thrown.
+// Used only as the first step in v10 → v11 migration.
 function normalizeV10(record: Record<string, unknown>): PersistedSettings | null {
   try {
     const rawUi = asRecord(record['ui']) ?? {};
@@ -100,6 +114,30 @@ function normalizeV10(record: Record<string, unknown>): PersistedSettings | null
     return {
       version: 10,
       endpoints: readEndpointsField(record),
+      settings: readSettingsField(record),
+      ui: {
+        expandedCards:     readExpandedCards(rawUi),
+        activeView,
+        focusedEndpointId: readFocusedEndpointId(rawUi),
+        liveOptions:       readLiveOptions(rawUi),
+        terminalFilters:   readTerminalFilters(rawUi),
+      },
+    };
+  } catch {
+    return null;
+  }
+}
+
+// ── v11 normalizer ────────────────────────────────────────────────────────────
+// Reads and validates a v11 payload. Identical to v10 but uses readEndpointsFieldV11
+// (which validates and conditionally preserves the nickname field).
+function normalizeV11(record: Record<string, unknown>): PersistedSettings | null {
+  try {
+    const rawUi = asRecord(record['ui']) ?? {};
+    const activeView = readActiveView(rawUi, V10_VIEWS);
+    return {
+      version: 11,
+      endpoints: readEndpointsFieldV11(record),
       settings: readSettingsField(record),
       ui: {
         expandedCards:     readExpandedCards(rawUi),
@@ -132,6 +170,27 @@ function readEndpointsField(record: Record<string, unknown>): { url: string; ena
       url: e['url'] as string,
       enabled: typeof e['enabled'] === 'boolean' ? e['enabled'] : true,
     }));
+}
+
+function readEndpointsFieldV11(
+  record: Record<string, unknown>,
+): { url: string; enabled: boolean; nickname?: string }[] {
+  const raw = Array.isArray(record['endpoints']) ? record['endpoints'] : [];
+  // Same URL safety gate as v10. Additionally validates and conditionally
+  // preserves the nickname field — invalid nicknames are stripped (set to
+  // undefined) but the endpoint row is always kept.
+  return raw
+    .filter((e): e is Record<string, unknown> => asRecord(e) !== null)
+    .filter((e) => isSafeProbeUrl(e['url']))
+    .map((e) => {
+      const rawNick = e['nickname'];
+      const nickname = isValidNickname(rawNick) ? rawNick : undefined;
+      return {
+        url: e['url'] as string,
+        enabled: typeof e['enabled'] === 'boolean' ? e['enabled'] : true,
+        ...(nickname !== undefined ? { nickname } : {}),
+      };
+    });
 }
 
 function readSettingsField(record: Record<string, unknown>): Settings {

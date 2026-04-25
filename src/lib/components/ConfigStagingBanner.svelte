@@ -8,6 +8,7 @@
 <script lang="ts">
   import { uiStore } from '$lib/stores/ui';
   import { acceptPendingShare, dismissPendingShare } from '$lib/share/hash-router';
+  import { displayLabel } from '$lib/endpoint/displayLabel';
 
   const pending = $derived($uiStore.pendingShare);
   const count = $derived(pending?.endpoints.length ?? 0);
@@ -33,7 +34,10 @@
       {#each pending.endpoints as ep (ep.url)}
         <li class="endpoint-item">
           <span class="endpoint-pip" aria-hidden="true" class:disabled={!ep.enabled}></span>
-          <span class="endpoint-url">{ep.url}</span>
+          <span class="endpoint-identity">
+            <span class="endpoint-label">{displayLabel({ url: ep.url })}</span>
+            <span class="endpoint-url">{ep.url}</span>
+          </span>
           {#if !ep.enabled}
             <span class="endpoint-badge">disabled</span>
           {/if}
@@ -159,7 +163,28 @@
     background: var(--t4, rgba(255, 255, 255, 0.32));
   }
 
+  .endpoint-identity {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .endpoint-label {
+    font-family: var(--sans, sans-serif);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--t1, rgba(255, 255, 255, 0.94));
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .endpoint-url {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--t3, rgba(255, 255, 255, 0.54));
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

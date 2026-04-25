@@ -74,6 +74,10 @@ function validateSharePayload(data: unknown): SharePayload | null {
     const e = ep as Record<string, unknown>;
     if (!isSafeSharedUrl(e['url'])) return null;
     if (typeof e['enabled'] !== 'boolean') return null;
+    // Reject unknown per-entry keys. Allowlist: url, enabled. Hybrid Bet (share-side): nicknames stay local; schema-level rejection at boundary.
+    for (const key of Object.keys(e)) {
+      if (key !== 'url' && key !== 'enabled') return null;
+    }
   }
 
   const settings = obj['settings'];
@@ -85,6 +89,12 @@ function validateSharePayload(data: unknown): SharePayload | null {
   if (s['burstRounds'] !== undefined && (!isNonNegativeFiniteNumber(s['burstRounds']) || (s['burstRounds'] as number) > 500)) return null;
   if (s['monitorDelay'] !== undefined && (!isNonNegativeFiniteNumber(s['monitorDelay']) || (s['monitorDelay'] as number) > 60000)) return null;
   if (s['corsMode'] !== 'no-cors' && s['corsMode'] !== 'cors') return null;
+
+  // Reject unknown top-level keys. Allowlist: v, mode, endpoints, settings, results. Symmetric with per-entry — closes future round-trip footgun.
+  const ALLOWED_TOP_LEVEL = new Set(['v', 'mode', 'endpoints', 'settings', 'results']);
+  for (const key of Object.keys(obj)) {
+    if (!ALLOWED_TOP_LEVEL.has(key)) return null;
+  }
 
   if (obj['results'] !== undefined) {
     if (!Array.isArray(obj['results'])) return null;

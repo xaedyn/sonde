@@ -56,7 +56,12 @@ describe('persistence', () => {
     };
     saveSettings(v10);
     const loaded = loadPersistedSettings();
-    expect(loaded).toEqual(v10);
+    // v10 payloads are migrated to v11 at load; endpoints gain nickname: undefined
+    expect(loaded).toEqual({
+      ...v10,
+      version: 11,
+      endpoints: v10.endpoints.map((ep) => ({ ...ep, nickname: undefined })),
+    });
   });
 
   it('v10 payload with stray retired activeView coerces to overview', () => {
@@ -128,7 +133,7 @@ describe('persistence', () => {
     localStorageMock.setItem(LEGACY_KEY, JSON.stringify(v10));
     const result = loadPersistedSettings();
     expect(result).not.toBeNull();
-    expect(result?.version).toBe(10);
+    expect(result?.version).toBe(11);
     expect(localStorageMock.getItem(LEGACY_KEY)).toBeNull();
     expect(localStorageMock.getItem(PRIMARY_KEY)).not.toBeNull();
   });
@@ -150,7 +155,7 @@ describe('persistence', () => {
     try {
       const result = loadPersistedSettings();
       expect(result).not.toBeNull();
-      expect(result?.version).toBe(10);
+      expect(result?.version).toBe(11);
       expect(result?.endpoints[0]?.url).toBe('https://example.com');
     } finally {
       localStorageMock.setItem = originalSet;
@@ -180,7 +185,7 @@ describe('persistence', () => {
     };
     const result = migrateSettings(v10);
     expect(result).not.toBeNull();
-    expect(result?.version).toBe(10);
+    expect(result?.version).toBe(11);
     expect(result?.endpoints[0]?.url).toBe('https://example.com');
   });
 
@@ -223,6 +228,152 @@ describe('persistence', () => {
   it('migrateSettings: non-object input → returns null', () => {
     expect(migrateSettings(42)).toBeNull();
     expect(migrateSettings('string')).toBeNull();
+  });
+
+  // ── v10 → v11 migration ───────────────────────────────────────────────────
+
+  it('v10 → v11 migration: all v10 fields preserved, nickname undefined', () => {
+    const v10 = {
+      version: 10,
+      endpoints: [{ url: 'https://example.com', enabled: true }],
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
+      ui: { expandedCards: ['ep-1'], activeView: 'diagnose', focusedEndpointId: 'ep-1', liveOptions: { split: true, timeRange: '15m' }, terminalFilters: ['timeout'] },
+    };
+    const result = migrateSettings(v10);
+    expect(result).not.toBeNull();
+    expect(result?.version).toBe(11);
+    expect(result?.endpoints[0]?.url).toBe('https://example.com');
+    expect(result?.endpoints[0]?.enabled).toBe(true);
+    expect(result?.endpoints[0]?.nickname).toBeUndefined();
+    expect(result?.ui.activeView).toBe('diagnose');
+    expect(result?.ui.expandedCards).toEqual(['ep-1']);
+  });
+
+  // ── v11 round-trip and nickname validation ────────────────────────────────
+
+  it('v11 with valid nickname: round-trips intact', () => {
+    const v11 = {
+      version: 11,
+      endpoints: [{ url: 'https://example.com', enabled: true, nickname: 'My Server' }],
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
+      ui: { expandedCards: [], activeView: 'overview', focusedEndpointId: null, liveOptions: { split: false, timeRange: '5m' }, terminalFilters: [] },
+    };
+    localStorageMock.setItem(PRIMARY_KEY, JSON.stringify(v11));
+    const result = loadPersistedSettings();
+    expect(result).not.toBeNull();
+    expect(result?.version).toBe(11);
+    expect(result?.endpoints[0]?.nickname).toBe('My Server');
+  });
+
+  it('v11 with nickname >80 chars: nickname stripped, endpoint kept', () => {
+    const longNick = 'a'.repeat(81);
+    const v11 = {
+      version: 11,
+      endpoints: [{ url: 'https://example.com', enabled: true, nickname: longNick }],
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
+      ui: { expandedCards: [], activeView: 'overview', focusedEndpointId: null, liveOptions: { split: false, timeRange: '5m' }, terminalFilters: [] },
+    };
+    localStorageMock.setItem(PRIMARY_KEY, JSON.stringify(v11));
+    const result = loadPersistedSettings();
+    expect(result).not.toBeNull();
+    expect(result?.endpoints[0]?.url).toBe('https://example.com');
+    expect(result?.endpoints[0]?.nickname).toBeUndefined();
+  });
+
+  it('v11 with bidi character (U+202E) in nickname: nickname stripped, endpoint kept', () => {
+    const v11 = {
+      version: 11,
+      endpoints: [{ url: 'https://example.com', enabled: true, nickname: 'bad\u202Enick' }],
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
+      ui: { expandedCards: [], activeView: 'overview', focusedEndpointId: null, liveOptions: { split: false, timeRange: '5m' }, terminalFilters: [] },
+    };
+    localStorageMock.setItem(PRIMARY_KEY, JSON.stringify(v11));
+    const result = loadPersistedSettings();
+    expect(result).not.toBeNull();
+    expect(result?.endpoints[0]?.url).toBe('https://example.com');
+    expect(result?.endpoints[0]?.nickname).toBeUndefined();
+  });
+
+  it('v11 with control character (U+0000) in nickname: nickname stripped, endpoint kept', () => {
+    const v11 = {
+      version: 11,
+      endpoints: [{ url: 'https://example.com', enabled: true, nickname: 'bad\u0000nick' }],
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
+      ui: { expandedCards: [], activeView: 'overview', focusedEndpointId: null, liveOptions: { split: false, timeRange: '5m' }, terminalFilters: [] },
+    };
+    localStorageMock.setItem(PRIMARY_KEY, JSON.stringify(v11));
+    const result = loadPersistedSettings();
+    expect(result).not.toBeNull();
+    expect(result?.endpoints[0]?.url).toBe('https://example.com');
+    expect(result?.endpoints[0]?.nickname).toBeUndefined();
+  });
+
+  it('v11 with zero-width char (U+200B) in nickname: nickname stripped, endpoint kept', () => {
+    const v11 = {
+      version: 11,
+      endpoints: [{ url: 'https://example.com', enabled: true, nickname: 'zero\u200Bwidth' }],
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
+      ui: { expandedCards: [], activeView: 'overview', focusedEndpointId: null, liveOptions: { split: false, timeRange: '5m' }, terminalFilters: [] },
+    };
+    localStorageMock.setItem(PRIMARY_KEY, JSON.stringify(v11));
+    const result = loadPersistedSettings();
+    expect(result).not.toBeNull();
+    expect(result?.endpoints[0]?.url).toBe('https://example.com');
+    expect(result?.endpoints[0]?.nickname).toBeUndefined();
+  });
+
+  it('v11 with line-separator (U+2028) in nickname: nickname stripped, endpoint kept', () => {
+    const v11 = {
+      version: 11,
+      endpoints: [{ url: 'https://example.com', enabled: true, nickname: 'line\u2028sep' }],
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
+      ui: { expandedCards: [], activeView: 'overview', focusedEndpointId: null, liveOptions: { split: false, timeRange: '5m' }, terminalFilters: [] },
+    };
+    localStorageMock.setItem(PRIMARY_KEY, JSON.stringify(v11));
+    const result = loadPersistedSettings();
+    expect(result).not.toBeNull();
+    expect(result?.endpoints[0]?.url).toBe('https://example.com');
+    expect(result?.endpoints[0]?.nickname).toBeUndefined();
+  });
+
+  it('v11 with non-string nickname: nickname stripped, endpoint kept', () => {
+    const v11 = {
+      version: 11,
+      endpoints: [{ url: 'https://example.com', enabled: true, nickname: 42 }],
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
+      ui: { expandedCards: [], activeView: 'overview', focusedEndpointId: null, liveOptions: { split: false, timeRange: '5m' }, terminalFilters: [] },
+    };
+    localStorageMock.setItem(PRIMARY_KEY, JSON.stringify(v11));
+    const result = loadPersistedSettings();
+    expect(result).not.toBeNull();
+    expect(result?.endpoints[0]?.url).toBe('https://example.com');
+    expect(result?.endpoints[0]?.nickname).toBeUndefined();
+  });
+
+  it('v11 with whitespace-only nickname: nickname stripped, endpoint kept', () => {
+    const v11 = {
+      version: 11,
+      endpoints: [{ url: 'https://example.com', enabled: true, nickname: '   ' }],
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
+      ui: { expandedCards: [], activeView: 'overview', focusedEndpointId: null, liveOptions: { split: false, timeRange: '5m' }, terminalFilters: [] },
+    };
+    localStorageMock.setItem(PRIMARY_KEY, JSON.stringify(v11));
+    const result = loadPersistedSettings();
+    expect(result).not.toBeNull();
+    expect(result?.endpoints[0]?.url).toBe('https://example.com');
+    expect(result?.endpoints[0]?.nickname).toBeUndefined();
+  });
+
+  it('v9 payload still returns null after v11 bump', () => {
+    const v9 = {
+      version: 9,
+      endpoints: [{ url: 'https://example.com', enabled: true }],
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
+      ui: { expandedCards: [], activeView: 'overview', focusedEndpointId: null, liveOptions: { split: false, timeRange: '5m' }, terminalFilters: [] },
+    };
+    localStorageMock.setItem(PRIMARY_KEY, JSON.stringify(v9));
+    const result = loadPersistedSettings();
+    expect(result).toBeNull();
   });
 
   // ── clearPersistedSettings ────────────────────────────────────────────────

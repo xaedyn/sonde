@@ -11,18 +11,22 @@ import { endpointStore } from '../stores/endpoints';
 import { settingsStore } from '../stores/settings';
 import { uiStore } from '../stores/ui';
 import type { PersistedSettings } from '../types';
-import { brandFor } from '../regional-defaults';
+import { displayLabel } from '../endpoint/displayLabel';
 
 // Helpers are declared as const arrows (not `function` declarations) to stay
 // clear of DeepSource's "function declaration in global scope" rule, and each
 // helper holds a single concern so cyclomatic complexity stays below threshold.
 
-// Hydrate one persisted endpoint into the runtime store.
-const hydrateEndpoint = (ep: { url: string; enabled: boolean }): void => {
+// Hydrate one persisted endpoint into the runtime store. Nickname is trimmed
+// once at the boundary so storage and display agree (displayLabel re-trims at
+// render time, so an untrimmed value would display correctly but persist
+// padded — round-trip divergence).
+const hydrateEndpoint = (ep: { url: string; enabled: boolean; nickname?: string }): void => {
   const url = ep.url.trim();
   if (!url) return;
-  const label = brandFor(url)?.label ?? url;
-  const id = endpointStore.addEndpoint(url, label);
+  const nickname = ep.nickname?.trim() || undefined;
+  const label = displayLabel({ url, nickname });
+  const id = endpointStore.addEndpoint(url, label, nickname);
   endpointStore.updateEndpoint(id, { enabled: ep.enabled });
 };
 

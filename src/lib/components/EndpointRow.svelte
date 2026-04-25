@@ -4,6 +4,7 @@
 <script lang="ts">
   import { tokens } from '$lib/tokens';
   import { latencyToColor } from '$lib/renderers/color-map';
+  import { isValidNickname } from '$lib/endpoint/displayLabel';
   import type { Endpoint, SampleStatus } from '$lib/types';
 
   // ── Props ────────────────────────────────────────────────────────────────────
@@ -54,12 +55,48 @@
       : tokens.color.text.secondary
   );
 
-  // ── Handlers ─────────────────────────────────────────────────────────────────
+  // ── Edit mode state ───────────────────────────────────────────────────────────
 
-  function handleUrlChange(e: Event): void {
-    const input = e.currentTarget as HTMLInputElement;
-    onUpdate?.(endpoint.id, { url: input.value });
+  let isEditing = $state(false);
+  let editUrl = $state('');
+  let editNickname = $state('');
+  let nicknameInvalid = $state(false);
+
+  function handleEditStart(): void {
+    editUrl = endpoint.url;
+    editNickname = endpoint.nickname ?? '';
+    nicknameInvalid = false;
+    isEditing = true;
   }
+
+  function handleEditSave(): void {
+    const trimmedNick = editNickname.trim();
+    if (trimmedNick !== '' && !isValidNickname(trimmedNick)) {
+      nicknameInvalid = true;
+      return;
+    }
+    nicknameInvalid = false;
+    const nickToSave: string | undefined = trimmedNick === '' ? undefined : trimmedNick;
+    onUpdate?.(endpoint.id, { url: editUrl, nickname: nickToSave });
+    isEditing = false;
+  }
+
+  function handleEditCancel(): void {
+    nicknameInvalid = false;
+    isEditing = false;
+  }
+
+  function handleNicknameKeydown(e: KeyboardEvent): void {
+    if (e.key === 'Enter') { e.preventDefault(); handleEditSave(); }
+    if (e.key === 'Escape') { e.preventDefault(); handleEditCancel(); }
+  }
+
+  function handleUrlKeydown(e: KeyboardEvent): void {
+    if (e.key === 'Enter') { e.preventDefault(); handleEditSave(); }
+    if (e.key === 'Escape') { e.preventDefault(); handleEditCancel(); }
+  }
+
+  // ── Handlers ─────────────────────────────────────────────────────────────────
 
   function handleToggle(): void {
     onUpdate?.(endpoint.id, { enabled: !endpoint.enabled });
@@ -87,6 +124,7 @@
   style:--spacing-sm="{tokens.spacing.sm}px"
   style:--spacing-md="{tokens.spacing.md}px"
   style:--mono={tokens.typography.mono.fontFamily}
+  style:--sans={tokens.typography.sans.fontFamily}
   style:--timing-btn="{tokens.timing.btnHover}ms"
   style:opacity={endpoint.enabled ? 1 : 0.5}
 >
@@ -97,19 +135,48 @@
     aria-hidden="true"
   ></span>
 
-  <!-- URL input -->
-  <input
-    type="url"
-    class="url-input"
-    value={endpoint.url}
-    readonly={isRunning}
-    placeholder="https://example.com"
-    aria-label="Endpoint URL"
-    onchange={handleUrlChange}
-  />
+  <!-- URL input (read-only in read mode; editable in edit mode) -->
+  {#if isEditing}
+    <input
+      type="url"
+      class="url-input"
+      bind:value={editUrl}
+      placeholder="https://example.com"
+      aria-label="Endpoint URL"
+      onkeydown={handleUrlKeydown}
+    />
+  {:else}
+    <input
+      type="url"
+      class="url-input"
+      value={endpoint.url}
+      readonly={true}
+      placeholder="https://example.com"
+      aria-label="Endpoint URL"
+    />
+  {/if}
+
+  <!-- Nickname input (edit mode only) -->
+  {#if isEditing}
+    <div class="edit-fields">
+      <input
+        type="text"
+        class="nickname-input"
+        bind:value={editNickname}
+        placeholder="Optional nickname"
+        aria-label="Endpoint nickname"
+        aria-invalid={nicknameInvalid ? 'true' : 'false'}
+        onkeydown={handleNicknameKeydown}
+        oninput={() => { if (nicknameInvalid) nicknameInvalid = false; }}
+      />
+      {#if nicknameInvalid}
+        <span class="nickname-error" role="alert">Invalid nickname (max 80 chars, no control/zero-width/bidi)</span>
+      {/if}
+    </div>
+  {/if}
 
   <!-- Latency text -->
-  {#if latencyText}
+  {#if latencyText && !isEditing}
     <span
       class="latency-text"
       style:color={latencyColor}
@@ -117,6 +184,40 @@
     >
       {latencyText}
     </span>
+  {/if}
+
+  <!-- Pencil / edit button (hidden while running) -->
+  {#if !isRunning}
+    <button
+      type="button"
+      class="edit-btn"
+      class:active={isEditing}
+      aria-label="{isEditing ? 'Cancel editing' : 'Edit'} {endpoint.label}"
+      onclick={isEditing ? handleEditCancel : handleEditStart}
+    >
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 14 14"
+        fill="none"
+        aria-hidden="true"
+        focusable="false"
+      >
+        <path
+          d="M9.5 1.5L12.5 4.5L4.5 12.5H1.5V9.5L9.5 1.5Z"
+          stroke="currentColor"
+          stroke-width="1.25"
+          stroke-linejoin="round"
+          fill="none"
+        />
+        <path
+          d="M7.5 3.5L10.5 6.5"
+          stroke="currentColor"
+          stroke-width="1.25"
+          stroke-linecap="round"
+        />
+      </svg>
+    </button>
   {/if}
 
   <!-- Enable/disable toggle -->
@@ -140,7 +241,7 @@
     <button
       type="button"
       class="remove-btn"
-      aria-label="Remove endpoint {endpoint.url}"
+      aria-label="Remove endpoint {endpoint.label}"
       disabled={isRunning}
       onclick={handleRemove}
     >
@@ -224,6 +325,50 @@
     cursor: default;
   }
 
+  /* ── Edit fields (nickname row) ──────────────────────────────────────────── */
+  .edit-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex-shrink: 0;
+    min-width: 0;
+  }
+
+  /* ── Nickname input ──────────────────────────────────────────────────────── */
+  .nickname-input {
+    min-width: 0;
+    width: 140px;
+    background: rgba(0,0,0,.2);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--btn-radius);
+    color: var(--t1);
+    font-size: 13px;
+    font-family: var(--sans);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    outline: none;
+    box-shadow: inset 0 1px 4px rgba(0,0,0,.3);
+    transition: border-color var(--timing-btn) ease, box-shadow var(--timing-btn) ease;
+  }
+
+  .nickname-input:focus {
+    border-color: var(--accent-cyan);
+    box-shadow: inset 0 1px 4px rgba(0,0,0,.3), 0 0 12px rgba(103,232,249,.15);
+  }
+
+  .nickname-input[aria-invalid='true'] {
+    border-color: var(--accent-pink);
+    box-shadow: inset 0 1px 4px rgba(0,0,0,.3), 0 0 8px rgba(249,168,212,.2);
+  }
+
+  /* ── Nickname error ──────────────────────────────────────────────────────── */
+  .nickname-error {
+    font-size: 10px;
+    font-family: var(--mono);
+    color: var(--accent-pink);
+    white-space: nowrap;
+    line-height: 1.2;
+  }
+
   /* ── Latency text ────────────────────────────────────────────────────────── */
   .latency-text {
     flex-shrink: 0;
@@ -232,6 +377,51 @@
     min-width: 52px;
     text-align: right;
     white-space: nowrap;
+  }
+
+  /* ── Edit button ─────────────────────────────────────────────────────────── */
+  .edit-btn {
+    flex-shrink: 0;
+    width: 44px;  /* WCAG 2.5.5 minimum touch target */
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid transparent;
+    border-radius: var(--btn-radius);
+    background: transparent;
+    color: var(--t3);
+    cursor: pointer;
+    transition: opacity var(--timing-btn) ease, color var(--timing-btn) ease,
+      background var(--timing-btn) ease, border-color var(--timing-btn) ease;
+    /* Hidden by default; revealed on row hover or focus */
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  .endpoint-row:hover .edit-btn,
+  .edit-btn.active,
+  .edit-btn:focus-visible {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .edit-btn:hover:not(:disabled) {
+    background: var(--glass-bg);
+    border-color: rgba(103,232,249,.15);
+    color: var(--accent-cyan);
+  }
+
+  .edit-btn.active {
+    color: var(--accent-cyan);
+  }
+
+  /* Touch devices: always show edit button */
+  @media (hover: none) {
+    .edit-btn {
+      opacity: 1;
+      visibility: visible;
+    }
   }
 
   /* ── Toggle ──────────────────────────────────────────────────────────────── */
