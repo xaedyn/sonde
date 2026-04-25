@@ -2,6 +2,7 @@
 <!-- Single endpoint row: URL input, color dot, enable toggle, remove button,  -->
 <!-- and inline latency display.                                                 -->
 <script lang="ts">
+  import { tick } from 'svelte';
   import { tokens } from '$lib/tokens';
   import { latencyToColor } from '$lib/renderers/color-map';
   import { isValidNickname } from '$lib/endpoint/displayLabel';
@@ -62,14 +63,23 @@
   let editNickname = $state('');
   let nicknameInvalid = $state(false);
 
-  function handleEditStart(): void {
+  // Element refs for focus management. Without these, activating the pencil
+  // unmounts .edit-btn in the same tick as .url-input mounts, leaving keyboard
+  // and screen-reader users on <body> (WCAG 2.4.3 violation).
+  let urlInputEl: HTMLInputElement | null = $state(null);
+  let editBtnEl: HTMLButtonElement | null = $state(null);
+
+  async function handleEditStart(): Promise<void> {
     editUrl = endpoint.url;
     editNickname = endpoint.nickname ?? '';
     nicknameInvalid = false;
     isEditing = true;
+    // Wait for the form to mount, then focus the URL input.
+    await tick();
+    urlInputEl?.focus();
   }
 
-  function handleEditSave(): void {
+  async function handleEditSave(): Promise<void> {
     const trimmedNick = editNickname.trim();
     if (trimmedNick !== '' && !isValidNickname(trimmedNick)) {
       nicknameInvalid = true;
@@ -79,11 +89,16 @@
     const nickToSave: string | undefined = trimmedNick === '' ? undefined : trimmedNick;
     onUpdate?.(endpoint.id, { url: editUrl, nickname: nickToSave });
     isEditing = false;
+    // Wait for read-mode to remount, then return focus to the pencil.
+    await tick();
+    editBtnEl?.focus();
   }
 
-  function handleEditCancel(): void {
+  async function handleEditCancel(): Promise<void> {
     nicknameInvalid = false;
     isEditing = false;
+    await tick();
+    editBtnEl?.focus();
   }
 
   function handleNicknameKeydown(e: KeyboardEvent): void {
@@ -128,6 +143,34 @@
   style:--timing-btn="{tokens.timing.btnHover}ms"
   style:opacity={endpoint.enabled ? 1 : 0.5}
 >
+  {#snippet toggleAndRemove()}
+    <label
+      class="toggle-label"
+      aria-label="{endpoint.enabled ? 'Disable' : 'Enable'} this endpoint"
+      title={isLastEnabled ? 'At least one endpoint must be enabled' : ''}
+    >
+      <input
+        type="checkbox"
+        class="toggle-input"
+        checked={endpoint.enabled}
+        disabled={isRunning || isLastEnabled}
+        onchange={handleToggle}
+      />
+      <span class="toggle-track" aria-hidden="true"></span>
+    </label>
+    {#if !isLast}
+      <button
+        type="button"
+        class="remove-btn"
+        aria-label="Remove endpoint {endpoint.label}"
+        disabled={isRunning}
+        onclick={handleRemove}
+      >
+        ✕
+      </button>
+    {/if}
+  {/snippet}
+
   {#if isEditing}
     <!-- Edit mode: row expands vertically into a stacked form. -->
     <!-- The cramped "two inputs in a flex row" pattern doesn't fit narrow viewports;
@@ -138,6 +181,7 @@
         <input
           type="url"
           class="url-input"
+          bind:this={urlInputEl}
           bind:value={editUrl}
           placeholder="https://example.com"
           aria-label="Endpoint URL"
@@ -163,31 +207,7 @@
         <button type="button" class="btn-secondary" onclick={handleEditCancel}>Cancel</button>
         <button type="button" class="btn-primary" onclick={handleEditSave}>Save</button>
         <span class="actions-spacer"></span>
-        <label
-          class="toggle-label"
-          aria-label="{endpoint.enabled ? 'Disable' : 'Enable'} this endpoint"
-          title={isLastEnabled ? 'At least one endpoint must be enabled' : ''}
-        >
-          <input
-            type="checkbox"
-            class="toggle-input"
-            checked={endpoint.enabled}
-            disabled={isRunning || isLastEnabled}
-            onchange={handleToggle}
-          />
-          <span class="toggle-track" aria-hidden="true"></span>
-        </label>
-        {#if !isLast}
-          <button
-            type="button"
-            class="remove-btn"
-            aria-label="Remove endpoint {endpoint.label}"
-            disabled={isRunning}
-            onclick={handleRemove}
-          >
-            ✕
-          </button>
-        {/if}
+        {@render toggleAndRemove()}
       </div>
     </div>
   {:else}
@@ -214,6 +234,7 @@
       <button
         type="button"
         class="edit-btn"
+        bind:this={editBtnEl}
         aria-label="Edit {endpoint.label}"
         onclick={handleEditStart}
       >
@@ -242,37 +263,17 @@
       </button>
     {/if}
 
-    <label
-      class="toggle-label"
-      aria-label="{endpoint.enabled ? 'Disable' : 'Enable'} this endpoint"
-      title={isLastEnabled ? 'At least one endpoint must be enabled' : ''}
-    >
-      <input
-        type="checkbox"
-        class="toggle-input"
-        checked={endpoint.enabled}
-        disabled={isRunning || isLastEnabled}
-        onchange={handleToggle}
-      />
-      <span class="toggle-track" aria-hidden="true"></span>
-    </label>
-
-    {#if !isLast}
-      <button
-        type="button"
-        class="remove-btn"
-        aria-label="Remove endpoint {endpoint.label}"
-        disabled={isRunning}
-        onclick={handleRemove}
-      >
-        ✕
-      </button>
-    {/if}
+    {@render toggleAndRemove()}
   {/if}
 </div>
 
 <style>
   .endpoint-row {
+    /* Single source for the color-dot diameter — used by .dot and by
+       .edit-actions's left padding so the action bar stays aligned with the
+       input column without drift if the dot ever resizes. */
+    --dot-size: 10px;
+
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
@@ -310,8 +311,8 @@
   /* ── Color dot ───────────────────────────────────────────────────────────── */
   .dot {
     flex-shrink: 0;
-    width: 10px;
-    height: 10px;
+    width: var(--dot-size);
+    height: var(--dot-size);
     border-radius: 50%;
     background: var(--dot-color);
     box-shadow: 0 0 8px var(--dot-color); /* fallback for browsers without color-mix() */
@@ -396,7 +397,7 @@
     gap: var(--spacing-sm);
     /* Sit just inside the dot's column so the action bar visually nests under
        the input column rather than the dot. */
-    padding-left: calc(10px + var(--spacing-sm));
+    padding-left: calc(var(--dot-size) + var(--spacing-sm));
   }
 
   .actions-spacer { flex: 1; }

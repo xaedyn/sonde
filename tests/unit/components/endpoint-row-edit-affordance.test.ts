@@ -131,6 +131,7 @@ describe('EndpointRow — edit affordance (AC2)', () => {
 
     expect(onUpdate).toHaveBeenCalledOnce();
     const [, patch] = onUpdate.mock.calls[0] as [string, { url: string; nickname: string }];
+    expect(patch.url).toBe('https://api.example.com');
     expect(patch.nickname).toBe('Prod API');
   });
 
@@ -143,6 +144,18 @@ describe('EndpointRow — edit affordance (AC2)', () => {
     await fireEvent.click(container.querySelector('.edit-btn') as HTMLButtonElement);
     expect(container.querySelector('.edit-form')).not.toBeNull();
     expect(container.querySelector('.edit-actions')).not.toBeNull();
+  });
+
+  // WCAG 2.4.3: focus must not be lost when the pencil unmounts. Without the
+  // focus-on-mount behavior, keyboard/SR users land on <body> and have to
+  // re-traverse to reach the URL input.
+  it('moves focus into URL input after entering edit mode', async () => {
+    const { container } = renderRow();
+    await fireEvent.click(container.querySelector('.edit-btn') as HTMLButtonElement);
+    // tick() inside the handler resolves on the next microtask
+    await new Promise(r => setTimeout(r, 0));
+    const urlInput = container.querySelector('.url-input') as HTMLInputElement;
+    expect(document.activeElement).toBe(urlInput);
   });
 
   it('invalid nickname (too long) sets aria-invalid', async () => {
