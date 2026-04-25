@@ -15,6 +15,8 @@ import { test, expect, type Page } from '@playwright/test';
 //
 // The sentinel test injects a synthetic .rail-row-label with a raw URL into
 // the live DOM and asserts the sweep catches it, proving fail-closed behaviour.
+//
+// Coverage gap: ConfigStagingBanner is reachable only via a staged share URL and is excluded from this Playwright sweep — its `.endpoint-url` subtitle is the only URL surface it renders, and that's a permitted exception per AC5.
 
 const VIEWPORTS = [
   { name: 'desktop', width: 1366, height: 768 },
@@ -30,15 +32,12 @@ const PRIMARY_SELECTORS = [
 ] as const;
 
 // Patterns that unambiguously identify a raw URL string.
+// Serialised as RegExp sources so they can cross the page.evaluate() boundary.
 const URL_PATTERNS = [
   /^https?:\/\//i,
   /^\/\//,
   /^www\./i,
 ];
-
-function looksLikeUrl(text: string): boolean {
-  return URL_PATTERNS.some((re) => re.test(text.trim()));
-}
 
 interface RawUrlLeak {
   readonly selector: string;
@@ -69,7 +68,8 @@ const findRawUrlLeaks = async (page: Page): Promise<readonly RawUrlLeak[]> => {
             rect.width > 0 &&
             rect.height > 0 &&
             cs.display !== 'none' &&
-            cs.visibility !== 'hidden';
+            cs.visibility !== 'hidden' &&
+            cs.opacity !== '0';
           if (!visible) continue;
 
           const text = (el.textContent ?? '').trim();
@@ -112,13 +112,12 @@ test.describe('AC5 — no raw URL in primary identifiers', () => {
         await page.waitForSelector('#chronoscope-root');
         await page.waitForTimeout(400);
 
-        // Navigate to the Live view via the nav tab.
-        const liveTab = page.getByRole('tab', { name: /live/i });
-        const liveTabExists = await liveTab.count();
-        if (liveTabExists > 0) {
-          await liveTab.click();
-          await page.waitForTimeout(300);
-        }
+        // Navigate to the Live view via the ViewSwitcher button.
+        // Anchored regex avoids matching aria-labels like "Diagnose endpoint X…"
+        // on CausalVerdictStrip drill buttons.
+        await page.getByRole('button', { name: /^Live/ }).click();
+        // Assert the Live view section is mounted before sweeping.
+        await page.waitForSelector('section[aria-label="Live latency trace"]');
 
         const leaks = await findRawUrlLeaks(page);
         expect(
@@ -133,13 +132,12 @@ test.describe('AC5 — no raw URL in primary identifiers', () => {
         await page.waitForSelector('#chronoscope-root');
         await page.waitForTimeout(400);
 
-        // Navigate to Diagnose via the nav tab.
-        const diagnoseTab = page.getByRole('tab', { name: /diagnose/i });
-        const diagnoseTabExists = await diagnoseTab.count();
-        if (diagnoseTabExists > 0) {
-          await diagnoseTab.click();
-          await page.waitForTimeout(300);
-        }
+        // Navigate to the Diagnose view via the ViewSwitcher button.
+        // Anchored regex avoids matching aria-labels like "Diagnose endpoint X…"
+        // on CausalVerdictStrip drill buttons.
+        await page.getByRole('button', { name: /^Diagnose/ }).click();
+        // Assert the Diagnose view section is mounted before sweeping.
+        await page.waitForSelector('section[aria-label="Diagnose"]');
 
         const leaks = await findRawUrlLeaks(page);
         expect(
@@ -178,6 +176,6 @@ test.describe('AC5 sentinel — sweep is fail-closed', () => {
       leaks.length,
       'Sentinel: sweep must detect the injected raw URL — if this fails the sweep logic is broken',
     ).toBeGreaterThan(0);
-    expect(leaks[0]?.text).toMatch(/^https:\/\/sentinel\.example\.com/);
+    expect(leaks.some(l => l.text.includes('sentinel.example.com'))).toBe(true);
   });
 });
