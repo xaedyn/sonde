@@ -181,10 +181,18 @@ export function computeCausalVerdict(
     };
   }
 
+  // Equality-edge guard: if everyone's under threshold AND the strict-greater-than
+  // loss/jitter checks didn't match (because avgLoss === LOSS_WARN_PERCENT or
+  // avgJit === JITTER_WARN_MS exactly), we'd otherwise render a nonsensical
+  // "0 sites are slow." Surface the all-healthy verdict instead.
+  if (overCount === 0) {
+    return { tone: 'good', headline: 'Everything looks normal.' };
+  }
+
   return {
     tone: 'warn',
     // Singular form is unreachable — overCount === 1 is handled above by the
-    // endpoint-specific branch; this fallback only fires for 0 or ≥2.
+    // endpoint-specific branch; this fallback only fires for ≥2.
     headline: `${overCount} sites are slow.`,
   };
 }

@@ -211,9 +211,19 @@ export function buildCorrelation(
     knownComparatorsPerSpike.push(knownCount);
   }
 
+  // Count of focused-row cells that landed within the visible window with a
+  // known (non-null) latency. This is distinct from `focusedOks.length` (which
+  // counts OK samples across the full history): if the user paused the run
+  // and resumed against a different endpoint, the focused endpoint may have
+  // OK samples in its history but zero known cells in the current window.
+  // Gating "steady" on this count prevents the verdict from claiming health
+  // for a window where focused produced no data at all.
+  const focusedKnownInWindow = focusedRow.cells.filter(c => c.latencyMs !== null).length;
+
   const headline = correlationHeadline({
     focusedLabel: focused.label,
     focusedOksCount: focusedOks.length,
+    focusedKnownInWindow,
     focusedSpikeCount: focusedSpikeRounds.length,
     otherSpikesPerFocusedSpike,
     knownComparatorsPerSpike,
@@ -229,6 +239,13 @@ export function buildCorrelation(
 interface HeadlineInput {
   readonly focusedLabel: string;
   readonly focusedOksCount: number;
+  /**
+   * Count of focused-row cells in the visible window with a non-null latency.
+   * Distinct from focusedOksCount, which spans the full sample history.
+   * Used to catch the case where focused has OK samples in history but zero
+   * known data in the current window (so calling it "steady" would be wrong).
+   */
+  readonly focusedKnownInWindow: number;
   readonly focusedSpikeCount: number;
   readonly otherSpikesPerFocusedSpike: readonly number[];
   /**
@@ -244,6 +261,7 @@ function correlationHeadline(input: HeadlineInput): string {
   const {
     focusedLabel,
     focusedOksCount,
+    focusedKnownInWindow,
     focusedSpikeCount,
     otherSpikesPerFocusedSpike,
     knownComparatorsPerSpike,
@@ -257,6 +275,11 @@ function correlationHeadline(input: HeadlineInput): string {
   }
   if (focusedOksCount === 0) {
     return `${focusedLabel} has no successful samples to compare — check the timeline for failures.`;
+  }
+  if (focusedKnownInWindow === 0) {
+    // History has OK samples but the current window is empty for this endpoint.
+    // Don't claim "steady" — we have no recent data to back it.
+    return `No recent samples for ${focusedLabel} in this window — comparator data shown for context.`;
   }
   if (focusedOksCount < MIN_SAMPLES_FOR_SPIKE) {
     return `Still learning ${focusedLabel}'s baseline — ${focusedOksCount} of ${MIN_SAMPLES_FOR_SPIKE} samples.`;

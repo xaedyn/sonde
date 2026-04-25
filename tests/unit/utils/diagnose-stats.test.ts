@@ -156,6 +156,25 @@ describe('buildCorrelation', () => {
     expect(result.verdict.headline).toContain('no successful samples');
   });
 
+  it('verdict says "no recent samples in this window" when focused has history but the window is empty', () => {
+    // Focused has plenty of OK samples but they're all in old rounds 1-12.
+    // Comparators have data in rounds 50-65. The window slice picks the
+    // highest 16 rounds (50-65) → focused has no cells, comparators do.
+    const focusedOld = {
+      id: 'edge', label: 'Edge',
+      samples: Array.from({ length: 12 }, (_, i) => okSample(i + 1, 50)),
+    };
+    const recentComparator = {
+      id: 'g', label: 'Google',
+      samples: Array.from({ length: 16 }, (_, i) => okSample(i + 50, 80)),
+    };
+    const result = buildCorrelation(focusedOld, [recentComparator]);
+    // Must NOT say "steady" — we have no data for focused in this window.
+    expect(result.verdict.headline).not.toContain('steady');
+    expect(result.verdict.headline).toContain('No recent samples');
+    expect(result.verdict.headline).toContain('Edge');
+  });
+
   it('verdict says "still learning baseline" when focused has too few OK samples', () => {
     const earlyDays = {
       id: 'edge', label: 'Edge',

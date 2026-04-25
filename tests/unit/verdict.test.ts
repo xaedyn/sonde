@@ -224,6 +224,29 @@ describe('computeCausalVerdict — fallback', () => {
     expect(v.headline).toBe('2 sites are slow.');
   });
 
+  it('returns the all-healthy verdict on equality-edge avgLoss === LOSS_WARN_PERCENT', () => {
+    // Strict comparisons in the all-healthy guard and the loss branch both use
+    // strict <, > — so avgLoss === 1.0 (the threshold) used to fall through to
+    // the "0 sites are slow." fallback nonsense. Regression guard.
+    const rows = [
+      makeRow({ id: 'a', label: 'a' }, { p50: 40, lossPercent: 1.0 }),
+      makeRow({ id: 'b', label: 'b' }, { p50: 50, lossPercent: 1.0 }),
+    ];
+    const v = computeCausalVerdict(rows, THRESHOLD);
+    expect(v.tone).toBe('good');
+    expect(v.headline).toBe('Everything looks normal.');
+  });
+
+  it('returns the all-healthy verdict on equality-edge avgJit === JITTER_WARN_MS', () => {
+    const rows = [
+      makeRow({ id: 'a', label: 'a' }, { p50: 40, stddev: 25 }),
+      makeRow({ id: 'b', label: 'b' }, { p50: 50, stddev: 25 }),
+    ];
+    const v = computeCausalVerdict(rows, THRESHOLD);
+    expect(v.tone).toBe('good');
+    expect(v.headline).toBe('Everything looks normal.');
+  });
+
   it('endpoint-specific branch pre-empts the count fallback when overCount=1', () => {
     // With a single row over threshold the endpoint-specific branch wins even
     // though tier2 is missing and would otherwise hit the count fallback.
