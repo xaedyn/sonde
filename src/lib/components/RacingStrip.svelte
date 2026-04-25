@@ -261,7 +261,10 @@
   }
   .racing-band {
     position: absolute;
-    top: 11px;
+    /* Center 6 px band vertically regardless of track height — was hardcoded
+       at top: 11px for the 28 px track, which overflowed when mobile shrank
+       the track to 18 px. calc keeps the band centered at any track height. */
+    top: calc(50% - 3px);
     height: 6px;
     border-radius: 3px;
     opacity: 0.35;
@@ -335,15 +338,19 @@
     .racing-dotlive.over { animation: none; }
   }
 
-  /* Mobile compaction — 4 endpoints × desktop row geometry overflows the
-     viewport budget. Tighten vertical rhythm only; desktop untouched. */
+  /* Mobile compaction — default 4 endpoints + a 320 px dial + verdict + subtab
+     budget overflows iPhone 14 Pro's 100svh by ~60 px (1 row clipped). Tighten
+     vertical rhythm to recover the budget. Default 4 endpoints now fits.
+     Note: 5+ endpoints (user-added) still clips. PR #71's no-internal-scroll
+     contract precludes a scroll fallback here; revisit with a discoverable
+     overflow affordance if the case shows up in user testing. */
   @media (max-width: 767px) {
-    .racing { padding: 8px 10px; }
+    .racing { padding: 6px 10px; }
     .racing-header { margin-bottom: 4px; }
     .racing-sub, .racing-hint { display: none; }
-    .racing-axis { padding: 2px 0 6px; margin-bottom: 4px; }
-    .racing-row { padding: 3px 6px; gap: 8px; grid-template-columns: 108px minmax(0, 1fr) max-content; }
-    .racing-track { height: 22px; }
-    .racing-rows { gap: 2px; }
+    .racing-axis { padding: 2px 0 4px; margin-bottom: 3px; }
+    .racing-row { padding: 2px 6px; gap: 8px; grid-template-columns: 108px minmax(0, 1fr) max-content; }
+    .racing-track { height: 18px; }
+    .racing-rows { gap: 1px; }
   }
 </style>

@@ -135,7 +135,7 @@
     aria-hidden="true"
   ></span>
 
-  <!-- URL input (read-only in read mode; editable in edit mode) -->
+  <!-- Identity: label as primary in read mode; URL input revealed in edit mode -->
   {#if isEditing}
     <input
       type="url"
@@ -146,14 +146,7 @@
       onkeydown={handleUrlKeydown}
     />
   {:else}
-    <input
-      type="url"
-      class="url-input"
-      value={endpoint.url}
-      readonly={true}
-      placeholder="https://example.com"
-      aria-label="Endpoint URL"
-    />
+    <span class="row-label" title={endpoint.url}>{endpoint.label}</span>
   {/if}
 
   <!-- Nickname input (edit mode only) -->
@@ -320,9 +313,21 @@
     box-shadow: inset 0 1px 4px rgba(0,0,0,.3), 0 0 12px rgba(103,232,249,.15);
   }
 
-  .url-input[readonly] {
-    opacity: 0.6;
-    cursor: default;
+  /* ── Identity label (read mode) ──────────────────────────────────────────── */
+  /* Replaces the read-only URL input. Showing the derived label as primary
+     identity (and the full URL via title attr for hover-disclosure) is what
+     fixes the truncated-URL readability bug on the mobile drawer. */
+  .row-label {
+    flex: 1;
+    min-width: 0;
+    color: var(--t1);
+    font-size: 13px;
+    font-family: var(--sans);
+    font-weight: 500;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   /* ── Edit fields (nickname row) ──────────────────────────────────────────── */

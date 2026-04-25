@@ -38,6 +38,23 @@ describe('EndpointRow — edit affordance (AC2)', () => {
     expect(editBtn).not.toBeNull();
   });
 
+  // Mobile drawer fix: read mode shows the derived label, NOT the URL input.
+  // Without this, mobile users (who only see EndpointRow inside EndpointDrawer)
+  // see truncated URLs as primary identity instead of brand/hostname labels.
+  it('read mode shows derived label, not URL input', () => {
+    const { container } = renderRow({ url: 'https://api.example.com', label: 'My API' });
+    expect(container.querySelector('.url-input')).toBeNull();
+    const rowLabel = container.querySelector('.row-label');
+    expect(rowLabel).not.toBeNull();
+    expect(rowLabel?.textContent).toBe('My API');
+  });
+
+  it('read mode label exposes full URL via title attribute (hover-disclose)', () => {
+    const { container } = renderRow({ url: 'https://api.example.com/v1/health', label: 'api.example.com' });
+    const rowLabel = container.querySelector('.row-label');
+    expect(rowLabel?.getAttribute('title')).toBe('https://api.example.com/v1/health');
+  });
+
   it('clicking pencil reveals URL input and nickname input', async () => {
     const { container } = renderRow();
     const editBtn = container.querySelector('.edit-btn') as HTMLButtonElement;
