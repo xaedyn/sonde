@@ -10,6 +10,7 @@
   import { endpointStore } from '$lib/stores/endpoints';
   import { clearPersistedSettings } from '$lib/utils/persistence';
   import { DEFAULT_SETTINGS } from '$lib/types';
+  import { clampCap, MAX_CAP } from '$lib/limits';
   import { tokens } from '$lib/tokens';
   import { REGIONS, REGION_DISPLAY_NAMES, detectRegion } from '$lib/regional-defaults';
   import type { Region } from '$lib/regional-defaults';
@@ -122,8 +123,8 @@
 
   function applyCap(e: Event): void {
     const raw = parseInt((e.target as HTMLInputElement).value, 10);
-    if (isNaN(raw)) return;
-    const val = Math.max(0, Math.min(10000, raw));
+    if (isNaN(raw)) return; // preserve previous value on empty input — matches sibling apply functions
+    const val = clampCap(raw);
     cap = val;
     settingsStore.update(s => ({ ...s, cap: val }));
   }
@@ -282,9 +283,9 @@
       <div class="field">
         <label class="field-label" for="setting-cap">
           Round cap
-          <span class="field-hint">0 = unlimited</span>
+          <span class="field-hint">1–{MAX_CAP} rounds</span>
         </label>
-        <input id="setting-cap" type="number" class="field-input" min="0" max="10000" step="1" bind:value={cap} onchange={applyCap} />
+        <input id="setting-cap" type="number" class="field-input" min="1" max={MAX_CAP} step="1" bind:value={cap} onchange={applyCap} />
       </div>
 
       <!-- CORS mode -->

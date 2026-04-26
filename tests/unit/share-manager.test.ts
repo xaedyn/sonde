@@ -7,6 +7,7 @@ import {
   truncatePayload,
 } from '../../src/lib/share/share-manager';
 import type { SharePayload } from '../../src/lib/types';
+import { MAX_CAP } from '../../src/lib/limits';
 
 // Mock window.location for URL-based tests
 Object.defineProperty(global, 'window', {
@@ -25,7 +26,7 @@ describe('share-manager', () => {
     v: 1,
     mode: 'config',
     endpoints: [{ url: 'https://example.com', enabled: true }],
-    settings: { timeout: 5000, delay: 1000, cap: 0, corsMode: 'no-cors' },
+    settings: { timeout: 5000, delay: 1000, cap: MAX_CAP, corsMode: 'no-cors' },
   };
 
   const resultsPayload: SharePayload = {
@@ -35,7 +36,7 @@ describe('share-manager', () => {
       { url: 'https://google.com', enabled: true },
       { url: 'https://1.1.1.1', enabled: true },
     ],
-    settings: { timeout: 5000, delay: 1000, cap: 0, corsMode: 'no-cors' },
+    settings: { timeout: 5000, delay: 1000, cap: MAX_CAP, corsMode: 'no-cors' },
     results: [
       {
         samples: Array.from({ length: 50 }, (_, i) => ({
@@ -131,7 +132,7 @@ describe('share-manager', () => {
       return LZString.compressToEncodedURIComponent(JSON.stringify(data));
     }
 
-    const validSettings = { timeout: 5000, delay: 0, cap: 0, corsMode: 'no-cors' };
+    const validSettings = { timeout: 5000, delay: 0, cap: MAX_CAP, corsMode: 'no-cors' };
 
     // AC #1 — URL scheme enforcement
     it('rejects javascript: URLs', async () => {
@@ -213,7 +214,7 @@ describe('share-manager', () => {
       const encoded = await manualEncode({
         v: 1, mode: 'config',
         endpoints: [{ url: 'https://example.com', enabled: true }],
-        settings: { timeout: Infinity, delay: 0, cap: 0, corsMode: 'no-cors' },
+        settings: { timeout: Infinity, delay: 0, cap: MAX_CAP, corsMode: 'no-cors' },
       });
       expect(decodeSharePayload(encoded)).toBeNull();
     });
@@ -222,7 +223,7 @@ describe('share-manager', () => {
       const encoded = await manualEncode({
         v: 1, mode: 'config',
         endpoints: [{ url: 'https://example.com', enabled: true }],
-        settings: { timeout: 5000, delay: -1, cap: 0, corsMode: 'no-cors' },
+        settings: { timeout: 5000, delay: -1, cap: MAX_CAP, corsMode: 'no-cors' },
       });
       expect(decodeSharePayload(encoded)).toBeNull();
     });
@@ -241,7 +242,7 @@ describe('share-manager', () => {
       const encoded = await manualEncode({
         v: 1, mode: 'config',
         endpoints: [{ url: 'https://example.com', enabled: true }],
-        settings: { timeout: 5000, delay: 0, cap: 0, corsMode: 'no-cors', burstRounds: Infinity },
+        settings: { timeout: 5000, delay: 0, cap: MAX_CAP, corsMode: 'no-cors', burstRounds: Infinity },
       });
       expect(decodeSharePayload(encoded)).toBeNull();
     });
@@ -250,7 +251,7 @@ describe('share-manager', () => {
       const encoded = await manualEncode({
         v: 1, mode: 'config',
         endpoints: [{ url: 'https://example.com', enabled: true }],
-        settings: { timeout: 5000, delay: 0, cap: 0, corsMode: 'no-cors', monitorDelay: -100 },
+        settings: { timeout: 5000, delay: 0, cap: MAX_CAP, corsMode: 'no-cors', monitorDelay: -100 },
       });
       expect(decodeSharePayload(encoded)).toBeNull();
     });
@@ -259,7 +260,7 @@ describe('share-manager', () => {
       const encoded = await manualEncode({
         v: 1, mode: 'config',
         endpoints: [{ url: 'https://example.com', enabled: true }],
-        settings: { timeout: 5000, delay: 0, cap: 0, corsMode: 'no-cors', burstRounds: 50, monitorDelay: 3000 },
+        settings: { timeout: 5000, delay: 0, cap: MAX_CAP, corsMode: 'no-cors', burstRounds: 50, monitorDelay: 3000 },
       });
       expect(decodeSharePayload(encoded)).not.toBeNull();
     });
@@ -268,7 +269,7 @@ describe('share-manager', () => {
       const encoded = await manualEncode({
         v: 1, mode: 'config',
         endpoints: [{ url: 'https://example.com', enabled: true }],
-        settings: { timeout: 5000, delay: 0, cap: 0, corsMode: 'no-cors' },
+        settings: { timeout: 5000, delay: 0, cap: MAX_CAP, corsMode: 'no-cors' },
       });
       expect(decodeSharePayload(encoded)).not.toBeNull();
     });
@@ -371,7 +372,7 @@ describe('share-manager', () => {
       const encoded = await manualEncode({
         v: 1, mode: 'config',
         endpoints: [{ url: 'https://example.com', enabled: true }],
-        settings: { timeout: 5000, delay: 0, cap: 0, corsMode: 'same-origin' },
+        settings: { timeout: 5000, delay: 0, cap: MAX_CAP, corsMode: 'same-origin' },
       });
       expect(decodeSharePayload(encoded)).toBeNull();
     });
@@ -380,7 +381,7 @@ describe('share-manager', () => {
       const encoded = await manualEncode({
         v: 1, mode: 'config',
         endpoints: [{ url: 'https://example.com', enabled: true }],
-        settings: { timeout: 5000, delay: 0, cap: 0 },
+        settings: { timeout: 5000, delay: 0, cap: MAX_CAP },
       });
       expect(decodeSharePayload(encoded)).toBeNull();
     });
@@ -389,7 +390,26 @@ describe('share-manager', () => {
       const encoded = await manualEncode({
         v: 1, mode: 'config',
         endpoints: [{ url: 'https://example.com', enabled: true }],
-        settings: { timeout: 5000, delay: 0, cap: 0, corsMode: 'cors' },
+        settings: { timeout: 5000, delay: 0, cap: MAX_CAP, corsMode: 'cors' },
+      });
+      expect(decodeSharePayload(encoded)).not.toBeNull();
+    });
+
+    // AC4 — cap > MAX_CAP rejection (round-cap-hardening)
+    it('rejects cap > MAX_CAP (3601)', async () => {
+      const encoded = await manualEncode({
+        v: 1, mode: 'config',
+        endpoints: [{ url: 'https://example.com', enabled: true }],
+        settings: { timeout: 5000, delay: 0, cap: MAX_CAP + 1, corsMode: 'no-cors' },
+      });
+      expect(decodeSharePayload(encoded)).toBeNull();
+    });
+
+    it('accepts cap === MAX_CAP (3600) as boundary value', async () => {
+      const encoded = await manualEncode({
+        v: 1, mode: 'config',
+        endpoints: [{ url: 'https://example.com', enabled: true }],
+        settings: { timeout: 5000, delay: 0, cap: MAX_CAP, corsMode: 'no-cors' },
       });
       expect(decodeSharePayload(encoded)).not.toBeNull();
     });
@@ -399,7 +419,7 @@ describe('share-manager', () => {
       const payload: SharePayload = {
         v: 1, mode: 'results',
         endpoints: [{ url: 'https://example.com', enabled: true }],
-        settings: { timeout: 5000, delay: 0, cap: 0, corsMode: 'no-cors' },
+        settings: { timeout: 5000, delay: 0, cap: MAX_CAP, corsMode: 'no-cors' },
         results: [{ samples: [{ round: 1, latency: 50, status: 'ok' as const }] }],
       };
       const truncated = truncatePayload(payload, 1);

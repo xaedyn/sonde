@@ -29,6 +29,7 @@ import { measurementStore } from '../../../src/lib/stores/measurements';
 import { uiStore } from '../../../src/lib/stores/ui';
 import { DEFAULT_SETTINGS } from '../../../src/lib/types';
 import type { SharePayload } from '../../../src/lib/types';
+import { MAX_CAP } from '../../../src/lib/limits';
 
 // Each field is deliberately distinct from DEFAULT_SETTINGS so the cadence-
 // strip invariant fails closed: if a future change accidentally writes any
@@ -40,7 +41,7 @@ const MALICIOUS_CADENCE = {
   delay: 9999,
   burstRounds: 500,
   monitorDelay: 1,
-  cap: 9999,
+  cap: 3000,  // in-range: passes schema validation → exercises apply-drops invariant (PR #81)
   corsMode: 'cors' as const,
 };
 
@@ -79,6 +80,48 @@ beforeEach(() => {
   settingsStore.reset();
   measurementStore.reset();
   uiStore.reset();
+});
+
+describe('hash-router: share-payload schema rejects cap > MAX_CAP', () => {
+  // AC4: schema-reject test — cap=3601 must be rejected by validateSharePayload
+  // (This is distinct from the apply-drops test below, which uses cap=3000.
+  // Both must exist; collapsing them loses coverage of the PR #81 invariant.)
+  it('decodeSharePayload returns null for cap > MAX_CAP', async () => {
+    const { decodeSharePayload } = await import('../../../src/lib/share/share-manager');
+    const { default: LZString } = await import('lz-string');
+    const malicious = {
+      v: 1,
+      mode: 'config',
+      endpoints: [{ url: 'https://attacker.example.com', enabled: true }],
+      settings: {
+        timeout: 5000,
+        delay: 0,
+        cap: MAX_CAP + 1, // 3601 — above MAX_CAP, must be rejected
+        corsMode: 'no-cors',
+      },
+    };
+    const encoded = LZString.compressToEncodedURIComponent(JSON.stringify(malicious));
+    // AC4: validateSharePayload returns null for cap > MAX_CAP
+    expect(decodeSharePayload(encoded)).toBeNull();
+  });
+
+  it('decodeSharePayload accepts cap === MAX_CAP (boundary)', async () => {
+    const { decodeSharePayload } = await import('../../../src/lib/share/share-manager');
+    const { default: LZString } = await import('lz-string');
+    const atBoundary = {
+      v: 1,
+      mode: 'config',
+      endpoints: [{ url: 'https://example.com', enabled: true }],
+      settings: {
+        timeout: 5000,
+        delay: 0,
+        cap: MAX_CAP, // 3600 — at boundary, must be accepted
+        corsMode: 'no-cors',
+      },
+    };
+    const encoded = LZString.compressToEncodedURIComponent(JSON.stringify(atBoundary));
+    expect(decodeSharePayload(encoded)).not.toBeNull();
+  });
 });
 
 describe('hash-router: cadence write invariant', () => {
@@ -235,7 +278,7 @@ describe('hash-router: results-mode invariants', () => {
       v: 1,
       mode: 'results',
       endpoints: [{ url: 'https://attacker.example.com', enabled: true }],
-      settings: { timeout: 5000, delay: 0, cap: 0, corsMode: 'no-cors' },
+      settings: { timeout: 5000, delay: 0, cap: MAX_CAP, corsMode: 'no-cors' },
       // results omitted
     };
     const encoded = encodeSharePayload(malformed as never);

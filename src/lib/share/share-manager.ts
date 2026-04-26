@@ -5,6 +5,7 @@
 import LZString from 'lz-string';
 import type { SharePayload, Settings } from '../types';
 import { isSafeSharedUrl } from '../utils/url-safety';
+import { MAX_CAP } from '../limits';
 
 // ── Share settings helper ──────────────────────────────────────────────────
 // Explicitly destructures only the 6 allowed share fields.
@@ -85,7 +86,7 @@ function validateSharePayload(data: unknown): SharePayload | null {
   const s = settings as Record<string, unknown>;
   if (!isNonNegativeFiniteNumber(s['timeout']) || (s['timeout'] as number) > 15000) return null;
   if (!isNonNegativeFiniteNumber(s['delay'])) return null;
-  if (!isNonNegativeFiniteNumber(s['cap']) || (s['cap'] as number) > 10000) return null;
+  if (!isNonNegativeFiniteNumber(s['cap']) || (s['cap'] as number) > MAX_CAP) return null;
   if (s['burstRounds'] !== undefined && (!isNonNegativeFiniteNumber(s['burstRounds']) || (s['burstRounds'] as number) > 500)) return null;
   if (s['monitorDelay'] !== undefined && (!isNonNegativeFiniteNumber(s['monitorDelay']) || (s['monitorDelay'] as number) > 60000)) return null;
   if (s['corsMode'] !== 'no-cors' && s['corsMode'] !== 'cors') return null;

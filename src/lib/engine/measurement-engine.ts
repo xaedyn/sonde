@@ -12,6 +12,7 @@ import type { WorkerFactory } from './worker-factory';
 import type { Endpoint } from '../types';
 import type { MainToWorkerMessage, WorkerToMainMessage } from '../types';
 import { isSafeProbeUrl } from '../utils/url-safety';
+import { clampCap } from '../limits';
 
 interface ManagedWorker {
   worker: Worker;
@@ -331,7 +332,11 @@ export class MeasurementEngine {
     const { timeout, corsMode, cap } = get(settingsStore);
     const { epoch, roundCounter } = get(measurementStore);
 
-    if (cap > 0 && roundCounter >= cap) {
+    const effectiveCap = clampCap(cap);
+    if (cap !== effectiveCap) {
+      console.warn(`[Chronoscope] settings.cap (${cap}) was out of range at engine read — parse-path bypass suspected`);
+    }
+    if (roundCounter >= effectiveCap) {
       measurementStore.setLifecycle('completed');
       return;
     }

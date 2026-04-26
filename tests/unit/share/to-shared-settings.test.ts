@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { toSharedSettings } from '../../../src/lib/share/share-manager';
 import type { Settings } from '../../../src/lib/types';
+import { MAX_CAP } from '../../../src/lib/limits';
 
 describe('toSharedSettings', () => {
   it('strips region from the output', () => {
@@ -9,7 +10,7 @@ describe('toSharedSettings', () => {
       delay: 0,
       burstRounds: 50,
       monitorDelay: 1000,
-      cap: 0,
+      cap: MAX_CAP,
       corsMode: 'no-cors',
       region: 'europe',
     };
@@ -38,7 +39,7 @@ describe('toSharedSettings', () => {
 
   it('output is assignable to SharePayload[settings] shape', () => {
     const settings: Settings = {
-      timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors',
+      timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: MAX_CAP, corsMode: 'no-cors',
     };
     const shared = toSharedSettings(settings);
     expect(shared).toHaveProperty('timeout');
@@ -49,7 +50,7 @@ describe('toSharedSettings', () => {
 
   it('works when region is undefined (no region field in source)', () => {
     const settings: Settings = {
-      timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors',
+      timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: MAX_CAP, corsMode: 'no-cors',
     };
     const shared = toSharedSettings(settings);
     expect('region' in shared).toBe(false);

@@ -1,10 +1,13 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { MeasurementEngine } from '../../src/lib/engine/measurement-engine';
 import { measurementStore } from '../../src/lib/stores/measurements';
 import { endpointStore } from '../../src/lib/stores/endpoints';
 import { settingsStore } from '../../src/lib/stores/settings';
 import { get } from 'svelte/store';
 import type { WorkerToMainMessage } from '../../src/lib/types';
+import { MAX_CAP } from '../../src/lib/limits';
+import { DEFAULT_SETTINGS } from '../../src/lib/types';
+import type { WorkerFactory } from '../../src/lib/engine/worker-factory';
 
 describe('MeasurementEngine', () => {
   let engine: MeasurementEngine;
@@ -246,5 +249,122 @@ describe('MeasurementEngine', () => {
 
     // Now it should be flushed
     expect(get(measurementStore).endpoints[testId]?.samples).toHaveLength(1);
+  });
+});
+
+// Mock worker that does nothing — we drive the engine via direct _dispatchRound calls,
+// not via the worker round-trip. Required because engine.start() would call
+// new MeasurementWorker() which throws in jsdom (no Vite worker bundle).
+function createMockWorkerFactory(): WorkerFactory {
+  return {
+    create: () => ({
+      addEventListener: () => {},
+      postMessage: () => {},
+      terminate: () => {},
+    }) as unknown as Worker,
+  };
+}
+
+describe('MeasurementEngine — AC1: cap clamping at engine read', () => {
+  let engine: MeasurementEngine;
+  let warnSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    measurementStore.reset();
+    settingsStore.reset();
+    endpointStore.reset();
+    settingsStore.set({ ...DEFAULT_SETTINGS, region: undefined });
+    endpointStore.addEndpoint('https://example.com');
+    engine = new MeasurementEngine(createMockWorkerFactory());
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    engine.stop();
+    warnSpy.mockRestore();
+  });
+
+  // AC1 — devtools-injected cap that maps to MAX_CAP completes at MAX_CAP
+  // (NaN/Infinity/0/large-positive/non-numeric all clamp to MAX_CAP)
+  it.each([
+    { name: 'large positive', injected: 999_999 },
+    { name: 'NaN', injected: NaN },
+    { name: 'zero (legacy unlimited)', injected: 0 },
+    { name: 'Infinity', injected: Infinity },
+    { name: 'string non-numeric', injected: 'abc' as unknown as number },
+  ])('completes at MAX_CAP when settingsStore.cap is injected with $name', ({ injected }) => {
+    settingsStore.update((s) => ({ ...s, cap: injected }));
+
+    // Set lifecycle to 'running' directly — bypasses engine.start() (which would
+    // call new Worker(...) and throw in jsdom). _dispatchRound's lifecycle guard
+    // at line 329 returns early if lifecycle !== 'running', so this is required.
+    measurementStore.setLifecycle('running');
+
+    // Drive the dispatch loop manually. _dispatchRound increments roundCounter
+    // (line 381) only AFTER the cap check (line 334). So we call it MAX_CAP + 1
+    // times; the call where roundCounter === MAX_CAP sees the cap check fire and
+    // transitions to 'completed'.
+    for (let i = 0; i < MAX_CAP + 1; i++) {
+      engine._dispatchRound();
+      if (get(measurementStore).lifecycle === 'completed') break;
+    }
+
+    expect(get(measurementStore).lifecycle).toBe('completed');
+    expect(get(measurementStore).roundCounter).toBe(MAX_CAP);
+
+    // Regression detector: warn must fire because cap !== effectiveCap for every
+    // value in this parameter set (all are outside [1, MAX_CAP]).
+    // NaN triggers the warn because `NaN !== anything` is always true, including
+    // `NaN !== MAX_CAP`. This is the highest-risk case — clampCap returning NaN
+    // would silently disable the cap check, and this assertion catches that.
+    expect(warnSpy).toHaveBeenCalled();
+    expect(warnSpy.mock.calls[0]?.[0]).toContain('settings.cap');
+    expect(warnSpy.mock.calls[0]?.[0]).toContain(String(injected));
+  });
+
+  // AC1 — negative injection clamps to 1 (minimum), completes at round 1
+  it('completes at round 1 when settingsStore.cap is injected with negative', () => {
+    settingsStore.update((s) => ({ ...s, cap: -1 }));
+    measurementStore.setLifecycle('running');
+
+    for (let i = 0; i < 5; i++) {
+      engine._dispatchRound();
+      if (get(measurementStore).lifecycle === 'completed') break;
+    }
+
+    expect(get(measurementStore).lifecycle).toBe('completed');
+    expect(get(measurementStore).roundCounter).toBe(1); // clampCap(-1) = 1
+    expect(warnSpy).toHaveBeenCalled();
+    expect(warnSpy.mock.calls[0]?.[0]).toContain('settings.cap');
+  });
+
+  // AC1 negative — valid in-range cap does NOT trigger the warn
+  it('does not warn when cap is in-range', () => {
+    settingsStore.update((s) => ({ ...s, cap: 100 }));
+    measurementStore.setLifecycle('running');
+
+    for (let i = 0; i < 101; i++) {
+      engine._dispatchRound();
+      if (get(measurementStore).lifecycle === 'completed') break;
+    }
+
+    expect(get(measurementStore).lifecycle).toBe('completed');
+    expect(get(measurementStore).roundCounter).toBe(100);
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  // AC1 — engine completes at exactly MAX_CAP with DEFAULT_SETTINGS.cap
+  it('completes at exactly MAX_CAP with DEFAULT_SETTINGS.cap (no injection)', () => {
+    // settingsStore was reset to DEFAULT_SETTINGS in beforeEach (cap = MAX_CAP after this PR)
+    measurementStore.setLifecycle('running');
+
+    for (let i = 0; i < MAX_CAP + 1; i++) {
+      engine._dispatchRound();
+      if (get(measurementStore).lifecycle === 'completed') break;
+    }
+
+    expect(get(measurementStore).lifecycle).toBe('completed');
+    expect(get(measurementStore).roundCounter).toBe(MAX_CAP);
+    expect(warnSpy).not.toHaveBeenCalled(); // valid value, no warn
   });
 });

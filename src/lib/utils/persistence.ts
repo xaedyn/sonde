@@ -9,6 +9,7 @@ import { DEFAULT_SETTINGS } from '../types';
 import { isValidRegion } from '../regional-defaults';
 import { isSafeProbeUrl } from './url-safety';
 import { isValidNickname } from '../endpoint/displayLabel';
+import { clampCap } from '../limits';
 import type {
   ActiveView,
   LiveTimeRange,
@@ -205,7 +206,7 @@ function readSettingsField(record: Record<string, unknown>): Settings {
     delay:           typeof raw['delay']           === 'number' ? raw['delay']           : DEFAULT_SETTINGS.delay,
     burstRounds:     typeof raw['burstRounds']     === 'number' ? raw['burstRounds']     : DEFAULT_SETTINGS.burstRounds,
     monitorDelay:    typeof raw['monitorDelay']    === 'number' ? raw['monitorDelay']    : DEFAULT_SETTINGS.monitorDelay,
-    cap:             typeof raw['cap']             === 'number' ? raw['cap']             : DEFAULT_SETTINGS.cap,
+    cap:             clampCap(raw['cap']),
     healthThreshold: typeof raw['healthThreshold'] === 'number' ? raw['healthThreshold'] : DEFAULT_SETTINGS.healthThreshold,
     corsMode,
     ...(region !== undefined ? { region } : {}),

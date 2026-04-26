@@ -3,6 +3,7 @@
 // share payloads are defined here. No logic — only types and interfaces.
 
 import type { Region } from './regional-defaults';
+import { MAX_CAP } from './limits';
 
 // ── Lifecycle ──────────────────────────────────────────────────────────────
 export type TestLifecycleState =
@@ -203,7 +204,7 @@ export const DEFAULT_SETTINGS: Settings = {
   delay: 0,
   burstRounds: 50,
   monitorDelay: 1000,
-  cap: 0,
+  cap: MAX_CAP, // 3600 — sessions complete after 1 hour by default
   corsMode: 'no-cors',
   healthThreshold: 120,
 };

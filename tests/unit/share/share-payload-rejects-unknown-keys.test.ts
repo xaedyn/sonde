@@ -16,6 +16,7 @@ import {
   decodeSharePayload,
 } from '../../../src/lib/share/share-manager';
 import type { SharePayload } from '../../../src/lib/types';
+import { MAX_CAP } from '../../../src/lib/limits';
 
 // ── Per-entry rejection ────────────────────────────────────────────────────
 
@@ -27,7 +28,7 @@ describe('validateSharePayload: per-entry unknown key rejection', () => {
       endpoints: [
         { url: 'https://example.com', enabled: true, nickname: 'My Server' },
       ],
-      settings: { timeout: 5000, delay: 0, cap: 0, corsMode: 'no-cors' as const },
+      settings: { timeout: 5000, delay: 0, cap: MAX_CAP, corsMode: 'no-cors' as const },
     };
     const encoded = encodeSharePayload(payload as never);
     expect(decodeSharePayload(encoded)).toBeNull();
@@ -40,7 +41,7 @@ describe('validateSharePayload: per-entry unknown key rejection', () => {
       endpoints: [
         { url: 'https://example.com', enabled: true, extra: 'injected' },
       ],
-      settings: { timeout: 5000, delay: 0, cap: 0, corsMode: 'no-cors' as const },
+      settings: { timeout: 5000, delay: 0, cap: MAX_CAP, corsMode: 'no-cors' as const },
     };
     const encoded = encodeSharePayload(payload as never);
     expect(decodeSharePayload(encoded)).toBeNull();
@@ -51,7 +52,7 @@ describe('validateSharePayload: per-entry unknown key rejection', () => {
       v: 1,
       mode: 'config',
       endpoints: [{ url: 'https://example.com', enabled: true }],
-      settings: { timeout: 5000, delay: 0, cap: 0, corsMode: 'no-cors' },
+      settings: { timeout: 5000, delay: 0, cap: MAX_CAP, corsMode: 'no-cors' },
     };
     const encoded = encodeSharePayload(payload);
     expect(decodeSharePayload(encoded)).not.toBeNull();
@@ -66,7 +67,7 @@ describe('validateSharePayload: top-level unknown key rejection', () => {
       v: 1,
       mode: 'config',
       endpoints: [{ url: 'https://example.com', enabled: true }],
-      settings: { timeout: 5000, delay: 0, cap: 0, corsMode: 'no-cors' as const },
+      settings: { timeout: 5000, delay: 0, cap: MAX_CAP, corsMode: 'no-cors' as const },
       nicknames: { 'https://example.com': 'My Server' },
     };
     const encoded = encodeSharePayload(payload as never);
@@ -78,7 +79,7 @@ describe('validateSharePayload: top-level unknown key rejection', () => {
       v: 1,
       mode: 'config',
       endpoints: [{ url: 'https://example.com', enabled: true }],
-      settings: { timeout: 5000, delay: 0, cap: 0, corsMode: 'no-cors' as const },
+      settings: { timeout: 5000, delay: 0, cap: MAX_CAP, corsMode: 'no-cors' as const },
       injected: 'arbitrary',
     };
     const encoded = encodeSharePayload(payload as never);
@@ -90,7 +91,7 @@ describe('validateSharePayload: top-level unknown key rejection', () => {
       v: 1,
       mode: 'config',
       endpoints: [{ url: 'https://example.com', enabled: true }],
-      settings: { timeout: 5000, delay: 0, cap: 0, corsMode: 'no-cors' },
+      settings: { timeout: 5000, delay: 0, cap: MAX_CAP, corsMode: 'no-cors' },
     };
     const encoded = encodeSharePayload(payload);
     expect(decodeSharePayload(encoded)).not.toBeNull();
@@ -101,7 +102,7 @@ describe('validateSharePayload: top-level unknown key rejection', () => {
       v: 1,
       mode: 'results',
       endpoints: [{ url: 'https://example.com', enabled: true }],
-      settings: { timeout: 5000, delay: 0, cap: 0, corsMode: 'no-cors' },
+      settings: { timeout: 5000, delay: 0, cap: MAX_CAP, corsMode: 'no-cors' },
       results: [
         {
           samples: [{ round: 0, latency: 42, status: 'ok' }],
@@ -121,7 +122,7 @@ describe('validateSharePayload: PR #81 invariant preserved', () => {
       v: 1,
       mode: 'results',
       endpoints: [{ url: 'https://example.com', enabled: true }],
-      settings: { timeout: 5000, delay: 0, cap: 0, corsMode: 'no-cors' as const },
+      settings: { timeout: 5000, delay: 0, cap: MAX_CAP, corsMode: 'no-cors' as const },
       // results intentionally omitted
     };
     const encoded = encodeSharePayload(payload as never);

@@ -6,6 +6,7 @@ import {
   clearPersistedSettings,
 } from '../../src/lib/utils/persistence';
 import type { PersistedSettings } from '../../src/lib/types';
+import { MAX_CAP } from '../../src/lib/limits';
 
 const localStorageMock = (() => {
   let store: Record<string, string> = {};
@@ -44,7 +45,7 @@ describe('persistence', () => {
       endpoints: [{ url: 'https://a.example', enabled: true }],
       settings: {
         timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000,
-        cap: 0, corsMode: 'no-cors', healthThreshold: 200,
+        cap: MAX_CAP, corsMode: 'no-cors', healthThreshold: 200,
       },
       ui: {
         expandedCards: ['ep-1'],
@@ -69,7 +70,7 @@ describe('persistence', () => {
     const bad = {
       version: 10,
       endpoints: [],
-      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: MAX_CAP, corsMode: 'no-cors', healthThreshold: 120 },
       ui: { expandedCards: [], activeView: 'atlas', focusedEndpointId: null, liveOptions: { split: false, timeRange: '5m' }, terminalFilters: [] },
     };
     localStorageMock.setItem(PRIMARY_KEY, JSON.stringify(bad));
@@ -85,7 +86,7 @@ describe('persistence', () => {
     const v9 = {
       version: 9,
       endpoints: [{ url: 'https://example.com', enabled: true }],
-      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: MAX_CAP, corsMode: 'no-cors', healthThreshold: 120 },
       ui: { expandedCards: [], activeView: 'overview', focusedEndpointId: null, liveOptions: { split: false, timeRange: '5m' }, terminalFilters: [] },
     };
     localStorageMock.setItem(PRIMARY_KEY, JSON.stringify(v9));
@@ -111,7 +112,7 @@ describe('persistence', () => {
     const v9 = {
       version: 9,
       endpoints: [],
-      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: MAX_CAP, corsMode: 'no-cors', healthThreshold: 120 },
       ui: { expandedCards: [], activeView: 'overview', focusedEndpointId: null, liveOptions: { split: false, timeRange: '5m' }, terminalFilters: [] },
     };
     localStorageMock.setItem(LEGACY_KEY, JSON.stringify(v9));
@@ -127,7 +128,7 @@ describe('persistence', () => {
     const v10: PersistedSettings = {
       version: 10,
       endpoints: [{ url: 'https://example.com', enabled: true }],
-      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: MAX_CAP, corsMode: 'no-cors', healthThreshold: 120 },
       ui: { expandedCards: [], activeView: 'overview', focusedEndpointId: null, liveOptions: { split: false, timeRange: '5m' }, terminalFilters: [] },
     };
     localStorageMock.setItem(LEGACY_KEY, JSON.stringify(v10));
@@ -146,7 +147,7 @@ describe('persistence', () => {
     const v10: PersistedSettings = {
       version: 10,
       endpoints: [{ url: 'https://example.com', enabled: true }],
-      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: MAX_CAP, corsMode: 'no-cors', healthThreshold: 120 },
       ui: { expandedCards: [], activeView: 'overview', focusedEndpointId: null, liveOptions: { split: false, timeRange: '5m' }, terminalFilters: [] },
     };
     localStorageMock.setItem(LEGACY_KEY, JSON.stringify(v10));
@@ -180,7 +181,7 @@ describe('persistence', () => {
     const v10 = {
       version: 10,
       endpoints: [{ url: 'https://example.com', enabled: true }],
-      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: MAX_CAP, corsMode: 'no-cors', healthThreshold: 120 },
       ui: { expandedCards: [], activeView: 'overview', focusedEndpointId: null, liveOptions: { split: false, timeRange: '5m' }, terminalFilters: [] },
     };
     const result = migrateSettings(v10);
@@ -194,7 +195,7 @@ describe('persistence', () => {
     const future = {
       version: 99,
       endpoints: [],
-      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: MAX_CAP, corsMode: 'no-cors', healthThreshold: 120 },
       ui: { expandedCards: [], activeView: 'overview' },
     };
     expect(migrateSettings(future)).toBeNull();
@@ -215,7 +216,7 @@ describe('persistence', () => {
     const v9 = {
       version: 9,
       endpoints: [],
-      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: MAX_CAP, corsMode: 'no-cors', healthThreshold: 120 },
       ui: { expandedCards: [], activeView: 'overview', focusedEndpointId: null, liveOptions: { split: false, timeRange: '5m' }, terminalFilters: [] },
     };
     expect(migrateSettings(v9)).toBeNull();
@@ -236,7 +237,7 @@ describe('persistence', () => {
     const v10 = {
       version: 10,
       endpoints: [{ url: 'https://example.com', enabled: true }],
-      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: MAX_CAP, corsMode: 'no-cors', healthThreshold: 120 },
       ui: { expandedCards: ['ep-1'], activeView: 'diagnose', focusedEndpointId: 'ep-1', liveOptions: { split: true, timeRange: '15m' }, terminalFilters: ['timeout'] },
     };
     const result = migrateSettings(v10);
@@ -255,7 +256,7 @@ describe('persistence', () => {
     const v11 = {
       version: 11,
       endpoints: [{ url: 'https://example.com', enabled: true, nickname: 'My Server' }],
-      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: MAX_CAP, corsMode: 'no-cors', healthThreshold: 120 },
       ui: { expandedCards: [], activeView: 'overview', focusedEndpointId: null, liveOptions: { split: false, timeRange: '5m' }, terminalFilters: [] },
     };
     localStorageMock.setItem(PRIMARY_KEY, JSON.stringify(v11));
@@ -270,7 +271,7 @@ describe('persistence', () => {
     const v11 = {
       version: 11,
       endpoints: [{ url: 'https://example.com', enabled: true, nickname: longNick }],
-      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: MAX_CAP, corsMode: 'no-cors', healthThreshold: 120 },
       ui: { expandedCards: [], activeView: 'overview', focusedEndpointId: null, liveOptions: { split: false, timeRange: '5m' }, terminalFilters: [] },
     };
     localStorageMock.setItem(PRIMARY_KEY, JSON.stringify(v11));
@@ -284,7 +285,7 @@ describe('persistence', () => {
     const v11 = {
       version: 11,
       endpoints: [{ url: 'https://example.com', enabled: true, nickname: 'bad\u202Enick' }],
-      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: MAX_CAP, corsMode: 'no-cors', healthThreshold: 120 },
       ui: { expandedCards: [], activeView: 'overview', focusedEndpointId: null, liveOptions: { split: false, timeRange: '5m' }, terminalFilters: [] },
     };
     localStorageMock.setItem(PRIMARY_KEY, JSON.stringify(v11));
@@ -298,7 +299,7 @@ describe('persistence', () => {
     const v11 = {
       version: 11,
       endpoints: [{ url: 'https://example.com', enabled: true, nickname: 'bad\u0000nick' }],
-      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: MAX_CAP, corsMode: 'no-cors', healthThreshold: 120 },
       ui: { expandedCards: [], activeView: 'overview', focusedEndpointId: null, liveOptions: { split: false, timeRange: '5m' }, terminalFilters: [] },
     };
     localStorageMock.setItem(PRIMARY_KEY, JSON.stringify(v11));
@@ -312,7 +313,7 @@ describe('persistence', () => {
     const v11 = {
       version: 11,
       endpoints: [{ url: 'https://example.com', enabled: true, nickname: 'zero\u200Bwidth' }],
-      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: MAX_CAP, corsMode: 'no-cors', healthThreshold: 120 },
       ui: { expandedCards: [], activeView: 'overview', focusedEndpointId: null, liveOptions: { split: false, timeRange: '5m' }, terminalFilters: [] },
     };
     localStorageMock.setItem(PRIMARY_KEY, JSON.stringify(v11));
@@ -326,7 +327,7 @@ describe('persistence', () => {
     const v11 = {
       version: 11,
       endpoints: [{ url: 'https://example.com', enabled: true, nickname: 'line\u2028sep' }],
-      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: MAX_CAP, corsMode: 'no-cors', healthThreshold: 120 },
       ui: { expandedCards: [], activeView: 'overview', focusedEndpointId: null, liveOptions: { split: false, timeRange: '5m' }, terminalFilters: [] },
     };
     localStorageMock.setItem(PRIMARY_KEY, JSON.stringify(v11));
@@ -340,7 +341,7 @@ describe('persistence', () => {
     const v11 = {
       version: 11,
       endpoints: [{ url: 'https://example.com', enabled: true, nickname: 42 }],
-      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: MAX_CAP, corsMode: 'no-cors', healthThreshold: 120 },
       ui: { expandedCards: [], activeView: 'overview', focusedEndpointId: null, liveOptions: { split: false, timeRange: '5m' }, terminalFilters: [] },
     };
     localStorageMock.setItem(PRIMARY_KEY, JSON.stringify(v11));
@@ -354,7 +355,7 @@ describe('persistence', () => {
     const v11 = {
       version: 11,
       endpoints: [{ url: 'https://example.com', enabled: true, nickname: '   ' }],
-      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: MAX_CAP, corsMode: 'no-cors', healthThreshold: 120 },
       ui: { expandedCards: [], activeView: 'overview', focusedEndpointId: null, liveOptions: { split: false, timeRange: '5m' }, terminalFilters: [] },
     };
     localStorageMock.setItem(PRIMARY_KEY, JSON.stringify(v11));
@@ -368,7 +369,7 @@ describe('persistence', () => {
     const v9 = {
       version: 9,
       endpoints: [{ url: 'https://example.com', enabled: true }],
-      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: MAX_CAP, corsMode: 'no-cors', healthThreshold: 120 },
       ui: { expandedCards: [], activeView: 'overview', focusedEndpointId: null, liveOptions: { split: false, timeRange: '5m' }, terminalFilters: [] },
     };
     localStorageMock.setItem(PRIMARY_KEY, JSON.stringify(v9));
@@ -400,4 +401,82 @@ describe('persistence', () => {
       localStorageMock.removeItem = originalRemove;
     }
   });
+});
+
+describe('persistence — cap clamping at parse boundary (AC2)', () => {
+  // Values that survive JSON round-trip: use localStorage path
+  it.each([
+    { label: 'cap: 0 (legacy unlimited)', stored: 0, expected: MAX_CAP },
+    { label: 'cap: -1 (negative)', stored: -1, expected: 1 },
+    { label: 'cap: 99_999 (way above MAX_CAP)', stored: 99_999, expected: MAX_CAP },
+    { label: 'cap: "abc" (string)', stored: 'abc', expected: MAX_CAP },
+  ] as { label: string; stored: unknown; expected: number }[])(
+    '$label → clamps to expected',
+    ({ stored, expected }) => {
+      const payload = {
+        version: 11,
+        endpoints: [],
+        settings: {
+          timeout: 5000,
+          delay: 0,
+          burstRounds: 50,
+          monitorDelay: 1000,
+          cap: stored,
+          corsMode: 'no-cors',
+          healthThreshold: 120,
+        },
+        ui: {
+          expandedCards: [],
+          activeView: 'overview',
+          focusedEndpointId: null,
+          liveOptions: { split: false, timeRange: '5m' },
+          terminalFilters: [],
+        },
+      };
+      localStorageMock.setItem(PRIMARY_KEY, JSON.stringify(payload));
+      const result = loadPersistedSettings();
+      expect(result).not.toBeNull();
+      expect(result?.settings.cap).toBe(expected);
+      expect(result?.settings.cap).toBeGreaterThanOrEqual(1);
+      expect(result?.settings.cap).toBeLessThanOrEqual(MAX_CAP);
+    }
+  );
+
+  // Values that do NOT survive JSON serialization (NaN/Infinity → null via JSON.stringify):
+  // Bypass localStorage and call migrateSettings directly with in-memory record.
+  // The AC's intent is to verify clamping; the JSON medium is irrelevant.
+  it.each([
+    { label: 'NaN (would disable engine check if returned)', cap: NaN },
+    { label: 'Infinity', cap: Infinity },
+    { label: '-Infinity', cap: -Infinity },
+  ] as { label: string; cap: number }[])(
+    'migrateSettings clamps $label to MAX_CAP (bypasses JSON to test non-serializable values)',
+    ({ cap }) => {
+      // migrateSettings is exported and accepts unknown; inject non-serializable cap directly
+      const record = {
+        version: 11,
+        endpoints: [],
+        settings: {
+          timeout: 5000,
+          delay: 0,
+          burstRounds: 50,
+          monitorDelay: 1000,
+          cap,  // NaN / Infinity / -Infinity — not JSON-serializable
+          corsMode: 'no-cors',
+          healthThreshold: 120,
+        },
+        ui: {
+          expandedCards: [],
+          activeView: 'overview',
+          focusedEndpointId: null,
+          liveOptions: { split: false, timeRange: '5m' },
+          terminalFilters: [],
+        },
+      };
+      const result = migrateSettings(record);
+      expect(result).not.toBeNull();
+      expect(result?.settings.cap).toBe(MAX_CAP);
+      expect(Number.isFinite(result?.settings.cap)).toBe(true);
+    }
+  );
 });

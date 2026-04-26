@@ -16,9 +16,8 @@
   let errorCount = $derived({ errors: $measurementStore.errorCount, timeouts: $measurementStore.timeoutCount });
 
   let progressLabel = $derived.by(() => {
-    const total = cap > 0 ? cap : '∞';
     const { errors, timeouts } = errorCount;
-    const parts: string[] = [`${roundCounter} of ${total} complete`];
+    const parts: string[] = [`${roundCounter} of ${cap} complete`];
     if (errors > 0) parts.push(`${errors} error${errors === 1 ? '' : 's'}`);
     if (timeouts > 0) parts.push(`${timeouts} timeout${timeouts === 1 ? '' : 's'}`);
     if (startedAt !== null) parts.push(`${formatElapsed(elapsed)} elapsed`);

@@ -4,6 +4,7 @@ import { applyPersistedSettings } from '../../../src/lib/utils/apply-persisted-s
 import { endpointStore } from '../../../src/lib/stores/endpoints';
 import { settingsStore } from '../../../src/lib/stores/settings';
 import type { PersistedSettings } from '../../../src/lib/types';
+import { MAX_CAP } from '../../../src/lib/limits';
 
 beforeEach(() => {
   // Start each test from a placeholder state to confirm applyPersistedSettings overrides it.
@@ -17,7 +18,7 @@ describe('applyPersistedSettings — G6 label hydration via brandFor', () => {
     const persisted: PersistedSettings = {
       version: 10,
       endpoints: [{ url: 'https://www.google.com', enabled: true }],
-      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: MAX_CAP, corsMode: 'no-cors', healthThreshold: 120 },
       ui: { expandedCards: [], activeView: 'overview' },
     };
 
@@ -33,7 +34,7 @@ describe('applyPersistedSettings — G6 label hydration via brandFor', () => {
     const persisted: PersistedSettings = {
       version: 10,
       endpoints: [{ url: 'https://WWW.Google.COM/', enabled: true }],
-      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: MAX_CAP, corsMode: 'no-cors', healthThreshold: 120 },
       ui: { expandedCards: [], activeView: 'overview' },
     };
 
@@ -48,7 +49,7 @@ describe('applyPersistedSettings — G6 label hydration via brandFor', () => {
     const persisted: PersistedSettings = {
       version: 10,
       endpoints: [{ url: 'https://unknown-domain.example.com', enabled: true }],
-      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: MAX_CAP, corsMode: 'no-cors', healthThreshold: 120 },
       ui: { expandedCards: [], activeView: 'overview' },
     };
 
@@ -67,7 +68,7 @@ describe('applyPersistedSettings — G6 label hydration via brandFor', () => {
     const persisted: PersistedSettings = {
       version: 10,
       endpoints: [{ url: '  https://www.google.com  ', enabled: true }],
-      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', healthThreshold: 120 },
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: MAX_CAP, corsMode: 'no-cors', healthThreshold: 120 },
       ui: { expandedCards: [], activeView: 'overview' },
     };
 
@@ -85,7 +86,7 @@ describe('applyPersistedSettings — AC2 empty-endpoints contract (§6.2)', () =
     const persisted: PersistedSettings = {
       version: 10,
       endpoints: [],
-      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors' },
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: MAX_CAP, corsMode: 'no-cors' },
       ui: { expandedCards: [], activeView: 'split' },
     };
 
@@ -102,7 +103,7 @@ describe('applyPersistedSettings — AC2 empty-endpoints contract (§6.2)', () =
         { url: 'https://user-added.example', enabled: true },
         { url: 'https://another.example', enabled: false },
       ],
-      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors' },
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: MAX_CAP, corsMode: 'no-cors' },
       ui: { expandedCards: [], activeView: 'split' },
     };
 
@@ -120,7 +121,7 @@ describe('applyPersistedSettings — AC2 empty-endpoints contract (§6.2)', () =
     const persisted: PersistedSettings = {
       version: 10,
       endpoints: [],
-      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: 0, corsMode: 'no-cors', region: 'europe' },
+      settings: { timeout: 5000, delay: 0, burstRounds: 50, monitorDelay: 1000, cap: MAX_CAP, corsMode: 'no-cors', region: 'europe' },
       ui: { expandedCards: [], activeView: 'split' },
     };
 

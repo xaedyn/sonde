@@ -16,6 +16,7 @@ import type {
 } from '../../src/lib/types';
 import { DEFAULT_SETTINGS } from '../../src/lib/types';
 import { REGIONAL_DEFAULTS } from '../../src/lib/regional-defaults';
+import { MAX_CAP } from '../../src/lib/limits';
 
 describe('types', () => {
   it('TestLifecycleState is a valid discriminated union', () => {
@@ -70,7 +71,7 @@ describe('types', () => {
       v: 1,
       mode: 'results',
       endpoints: [{ url: 'https://example.com', enabled: true }],
-      settings: { timeout: 5000, delay: 1000, cap: 0, corsMode: 'no-cors' },
+      settings: { timeout: 5000, delay: 1000, cap: MAX_CAP, corsMode: 'no-cors' },
       results: [{
         samples: [{ round: 0, latency: 42, status: 'ok' }],
       }],
@@ -83,7 +84,7 @@ describe('types', () => {
     expect(DEFAULT_SETTINGS.delay).toBe(0);
     expect(DEFAULT_SETTINGS.burstRounds).toBe(50);
     expect(DEFAULT_SETTINGS.monitorDelay).toBe(1000);
-    expect(DEFAULT_SETTINGS.cap).toBe(0);
+    expect(DEFAULT_SETTINGS.cap).toBe(MAX_CAP);
     expect(DEFAULT_SETTINGS.corsMode).toBe('no-cors');
   });
 
