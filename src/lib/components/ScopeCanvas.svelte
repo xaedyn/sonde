@@ -8,6 +8,7 @@
   import { tokens } from '$lib/tokens';
   import { fmt } from '$lib/utils/format';
   import type { Endpoint, MeasurementSample } from '$lib/types';
+  import { latencyScale } from '$lib/utils/latency-scale';
 
   interface Props {
     endpoints: readonly Endpoint[];
@@ -18,17 +19,18 @@
     height: number;
     /** When set, highlight this endpoint's trace and dim the others. */
     focusedEndpointId: string | null;
+    /** p99 across all monitored endpoints — drives adaptive y-axis ceiling. */
+    p99Across: number;
     onDrill?: (endpointId: string) => void;
   }
 
-  let { endpoints, samplesByEndpoint, threshold, currentRound, height, focusedEndpointId, onDrill }: Props = $props();
+  let { endpoints, samplesByEndpoint, threshold, currentRound, height, focusedEndpointId, p99Across, onDrill }: Props = $props();
 
   // ── Geometry ────────────────────────────────────────────────────────────
   const VB_W = 1440;
   const VB_H = 640;
   const PAD_X = 48;
   const PAD_Y = 24;
-  const MAX_MS = 300;
   const WINDOW = tokens.lane.chartWindow; // 60 rounds
 
   const plotX0 = PAD_X;
@@ -45,19 +47,31 @@
   }
 
   function yOf(latency: number): number {
-    const clamped = Math.max(0, Math.min(MAX_MS, latency));
-    return plotY1 - (clamped / MAX_MS) * (plotY1 - plotY0);
+    const clamped = Math.max(0, Math.min(maxMs, latency));
+    return plotY1 - (clamped / maxMs) * (plotY1 - plotY0);
   }
+
+  // ── Adaptive y-axis scale ───────────────────────────────────────────────
+  // Recomputes only when p99Across or threshold changes — never per-rAF.
+  const scale = $derived.by(() => latencyScale({ p99Across, threshold }));
+  const maxMs = $derived(scale.maxMs);
+  const ticks = $derived(scale.ticks);
+  // tickStep drives grid-line density. When step <= 60 (tight scale), use
+  // step/2 for minor lines but floor at 30ms to avoid paint overload.
+  const tickStep = $derived(ticks.length > 1 ? ticks[1] - ticks[0] : 30);
+  const minorStep = $derived(tickStep <= 60 ? Math.max(30, tickStep / 2) : tickStep / 2);
 
   // ── Precomputed grid lines ──────────────────────────────────────────────
   interface HLine { ms: number; y: number; major: boolean; }
-  const hGrid: readonly HLine[] = (() => {
+  const hGrid: readonly HLine[] = $derived.by(() => {
     const lines: HLine[] = [];
-    for (let ms = 0; ms <= MAX_MS; ms += 15) {
-      lines.push({ ms, y: yOf(ms), major: ms % 60 === 0 });
+    // Minor lines at minorStep; major lines at every tick value.
+    const majorSet = new Set(ticks);
+    for (let ms = 0; ms <= maxMs; ms += minorStep) {
+      lines.push({ ms, y: yOf(ms), major: majorSet.has(ms) });
     }
     return lines;
-  })();
+  });
 
   const thresholdY = $derived(yOf(threshold));
 
@@ -94,7 +108,7 @@
           continue;
         }
         if (!Number.isFinite(s.latency)) { prevWasGap = true; continue; }
-        if (s.latency > MAX_MS) overflow.push({ x });
+        if (s.latency > maxMs) overflow.push({ x });
         const y = yOf(s.latency);
         d += `${prevWasGap ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)} `;
         prevWasGap = false;
@@ -265,13 +279,19 @@
           stroke-width={line.major ? 0.5 : 0.3}
         />
       {/each}
-      {#each [0, 60, 120, 180, 240, 300] as ms (ms)}
+      {#each ticks.slice(0, -1) as ms (ms)}
         <text
           x={plotX0 - 8} y={yOf(ms) + 3}
           text-anchor="end" font-size="9" font-family={tokens.typography.mono.fontFamily}
           fill="var(--t4)" letter-spacing="0.1em"
         >{ms}</text>
       {/each}
+      <text
+        x={plotX0 - 8} y={yOf(maxMs) + 3}
+        text-anchor="end" font-size="9" font-family={tokens.typography.mono.fontFamily}
+        fill="var(--t4)" letter-spacing="0.1em"
+        data-role="axis-label-max"
+      >{maxMs}</text>
     </g>
 
     <!-- Vertical grid (round ticks) -->
