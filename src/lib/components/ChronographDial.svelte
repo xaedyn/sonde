@@ -13,6 +13,7 @@
   import { VERDICT_STYLES, overviewVerdict, type OverviewVerdict } from '$lib/utils/classify';
   import { fmt } from '$lib/utils/format';
   import type { Endpoint } from '$lib/types';
+  import { latencyScale, type LatencyScaleResult } from '$lib/utils/latency-scale';
 
   interface Baseline {
     p25: number;
@@ -35,9 +36,11 @@
     /** Baseline latency cluster computed from ≥30 samples over last 120s;
      *  null when confidence is too low — dial hides the baseline arc. */
     baseline: Baseline | null;
+    /** p99 across all monitored endpoints — drives adaptive y-axis ceiling. */
+    p99Across: number;
   }
 
-  let { score, liveMedian, threshold, endpoints, lastLatencies, paused, scoreHistory, baseline }: Props = $props();
+  let { score, liveMedian, threshold, endpoints, lastLatencies, paused, scoreHistory, baseline, p99Across }: Props = $props();
 
   // ── Geometry constants ─────────────────────────────────────────────────────
   const SIZE = 520;
@@ -52,14 +55,24 @@
 
   const START_ANG = -135;
   const END_ANG = 135;
-  const MAX_MS = 300;
-
   function clamp01(t: number): number { return t < 0 ? 0 : t > 1 ? 1 : t; }
-  function latToAng(ms: number): number {
-    return START_ANG + clamp01(ms / MAX_MS) * (END_ANG - START_ANG);
-  }
 
-  // SVG arc helper for the threshold zone (from threshold → MAX_MS).
+  // ── Adaptive y-axis scale ───────────────────────────────────────────────
+  // Single $derived.by so maxMs and ticks recompute together when either
+  // p99Across or threshold changes — never during animation frames.
+  const scale: LatencyScaleResult = $derived.by(() => latencyScale({ p99Across, threshold }));
+  const maxMs = $derived(scale.maxMs);
+  const ticks = $derived(scale.ticks);
+
+  // Instance-scoped closure — captures reactive maxMs so all 9 callsites
+  // (dialTicks loop, numericLabels, baselineArc clamps, normalLabelPos clamps,
+  // targetAng, orbitMarkers) work automatically without per-callsite changes.
+  const latToAng = $derived.by(() => {
+    const current = maxMs;
+    return (ms: number): number => START_ANG + clamp01(ms / current) * (END_ANG - START_ANG);
+  });
+
+  // SVG arc helper for the threshold zone (from threshold → maxMs).
   function arcPath(cx: number, cy: number, r: number, startDeg: number, endDeg: number): string {
     const a0 = (startDeg * Math.PI) / 180;
     const a1 = (endDeg   * Math.PI) / 180;
@@ -72,13 +85,11 @@
     return `M ${x0} ${y0} A ${r} ${r} 0 ${largeArc} ${sweep} ${x1} ${y1}`;
   }
 
-  // ── Precomputed static layers ──────────────────────────────────────────────
-  // Tick marks every 15ms; every 60ms is a major tick. Major/minor geometry
-  // differs slightly (deeper inset + thicker stroke for major).
+  // ── Reactive tick marks (driven by adaptive ticks array) ──────────────────
   interface Tick { ms: number; major: boolean; x1: number; y1: number; x2: number; y2: number; }
-  const ticks: readonly Tick[] = (() => {
+  const dialTicks: readonly Tick[] = $derived.by(() => {
     const out: Tick[] = [];
-    for (let ms = 0; ms <= MAX_MS; ms += 15) {
+    for (const ms of ticks) {
       const major = ms % 60 === 0;
       const a = (latToAng(ms) * Math.PI) / 180;
       const r1 = OUTER_R - (major ? 16 : 8);
@@ -91,13 +102,15 @@
       });
     }
     return out;
-  })();
+  });
 
   interface Label { ms: number; x: number; y: number; }
-  const NUMERIC_LABELS: readonly Label[] = [0, 60, 120, 180, 240, 300].map((ms) => {
-    const a = (latToAng(ms) * Math.PI) / 180;
-    const r = OUTER_R - 30;
-    return { ms, x: CX + Math.cos(a) * r, y: CY + Math.sin(a) * r + 3 };
+  const numericLabels: readonly Label[] = $derived.by(() => {
+    return ticks.map((ms) => {
+      const a = (latToAng(ms) * Math.PI) / 180;
+      const r = OUTER_R - 30;
+      return { ms, x: CX + Math.cos(a) * r, y: CY + Math.sin(a) * r + 3 };
+    });
   });
 
   // ── Reactive derivations ───────────────────────────────────────────────────
@@ -119,17 +132,17 @@
     // Defensive sanitization: a bad upstream baseline producer (or a corner
     // case like every sample sharing a single latency value) could feed us
     // non-finite values, an inverted p25/p75, or a degenerate p25===p75 that
-    // arcPath would render as nothing. Fix in place: clamp to [0, MAX_MS],
+    // arcPath would render as nothing. Fix in place: clamp to [0, maxMs],
     // swap if reversed, and inflate by 0.5 ms each side when collapsed so
     // the band is always visible.
     if (!Number.isFinite(baseline.p25) || !Number.isFinite(baseline.p75) || !Number.isFinite(baseline.median)) {
       return null;
     }
-    let p25 = Math.max(0, Math.min(MAX_MS, baseline.p25));
-    let p75 = Math.max(0, Math.min(MAX_MS, baseline.p75));
+    let p25 = Math.max(0, Math.min(maxMs, baseline.p25));
+    let p75 = Math.max(0, Math.min(maxMs, baseline.p75));
     if (p25 > p75) [p25, p75] = [p75, p25];
-    if (p25 === p75) { p25 = Math.max(0, p25 - 0.5); p75 = Math.min(MAX_MS, p75 + 0.5); }
-    const median = Math.max(0, Math.min(MAX_MS, baseline.median));
+    if (p25 === p75) { p25 = Math.max(0, p25 - 0.5); p75 = Math.min(maxMs, p75 + 0.5); }
+    const median = Math.max(0, Math.min(maxMs, baseline.median));
     return {
       d: arcPath(CX, CY, BASELINE_R, latToAng(p25), latToAng(p75)),
       medianAng: latToAng(median),
@@ -154,8 +167,8 @@
   const normalLabelPos = $derived.by(() => {
     if (baseline === null) return null;
     if (!Number.isFinite(baseline.p25) || !Number.isFinite(baseline.p75)) return null;
-    let p25 = Math.max(0, Math.min(MAX_MS, baseline.p25));
-    let p75 = Math.max(0, Math.min(MAX_MS, baseline.p75));
+    let p25 = Math.max(0, Math.min(maxMs, baseline.p25));
+    let p75 = Math.max(0, Math.min(maxMs, baseline.p75));
     if (p25 > p75) [p25, p75] = [p75, p25];
     const ang = latToAng(p75);
     const a = (ang * Math.PI) / 180;
@@ -471,7 +484,7 @@
       <path d={threshArcD} fill="none" stroke="var(--svg-threshold)" stroke-width="2" stroke-linecap="round" />
 
       <!-- 6. Tick marks. -->
-      {#each ticks as t (t.ms)}
+      {#each dialTicks as t (t.ms)}
         <line
           x1={t.x1} y1={t.y1} x2={t.x2} y2={t.y2}
           stroke={t.major ? 'var(--svg-tick-major)' : 'var(--svg-tick-minor)'}
@@ -479,8 +492,9 @@
         />
       {/each}
 
-      <!-- 7. Numeric labels. -->
-      {#each NUMERIC_LABELS as l (l.ms)}
+      <!-- 7. Numeric labels. Last label gets data-role="axis-label-max" so
+           Playwright tests and the adaptive scale (Task 5) can assert its value. -->
+      {#each numericLabels.slice(0, -1) as l (l.ms)}
         <text
           x={l.x} y={l.y}
           text-anchor="middle"
@@ -490,6 +504,18 @@
           letter-spacing="0.1em"
         >{l.ms}</text>
       {/each}
+      {#if numericLabels.length > 0}
+        {@const last = numericLabels[numericLabels.length - 1]}
+        <text
+          x={last.x} y={last.y}
+          text-anchor="middle"
+          font-size="10"
+          font-family={tokens.typography.mono.fontFamily}
+          fill="var(--t3)"
+          letter-spacing="0.1em"
+          data-role="axis-label-max"
+        >{last.ms}</text>
+      {/if}
 
       <!-- 8. Center readouts — score only. The QUALITY kicker (cy-72) and the
            standalone verdict kicker (cy+22) were removed in the 2026-04-22

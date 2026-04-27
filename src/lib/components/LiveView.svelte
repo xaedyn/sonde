@@ -17,6 +17,13 @@
   const monitored = $derived($monitoredEndpointsStore);
   const measurements = $derived($measurementStore);
   const stats = $derived($statisticsStore);
+
+  // Cross-endpoint p99 — computed across ALL monitored endpoints (not just
+  // visible or focused). Passed identically to every ScopeCanvas instance so
+  // the unified/split/solo modes all share the same y-axis ceiling.
+  // DO NOT use stats[ep.id]?.p99 per-row in split mode — that destroys the
+  // cross-endpoint comparability invariant (D7).
+  const p99Across = $derived(Math.max(0, ...monitored.map((ep) => stats[ep.id]?.p99 ?? 0)));
   const threshold = $derived($settingsStore.healthThreshold);
   const liveOptions = $derived($uiStore.liveOptions);
   const focusedId = $derived($uiStore.focusedEndpointId);
@@ -142,6 +149,7 @@
           {currentRound}
           height={scopeHeight}
           focusedEndpointId={null}
+          {p99Across}
           onDrill={handleDrill}
         />
       {/each}
@@ -154,6 +162,7 @@
       {currentRound}
       height={scopeHeight}
       focusedEndpointId={soloEndpoint ? null : focusedId}
+      {p99Across}
       onDrill={handleDrill}
     />
   {/if}
@@ -169,6 +178,7 @@
         type="button" class="live-footer-chip"
         class:on={focusedId === ep.id}
         aria-pressed={focusedId === ep.id}
+        data-endpoint-id={ep.id}
         onclick={() => handleChipClick(ep.id)}
       >
         <span class="live-footer-pip" style:background={color} aria-hidden="true"></span>

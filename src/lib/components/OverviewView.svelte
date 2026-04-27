@@ -28,6 +28,11 @@
   // disagree about who's being measured. See PATTERNS.md §3.
   const monitored = $derived($monitoredEndpointsStore);
   const stats = $derived($statisticsStore);
+
+  // Cross-endpoint p99 — drives unified y-axis ceiling for Dial and RacingStrip.
+  // Computed across ALL monitored endpoints (not just visible or focused).
+  // Math.max(0, ...empty) === 0, which is the correct sentinel for "no data yet".
+  const p99Across = $derived(Math.max(0, ...monitored.map((ep) => stats[ep.id]?.p99 ?? 0)));
   const measurements = $derived($measurementStore);
   const threshold = $derived($settingsStore.healthThreshold);
   const score = $derived($networkQualityStore);
@@ -281,6 +286,7 @@
         {paused}
         {scoreHistory}
         {baseline}
+        {p99Across}
       />
       <CausalVerdictStrip
         verdict={enrichedVerdict}
@@ -311,6 +317,7 @@
           {samplesByEndpoint}
           {threshold}
           focusedEndpointId={$uiStore.focusedEndpointId}
+          {p99Across}
         />
       </div>
       <div

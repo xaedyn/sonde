@@ -11,6 +11,7 @@ const baseProps = {
   paused: false,
   scoreHistory: [],
   baseline: null,
+  p99Across: 0,
 };
 
 describe('ChronographDial — G2 NORMAL label', () => {
@@ -57,9 +58,11 @@ describe('ChronographDial — G2 NORMAL label', () => {
   it('should place the NORMAL label at BASELINE_R - 22 radius (inside the arc glow)', () => {
     // Geometry: CX=CY=260, OUTER_R=240, BASELINE_R=OUTER_R-48=192,
     // new label radius = BASELINE_R - 22 = 170. Angle = latToAng(p75),
-    // where latToAng(ms) = -135 + (ms/300)*270.
+    // where latToAng(ms) = -135 + (ms/maxMs)*270.
+    // With threshold=120 and p99Across=0, latencyScale yields maxMs=150.
     const p75 = 80;
-    const angDeg = -135 + (p75 / 300) * 270;
+    const maxMs = 150;
+    const angDeg = -135 + (p75 / maxMs) * 270;
     const angRad = (angDeg * Math.PI) / 180;
     const expectedX = 260 + Math.cos(angRad) * 170;
     const expectedY = 260 + Math.sin(angRad) * 170;

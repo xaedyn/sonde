@@ -303,3 +303,42 @@ function createMeasurementStore() {
 }
 
 export const measurementStore = createMeasurementStore();
+
+// Test injection hook — dev-only. Used by Playwright tests to seed the
+// measurement store with synthesized samples; statisticsStore derives p99
+// from these naturally. Not present in production builds (import.meta.env.DEV
+// is statically false in production, so the entire block is dead-stripped).
+// `typeof window !== 'undefined'` defends against SSR contexts (none today, but
+// chronoscope is a Vite-only SPA — keep the hook robust if SSR is ever introduced).
+if (import.meta.env.DEV && typeof window !== 'undefined') {
+  interface InjectArgs {
+    readonly endpointId: string;
+    readonly count: number;
+    readonly latencyMs: number;
+    readonly jitterMs?: number;
+  }
+  (window as typeof window & {
+    __chronoscope_inject_samples: (args: readonly InjectArgs[]) => void;
+  }).__chronoscope_inject_samples = (specs) => {
+    // Round counter starts at a high offset so injected samples don't collide
+    // with any real probes that may have already run.
+    const round0 = 100_000;
+    const now = Date.now();
+    for (const { endpointId, count, latencyMs, jitterMs = 0 } of specs) {
+      // initEndpoint resets the endpoint's RingBuffer — intentional clean-slate
+      // semantics so each test scenario starts from a known state. Tests that
+      // need to accumulate samples across calls should use a single call with
+      // larger `count`, not multiple calls.
+      measurementStore.initEndpoint(endpointId);
+      // Build N synthetic OK samples and push via the public addSamples API.
+      const entries = Array.from({ length: count }, (_, i) => ({
+        endpointId,
+        round: round0 + i,
+        latency: latencyMs + (jitterMs > 0 ? (Math.random() * 2 - 1) * jitterMs : 0),
+        status: 'ok' as const,
+        timestamp: now,
+      }));
+      measurementStore.addSamples(entries);
+    }
+  };
+}
