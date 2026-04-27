@@ -306,6 +306,7 @@
         role="tabpanel"
         aria-labelledby="overview-subtab-racing"
       >
+        <!-- TODO Task 5: replace placeholder 0 with the same p99Across $derived used by ChronographDial -->
         <RacingStrip
           endpoints={monitored}
           {stats}
@@ -313,6 +314,7 @@
           {samplesByEndpoint}
           {threshold}
           focusedEndpointId={$uiStore.focusedEndpointId}
+          p99Across={0}
         />
       </div>
       <div

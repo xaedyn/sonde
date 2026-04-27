@@ -7,6 +7,7 @@
   import { fmt, fmtParts } from '$lib/utils/format';
   import type { Endpoint, EndpointStatistics, MeasurementSample } from '$lib/types';
   import { uiStore } from '$lib/stores/ui';
+  import { latencyScale } from '$lib/utils/latency-scale';
 
   interface Props {
     endpoints: readonly Endpoint[];
@@ -15,29 +16,18 @@
     samplesByEndpoint: Record<string, readonly MeasurementSample[]>;
     threshold: number;
     focusedEndpointId: string | null;
+    /** p99 across all monitored endpoints — drives adaptive y-axis ceiling. */
+    p99Across: number;
   }
 
-  let { endpoints, stats, lastLatencies, samplesByEndpoint, threshold, focusedEndpointId }: Props = $props();
+  let { endpoints, stats, lastLatencies, samplesByEndpoint, threshold, focusedEndpointId, p99Across }: Props = $props();
 
-  // Dynamic axis scale, clamped to [150, 300] ms, rounded to next 30ms boundary.
-  const maxSeen = $derived.by(() => {
-    let maxP95 = 0;
-    for (const ep of endpoints) {
-      const s = stats[ep.id];
-      if (s && s.p95 > maxP95) maxP95 = s.p95;
-    }
-    const scaled = Math.ceil((maxP95 * 1.2) / 30) * 30;
-    return Math.min(300, Math.max(150, scaled));
-  });
+  // Adaptive axis scale — driven by cross-endpoint p99 from the parent view.
+  const scale = $derived.by(() => latencyScale({ p99Across, threshold }));
+  const maxSeen = $derived(scale.maxMs);
+  const axisLabels = $derived(scale.ticks);
 
   const thresholdPct = $derived(Math.min(100, (threshold / maxSeen) * 100));
-
-  const axisLabels = $derived([
-    0,
-    Math.round(maxSeen / 3),
-    Math.round((2 * maxSeen) / 3),
-    maxSeen,
-  ]);
 
   function rowStyle(epId: string): { p50Pct: number; p95Pct: number; livePct: number; over: boolean } {
     const s = stats[epId];
@@ -91,9 +81,10 @@
   </header>
 
   <div class="racing-axis" aria-hidden="true">
-    {#each axisLabels as label (label)}
+    {#each axisLabels.slice(0, -1) as label (label)}
       <span class="racing-axis-label">{label}</span>
     {/each}
+    <span class="racing-axis-label" data-role="axis-label-max">{maxSeen}</span>
     <span class="racing-axis-label racing-axis-threshold" style:left="{thresholdPct}%">
       {threshold} trigger
     </span>
