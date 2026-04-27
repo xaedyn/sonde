@@ -28,6 +28,11 @@
   // disagree about who's being measured. See PATTERNS.md §3.
   const monitored = $derived($monitoredEndpointsStore);
   const stats = $derived($statisticsStore);
+
+  // Cross-endpoint p99 — drives unified y-axis ceiling for Dial and RacingStrip.
+  // Computed across ALL monitored endpoints (not just visible or focused).
+  // Math.max(0, ...empty) === 0, which is the correct sentinel for "no data yet".
+  const p99Across = $derived(Math.max(0, ...monitored.map((ep) => stats[ep.id]?.p99 ?? 0)));
   const measurements = $derived($measurementStore);
   const threshold = $derived($settingsStore.healthThreshold);
   const score = $derived($networkQualityStore);
@@ -272,7 +277,6 @@
 <section class="overview" aria-label="Overview">
   <div class="overview-grid">
     <div class="overview-left">
-      <!-- TODO Task 5: replace placeholder 0 with $derived(Math.max(0, ...monitored.map(ep => stats[ep.id]?.p99 ?? 0))) -->
       <ChronographDial
         {score}
         {liveMedian}
@@ -282,7 +286,7 @@
         {paused}
         {scoreHistory}
         {baseline}
-        p99Across={0}
+        {p99Across}
       />
       <CausalVerdictStrip
         verdict={enrichedVerdict}
@@ -306,7 +310,6 @@
         role="tabpanel"
         aria-labelledby="overview-subtab-racing"
       >
-        <!-- TODO Task 5: replace placeholder 0 with the same p99Across $derived used by ChronographDial -->
         <RacingStrip
           endpoints={monitored}
           {stats}
@@ -314,7 +317,7 @@
           {samplesByEndpoint}
           {threshold}
           focusedEndpointId={$uiStore.focusedEndpointId}
-          p99Across={0}
+          {p99Across}
         />
       </div>
       <div

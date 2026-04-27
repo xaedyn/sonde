@@ -68,6 +68,7 @@
         disabled={!ep.enabled}
         aria-pressed={focused}
         aria-label="{ep.label === ep.url || ep.label.trim() === '' ? ep.url : `${ep.label}, ${ep.url}`}, status: {style.label}"
+        data-endpoint-id={ep.id}
         onclick={() => handleClick(ep.id)}
         ondblclick={() => handleDoubleClick(ep.id)}
         onkeydown={(e) => handleKeydown(e, ep.id)}

@@ -303,3 +303,38 @@ function createMeasurementStore() {
 }
 
 export const measurementStore = createMeasurementStore();
+
+// Test injection hook — dev-only. Used by Playwright tests to seed the
+// measurement store with synthesized samples; statisticsStore derives p99
+// from these naturally. Not present in production builds (import.meta.env.DEV
+// is statically false in production, so the entire block is dead-stripped).
+if (import.meta.env.DEV) {
+  interface InjectArgs {
+    readonly endpointId: string;
+    readonly count: number;
+    readonly latencyMs: number;
+    readonly jitterMs?: number;
+  }
+  (window as typeof window & {
+    __chronoscope_inject_samples: (args: readonly InjectArgs[]) => void;
+  }).__chronoscope_inject_samples = (specs) => {
+    // Round counter starts at a high offset so injected samples don't collide
+    // with any real probes that may have already run.
+    const round0 = 100_000;
+    const now = Date.now();
+    for (const { endpointId, count, latencyMs, jitterMs = 0 } of specs) {
+      // Initialize endpoint if not already present — addSamples drops samples
+      // for uninitialized endpoints (measurements.ts:158).
+      measurementStore.initEndpoint(endpointId);
+      // Build N synthetic OK samples and push via the public addSamples API.
+      const entries = Array.from({ length: count }, (_, i) => ({
+        endpointId,
+        round: round0 + i,
+        latency: latencyMs + (jitterMs > 0 ? (Math.random() * 2 - 1) * jitterMs : 0),
+        status: 'ok' as const,
+        timestamp: now,
+      }));
+      measurementStore.addSamples(entries);
+    }
+  };
+}

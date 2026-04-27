@@ -103,6 +103,7 @@
         class:over={row.over}
         class:focused
         aria-label="{ep.label}, live {live == null || !Number.isFinite(live) ? 'no data' : Math.round(live) + ' milliseconds'}, p95 {s && Number.isFinite(s.p95) ? Math.round(s.p95) + ' milliseconds' : 'no data'}, {row.over ? 'above threshold' : 'within threshold'}"
+        data-endpoint-id={ep.id}
         onclick={(e) => handleClick(e, ep)}
       >
         <span class="racing-label">

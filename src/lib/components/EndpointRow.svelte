@@ -124,6 +124,7 @@
 
 <div
   class="endpoint-row"
+  data-endpoint-id={endpoint.id}
   style:--dot-color={dotColor}
   style:--glass-border={tokens.color.glass.border}
   style:--glass-highlight={tokens.color.glass.highlight}
