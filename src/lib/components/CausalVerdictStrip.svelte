@@ -146,7 +146,7 @@
     font-family: var(--mono);
     font-size: var(--ts-xs);
     letter-spacing: var(--tr-kicker);
-    color: var(--t4);
+    color: var(--t2);
     text-transform: uppercase;
     margin: 0;
   }

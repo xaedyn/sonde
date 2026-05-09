@@ -18,7 +18,7 @@
   let copiedConfig = $state(false);
   let copiedResults = $state(false);
   let fallbackUrl: string | null = $state(null);
-  let fallbackInputEl: HTMLInputElement;
+  let fallbackInputEl: HTMLInputElement | undefined = $state();
 
   let hasResults = $derived(
     Object.keys($measurementStore.endpoints).length > 0 &&

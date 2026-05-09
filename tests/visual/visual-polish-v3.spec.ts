@@ -35,17 +35,17 @@ test.describe('Visual polish v3 — Topbar icons (AC3) + touch targets (AC5)', (
   });
 });
 
-test.describe('Visual polish v3 — Lane + Topbar elevation borders (AC2)', () => {
+test.describe('Visual polish v3 — Overview + Topbar elevation borders (AC2)', () => {
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/');
     await page.waitForSelector('#chronoscope-root');
   });
 
-  test('AC2: Lane border is rgba(255,255,255,.08) (surface.border.mid)', async ({ page }) => {
-    const lane = page.locator('article.lane').first();
-    await expect(lane).toBeVisible();
-    await expect(lane).toHaveCSS('border-top-color', 'rgba(255, 255, 255, 0.08)');
+  test('AC2: Racing comparison border is rgba(255,255,255,.08) (surface.border.mid)', async ({ page }) => {
+    const racing = page.locator('section[aria-label="Per-endpoint comparison"]');
+    await expect(racing).toBeVisible();
+    await expect(racing).toHaveCSS('border-top-color', 'rgba(255, 255, 255, 0.08)');
   });
 
   test('AC2: Topbar border is rgba(255,255,255,.14) (surface.border.bright)', async ({ page }) => {

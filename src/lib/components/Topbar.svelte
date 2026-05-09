@@ -73,9 +73,9 @@
 
   <div class="topbar-divider" aria-hidden="true"></div>
 
-  <div class="run-status" aria-label={runText}>
+  <div class="run-status" role="status" aria-live="polite" aria-label={runText}>
     <span class="run-dot" class:on={isRunning} aria-hidden="true"></span>
-    <span class="run-label" role="status" aria-live="polite">{runText}</span>
+    <span class="run-label">{runText}</span>
     <span class="run-tick" aria-hidden="true">{tickText}</span>
   </div>
 
@@ -157,7 +157,7 @@
     background: var(--surface-topbar-bg);
     backdrop-filter: blur(16px) saturate(1.3);
     -webkit-backdrop-filter: blur(16px) saturate(1.3);
-    border-bottom: 1px solid var(--border-mid);
+    border-bottom: 1px solid var(--border-bright);
     color: var(--t1);
   }
 
@@ -233,7 +233,8 @@
   .actions { display: flex; align-items: center; gap: 8px; }
 
   .icon-btn {
-    width: 32px; height: 32px;
+    width: 44px; height: 44px;
+    min-width: 44px; min-height: 44px;
     border-radius: 8px;
     background: transparent;
     border: 1px solid var(--border-mid);
@@ -257,14 +258,16 @@
     font-size: var(--ts-md);
     font-weight: 500;
     letter-spacing: 0.02em;
-    padding: 8px 16px;
+    min-height: 44px;
+    padding: 0 16px;
     border-radius: 8px;
     background: rgba(134,239,172,.12);
     border: 1px solid rgba(134,239,172,.30);
     color: var(--accent-green);
     display: inline-flex; align-items: center; gap: 6px;
     cursor: pointer;
-    transition: filter 160ms ease;
+    white-space: nowrap;
+    transition: background 160ms ease, border-color 160ms ease, color 160ms ease, filter 160ms ease;
   }
   .run-btn.stop {
     background: rgba(249,168,212,.10);
@@ -280,7 +283,7 @@
   .run-btn-icon { font-size: var(--ts-xs); }
 
   @media (prefers-reduced-motion: reduce) {
-    .run-dot, .icon-btn, .run-btn { animation: none !important; transition: none; }
+    .run-dot, .icon-btn, .run-btn { animation: none !important; transition: none !important; }
   }
 
   /* Mobile narrow: hide brand-sub, label, and tick under 768px so the dot
@@ -288,5 +291,12 @@
   @media (max-width: 767px) {
     .brand-sub, .run-label, .run-tick { display: none; }
     .topbar { gap: 8px; padding: 0 12px; }
+    .actions { gap: 6px; }
+  }
+
+  @media (max-width: 420px) {
+    .brand-meta, .topbar-divider { display: none; }
+    .brand { gap: 0; }
+    .run-btn { padding: 0 10px; }
   }
 </style>

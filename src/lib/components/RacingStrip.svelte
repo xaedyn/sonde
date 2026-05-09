@@ -164,7 +164,7 @@
   .racing-header { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; margin-bottom: 8px; }
   .racing-title { margin: 0; font-size: var(--ts-lg); font-weight: 500; color: var(--t1); letter-spacing: var(--tr-tight); }
   .racing-sub { margin: 2px 0 0; font-family: var(--mono); font-size: var(--ts-xs); letter-spacing: var(--tr-kicker); color: var(--t3); text-transform: uppercase; }
-  .racing-hint { margin: 0; font-family: var(--mono); font-size: var(--ts-sm); color: var(--t4); }
+  .racing-hint { margin: 0; font-family: var(--mono); font-size: var(--ts-sm); color: var(--t2); }
 
   .racing-axis {
     position: relative;
@@ -172,7 +172,7 @@
     justify-content: space-between;
     font-family: var(--mono);
     font-size: var(--ts-xs);
-    color: var(--t4);
+    color: var(--t2);
     letter-spacing: var(--tr-label);
     padding: 4px 0 10px;
     border-bottom: 1px solid var(--border-mid);

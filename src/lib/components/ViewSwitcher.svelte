@@ -17,6 +17,7 @@
   }
 
   // Visible label list. Order matches the prototype's left-to-right reading.
+  // Enabled numeric keys mirror this order: 1 Overview, 2 Live, 3 Diagnose.
   // Subs use the prototype's question-form hints (`shell.jsx:4–8` of the v2
   // bundle): each tab's sub answers the question that view exists to answer.
   const VIEWS: readonly ViewDef[] = [
@@ -64,7 +65,7 @@
     </button>
   {/each}
   <div class="view-switcher-trailing" aria-hidden="true">
-    <span class="kbd">⌨ 1·2·3·4·5</span>
+    <span class="kbd">⌨ 1·2·3</span>
   </div>
 </nav>
 
@@ -169,13 +170,13 @@
   .view-tab-sub {
     font-family: var(--mono);
     font-size: var(--ts-xs);
-    color: var(--t4);
+    color: var(--t2);
     letter-spacing: var(--tr-label);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .view-tab.active .view-tab-sub { color: var(--t3); }
+  .view-tab.active .view-tab-sub { color: var(--t2); }
 
   .view-switcher-trailing {
     margin-left: auto;
@@ -187,7 +188,7 @@
   .kbd {
     font-family: var(--mono);
     font-size: var(--ts-xs);
-    color: var(--t4);
+    color: var(--t3);
     letter-spacing: var(--tr-label);
     white-space: nowrap;
   }

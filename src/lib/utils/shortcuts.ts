@@ -4,7 +4,14 @@
 
 import { endpointStore } from '../stores/endpoints';
 import { uiStore } from '../stores/ui';
+import type { ActiveView } from '../types';
 import { get } from 'svelte/store';
+
+const VIEW_SHORTCUTS: Readonly<Record<number, ActiveView>> = {
+  0: 'overview',
+  1: 'live',
+  2: 'diagnose',
+};
 
 function isTextInput(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -17,16 +24,24 @@ function isTextInput(target: EventTarget | null): boolean {
   );
 }
 
-function hasModifier(e: KeyboardEvent): boolean {
-  return e.ctrlKey || e.metaKey || e.altKey;
+function hasSystemModifier(e: KeyboardEvent): boolean {
+  return e.ctrlKey || e.metaKey;
+}
+
+function digitIndexFromEvent(e: KeyboardEvent): number | null {
+  const fromCode = /^Digit([0-9])$/.exec(e.code);
+  const digit = fromCode?.[1] ?? (/^[0-9]$/.test(e.key) ? e.key : null);
+  if (digit === null) return null;
+  return digit === '0' ? 9 : Number(digit) - 1;
 }
 
 function handleKeydown(e: KeyboardEvent): void {
   // Ignore when typing in text fields
   if (isTextInput(e.target)) return;
 
-  // Ignore when modifier keys are held (except Shift for ? and Escape)
-  if (hasModifier(e)) return;
+  // Ignore browser / OS command chords. Alt is reserved below for endpoint
+  // toggles so plain number keys can match the visible ViewSwitcher contract.
+  if (hasSystemModifier(e)) return;
 
   const key = e.key;
 
@@ -42,25 +57,36 @@ function handleKeydown(e: KeyboardEvent): void {
       } else if (ui.showShare) {
         uiStore.toggleShare();
         e.preventDefault();
+      } else if (ui.showEndpoints) {
+        uiStore.toggleEndpoints();
+        e.preventDefault();
+      } else if (ui.focusedEndpointId !== null) {
+        uiStore.setFocusedEndpoint(null);
+        e.preventDefault();
       }
       break;
     }
 
     case '?': {
+      if (e.altKey) return;
       uiStore.toggleKeyboardHelp();
       e.preventDefault();
       break;
     }
 
     default: {
-      // Digits 1-9 and 0 toggle endpoint visibility (1-10)
-      if (key >= '1' && key <= '9') {
-        const index = parseInt(key, 10) - 1;
+      const index = digitIndexFromEvent(e);
+      if (index === null) return;
+
+      if (e.altKey) {
         toggleEndpointAtIndex(index);
         e.preventDefault();
-      } else if (key === '0') {
-        // '0' maps to 10th endpoint
-        toggleEndpointAtIndex(9);
+        return;
+      }
+
+      const view = VIEW_SHORTCUTS[index];
+      if (view) {
+        uiStore.setActiveView(view);
         e.preventDefault();
       }
       break;

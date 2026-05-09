@@ -270,7 +270,7 @@
 
   // ── Live hand: rAF lerp toward the target angle ────────────────────────────
   const targetAng = $derived(latToAng(liveMedian ?? 0));
-  let displayAng = $state(targetAng);
+  let displayAng = $state(START_ANG);
   let rafId: number | null = null;
 
   $effect(() => {

@@ -5,11 +5,11 @@
   import { uiStore } from '$lib/stores/ui';
 
   const shortcuts: { keys: string; description: string }[] = [
-    { keys: 'Space / Enter', description: 'Start or stop the test' },
+    { keys: '1 / 2 / 3', description: 'Switch Overview / Live / Diagnose' },
+    { keys: 'Alt + 1 – 9', description: 'Toggle endpoint 1–9 visibility' },
+    { keys: 'Alt + 0', description: 'Toggle endpoint 10 visibility' },
     { keys: '?', description: 'Show / hide this overlay' },
-    { keys: 'Escape', description: 'Close overlay / clear selection' },
-    { keys: '1 \u2013 9', description: 'Toggle endpoint 1\u20139 visibility' },
-    { keys: '0', description: 'Toggle endpoint 10 visibility' },
+    { keys: 'Escape', description: 'Close open panel or clear endpoint focus' },
   ];
 
   let dialogEl: HTMLDivElement | undefined = $state();

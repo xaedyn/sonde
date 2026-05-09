@@ -49,6 +49,12 @@ const scrollState = async (page: Page): Promise<ScrollCheck> => {
     const CLIPPING = new Set(['auto', 'scroll', 'hidden']);
     for (const el of candidates) {
       const cs = getComputedStyle(el);
+      const isSrOnly =
+        cs.position === 'absolute' &&
+        el.clientWidth <= 1 &&
+        el.clientHeight <= 1 &&
+        (cs.clipPath !== 'none' || cs.clip !== 'auto');
+      if (isSrOnly) continue;
       if (!CLIPPING.has(cs.overflowY)) continue;
       const overflow = el.scrollHeight - el.clientHeight;
       if (overflow <= 0) continue;

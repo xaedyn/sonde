@@ -1,0 +1,77 @@
+import { get } from 'svelte/store';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { endpointStore } from '../../../src/lib/stores/endpoints';
+import { uiStore } from '../../../src/lib/stores/ui';
+import { initShortcuts } from '../../../src/lib/utils/shortcuts';
+
+let cleanup: (() => void) | undefined;
+
+function press(key: string, options: Partial<KeyboardEventInit> = {}): boolean {
+  const event = new KeyboardEvent('keydown', {
+    key,
+    code: /^[0-9]$/.test(key) ? `Digit${key}` : undefined,
+    bubbles: true,
+    cancelable: true,
+    ...options,
+  });
+  document.dispatchEvent(event);
+  return event.defaultPrevented;
+}
+
+describe('global shortcuts', () => {
+  beforeEach(() => {
+    endpointStore.reset('north-america');
+    uiStore.reset();
+    cleanup = initShortcuts();
+  });
+
+  afterEach(() => {
+    cleanup?.();
+    cleanup = undefined;
+  });
+
+  it('uses plain number keys for the visible view tabs', () => {
+    uiStore.setActiveView('diagnose');
+
+    expect(press('1')).toBe(true);
+    expect(get(uiStore).activeView).toBe('overview');
+
+    expect(press('2')).toBe(true);
+    expect(get(uiStore).activeView).toBe('live');
+
+    expect(press('3')).toBe(true);
+    expect(get(uiStore).activeView).toBe('diagnose');
+  });
+
+  it('does not toggle endpoints when users press disabled view numbers', () => {
+    const before = get(endpointStore).map((ep) => ep.enabled);
+
+    expect(press('4')).toBe(false);
+    expect(press('5')).toBe(false);
+
+    expect(get(endpointStore).map((ep) => ep.enabled)).toEqual(before);
+    expect(get(uiStore).activeView).toBe('overview');
+  });
+
+  it('uses Alt plus a digit for endpoint visibility toggles', () => {
+    const first = get(endpointStore)[0];
+    expect(first?.enabled).toBe(true);
+
+    expect(press('1', { altKey: true })).toBe(true);
+
+    expect(get(endpointStore)[0]?.enabled).toBe(false);
+    expect(get(uiStore).activeView).toBe('overview');
+  });
+
+  it('closes panels and clears focused endpoints with Escape', () => {
+    uiStore.toggleEndpoints();
+    uiStore.setFocusedEndpoint('ep-1');
+
+    expect(press('Escape')).toBe(true);
+    expect(get(uiStore).showEndpoints).toBe(false);
+    expect(get(uiStore).focusedEndpointId).toBe('ep-1');
+
+    expect(press('Escape')).toBe(true);
+    expect(get(uiStore).focusedEndpointId).toBeNull();
+  });
+});

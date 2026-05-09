@@ -793,32 +793,12 @@
     min-width: 0;
   }
 
-  /* Hypothesis */
-  .diagnose-hypothesis {
-    background: var(--glass-bg-rail-hover);
-    border: 1px solid var(--border-mid);
-    border-radius: 14px;
-    padding: 18px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-  }
   .diagnose-hypothesis-kicker {
     font-family: var(--mono);
     font-size: var(--ts-xs);
     letter-spacing: var(--tr-kicker);
     color: var(--t4);
     text-transform: uppercase;
-  }
-  .diagnose-hypothesis-text {
-    margin: 0 0 8px;
-    color: var(--t1);
-    font-family: var(--sans);
-    font-size: var(--ts-lg);
-    font-weight: 500;
-    letter-spacing: var(--tr-tight);
   }
 
   .diagnose-evidence {

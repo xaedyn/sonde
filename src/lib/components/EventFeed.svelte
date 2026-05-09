@@ -133,7 +133,7 @@
   .feed-title { margin: 0; font-size: var(--ts-lg); font-weight: 500; color: var(--t1); letter-spacing: var(--tr-tight); }
   .feed-sub { margin: 0; font-family: var(--mono); font-size: var(--ts-xs); letter-spacing: var(--tr-kicker); color: var(--t3); text-transform: uppercase; }
 
-  .feed-empty { margin: 0; padding: 8px 0; font-family: var(--mono); font-size: var(--ts-sm); color: var(--t4); }
+  .feed-empty { margin: 0; padding: 8px 0; font-family: var(--mono); font-size: var(--ts-sm); color: var(--t2); }
 
   .feed-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
   .feed-row {
@@ -172,7 +172,7 @@
   .feed-btn:focus-visible { outline: 1.5px solid var(--accent-cyan); outline-offset: 2px; border-radius: 6px; }
 
   .feed-time {
-    color: var(--t4);
+    color: var(--t2);
     letter-spacing: 0.08em;
     font-variant-numeric: tabular-nums;
   }

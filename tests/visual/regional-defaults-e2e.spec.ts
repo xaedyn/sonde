@@ -1,7 +1,10 @@
 import { test, expect } from '@playwright/test';
 import { REGIONAL_DEFAULTS } from '../../src/lib/regional-defaults';
 
-test.describe('Regional Default Lanes — E2E', () => {
+const endpointRows = (page: import('@playwright/test').Page) =>
+  page.locator('.racing-row[data-endpoint-id]');
+
+test.describe('Regional Default Endpoints — E2E', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await page.evaluate(() => localStorage.clear());
@@ -9,7 +12,7 @@ test.describe('Regional Default Lanes — E2E', () => {
     await page.waitForSelector('#chronoscope-root');
   });
 
-  // AC4: manual region override reseeds lanes and survives reload
+  // AC4: manual region override reseeds endpoints and survives reload
   test('AC4: select LATAM region + reset → 4 LATAM URLs persist across reload', async ({ page }) => {
     // Open settings drawer
     await page.getByRole('button', { name: /open settings/i }).click();
@@ -33,26 +36,28 @@ test.describe('Regional Default Lanes — E2E', () => {
     // Close settings drawer
     await page.getByRole('button', { name: /close settings/i }).click();
 
-    // Wait for DOM to reflect 4 lanes
-    const laneArticles = page.locator('article[data-endpoint-id]');
-    await expect(laneArticles).toHaveCount(4, { timeout: 3000 });
+    // Wait for the Overview comparison rows to reflect 4 endpoints. These
+    // rows are visible on both desktop and mobile; the fixed rail is hidden on
+    // mobile.
+    const endpoints = endpointRows(page);
+    await expect(endpoints).toHaveCount(4, { timeout: 3000 });
 
-    // Assert URLs match LATAM defaults — via aria-label on the Lane article
-    const expectedUrls = REGIONAL_DEFAULTS['latam'].map(s => s.url);
-    for (const url of expectedUrls) {
-      await expect(page.locator(`[aria-label="Endpoint ${url}"]`)).toBeVisible({ timeout: 3000 });
+    // Assert visible labels match LATAM defaults.
+    const expected = REGIONAL_DEFAULTS['latam'];
+    for (const endpoint of expected) {
+      await expect(endpoints.filter({ hasText: endpoint.label })).toBeVisible({ timeout: 3000 });
     }
 
     // Reload and verify persistence
     await page.reload();
     await page.waitForSelector('#chronoscope-root');
 
-    // Same 4 lanes must be present after reload
-    const lanesAfterReload = page.locator('article[data-endpoint-id]');
-    await expect(lanesAfterReload).toHaveCount(4, { timeout: 3000 });
+    // Same 4 endpoints must be present after reload
+    const endpointsAfterReload = endpointRows(page);
+    await expect(endpointsAfterReload).toHaveCount(4, { timeout: 3000 });
 
-    for (const url of expectedUrls) {
-      await expect(page.locator(`[aria-label="Endpoint ${url}"]`)).toBeVisible({ timeout: 3000 });
+    for (const endpoint of expected) {
+      await expect(endpointsAfterReload.filter({ hasText: endpoint.label })).toBeVisible({ timeout: 3000 });
     }
   });
 
@@ -74,13 +79,12 @@ test.describe('Regional Default Lanes — E2E', () => {
     await page.goto('/');
     await page.waitForSelector('#chronoscope-root');
 
-    const lanes = page.locator('article[data-endpoint-id]');
-    await expect(lanes).toHaveCount(4, { timeout: 3000 });
+    const endpoints = endpointRows(page);
+    await expect(endpoints).toHaveCount(4, { timeout: 3000 });
 
     // NA defaults: Google, Edge (Timing self-probe), AWS, Fastly
-    await expect(page.locator('[aria-label="Endpoint https://www.google.com"]')).toBeVisible({ timeout: 3000 });
-    await expect(page.locator('[aria-label="Endpoint https://chronoscope.dev/probe"]')).toBeVisible({ timeout: 3000 });
-    await expect(page.locator('[aria-label="Endpoint https://aws.amazon.com"]')).toBeVisible({ timeout: 3000 });
-    await expect(page.locator('[aria-label="Endpoint https://www.fastly.com/robots.txt"]')).toBeVisible({ timeout: 3000 });
+    for (const endpoint of REGIONAL_DEFAULTS['north-america']) {
+      await expect(endpoints.filter({ hasText: endpoint.label })).toBeVisible({ timeout: 3000 });
+    }
   });
 });
