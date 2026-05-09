@@ -49,11 +49,14 @@ describe('historyStore', () => {
   it('hydrates, saves, and sorts local sessions by newest first', async () => {
     const saved: HistorySessionSummary[] = [session({ id: 'old', createdAt: 1 })];
     const storage: HistoryStorage = {
-      list: vi.fn(async () => saved),
-      save: vi.fn(async (next) => { saved.push(next); return true; }),
-      delete: vi.fn(async () => true),
-      clear: vi.fn(async () => true),
-      prune: vi.fn(async () => true),
+      list: vi.fn(() => Promise.resolve(saved)),
+      save: vi.fn((next) => {
+        saved.push(next);
+        return Promise.resolve(true);
+      }),
+      delete: vi.fn(() => Promise.resolve(true)),
+      clear: vi.fn(() => Promise.resolve(true)),
+      prune: vi.fn(() => Promise.resolve(true)),
     };
     const store = createHistoryStore(storage);
 
@@ -69,11 +72,11 @@ describe('historyStore', () => {
 
   it('keeps the UI usable when storage fails', async () => {
     const storage: HistoryStorage = {
-      list: vi.fn(async () => { throw new Error('blocked'); }),
-      save: vi.fn(async () => { throw new Error('blocked'); }),
-      delete: vi.fn(async () => true),
-      clear: vi.fn(async () => true),
-      prune: vi.fn(async () => true),
+      list: vi.fn(() => Promise.reject(new Error('blocked'))),
+      save: vi.fn(() => Promise.reject(new Error('blocked'))),
+      delete: vi.fn(() => Promise.resolve(true)),
+      clear: vi.fn(() => Promise.resolve(true)),
+      prune: vi.fn(() => Promise.resolve(true)),
     };
     const store = createHistoryStore(storage);
 

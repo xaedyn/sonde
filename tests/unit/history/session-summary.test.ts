@@ -78,7 +78,7 @@ function measurementState(over: Partial<MeasurementState> = {}): MeasurementStat
             status: 'ok' as const,
             timestamp: timestamp - 12_000 + i,
           })),
-          [Symbol.iterator]: function* () {
+          *[Symbol.iterator]() {
             yield* this.toArray();
           },
         },
