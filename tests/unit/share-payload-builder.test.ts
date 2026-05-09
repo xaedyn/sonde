@@ -111,4 +111,21 @@ describe('share-payload-builder', () => {
     expect(built.payload.report?.keptSampleCount).toBe(4);
     expect(built.payload.report?.truncated).toBe(true);
   });
+
+  it('keeps keptSampleCount within totalSampleCount when a caller passes a stale total override', () => {
+    const ep = endpoint('api');
+    const built = buildResultsSharePayload(
+      [ep],
+      DEFAULT_SETTINGS,
+      measurementState(ep.id, Array.from({ length: 12 }, (_, i) => ok(i + 1))),
+      8000,
+      1778352000000,
+      {
+        totalSampleCount: 5,
+      },
+    );
+
+    expect(built.payload.report?.keptSampleCount).toBe(12);
+    expect(built.payload.report?.totalSampleCount).toBe(12);
+  });
 });

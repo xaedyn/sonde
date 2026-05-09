@@ -64,15 +64,19 @@ export function buildResultsSharePayload(
   reportMetadata: Partial<ShareReportMetadata> = {},
 ): BuiltResultsSharePayload {
   const results = buildResults(endpoints, measurements);
-  const totalSampleCount = countSamples(results);
+  const keptSampleCount = countSamples(results);
+  const totalSampleCount = Math.max(
+    reportMetadata.totalSampleCount ?? keptSampleCount,
+    keptSampleCount,
+  );
 
   const metadata: ShareReportMetadata = {
     createdAt: reportMetadata.createdAt ?? now,
     healthThreshold: reportMetadata.healthThreshold ?? settings.healthThreshold,
     corsMode: reportMetadata.corsMode ?? settings.corsMode,
     roundCount: reportMetadata.roundCount ?? measurements.roundCounter,
-    totalSampleCount: reportMetadata.totalSampleCount ?? totalSampleCount,
-    keptSampleCount: totalSampleCount,
+    totalSampleCount,
+    keptSampleCount,
     truncated: reportMetadata.truncated ?? false,
   };
 
@@ -94,10 +98,10 @@ export function buildResultsSharePayload(
   }
 
   const truncatedPayload = truncatePayload(basePayload, maxChars);
-  const keptSampleCount = countSamples(truncatedPayload.results ?? []);
+  const truncatedKeptSampleCount = countSamples(truncatedPayload.results ?? []);
   const payload = withReportMetadata(truncatedPayload, {
     ...metadata,
-    keptSampleCount,
+    keptSampleCount: truncatedKeptSampleCount,
     truncated: true,
   });
 

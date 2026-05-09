@@ -88,7 +88,7 @@ function countResultSamples(results: NonNullable<SharePayload['results']>): numb
   return count;
 }
 
-function inferRoundCount(results: NonNullable<SharePayload['results']>): number {
+function inferRoundCounter(results: NonNullable<SharePayload['results']>): number {
   let maxRound = 0;
   for (const result of results) {
     for (const sample of result.samples) {
@@ -119,7 +119,7 @@ function buildSharedReportContext(payload: SharePayload): SharedReportContext | 
     createdAt: null,
     healthThreshold: null,
     corsMode: payload.settings.corsMode,
-    roundCount: inferRoundCount(payload.results),
+    roundCount: inferRoundCounter(payload.results),
     totalSampleCount: keptSampleCount,
     keptSampleCount,
     truncated: false,

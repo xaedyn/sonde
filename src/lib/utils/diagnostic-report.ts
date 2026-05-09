@@ -156,11 +156,9 @@ function buildCopySummary(report: Omit<DiagnosticReport, 'copySummary'>): string
 
 export function buildDiagnosticReport(input: DiagnosticReportInput): DiagnosticReport {
   const threshold = input.context?.healthThreshold ?? input.settings.healthThreshold;
-  const thresholdSource = input.context?.healthThreshold === null || input.context === null
-    ? 'local-default'
-    : 'shared';
+  const thresholdSource = input.context?.healthThreshold != null ? 'shared' : 'local-default';
   const corsMode = input.context?.corsMode ?? input.settings.corsMode;
-  const corsModeSource = input.context?.corsMode
+  const corsModeSource = input.context?.corsMode != null
     ? (input.context.sourceVersion === 2 ? 'shared' : 'payload-settings')
     : 'local-default';
 
