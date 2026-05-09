@@ -8,11 +8,13 @@
 <script lang="ts">
   import { onDestroy, untrack } from 'svelte';
   import { measurementStore } from '$lib/stores/measurements';
+  import { historyStore } from '$lib/stores/history';
   import { statisticsStore } from '$lib/stores/statistics';
   import { settingsStore } from '$lib/stores/settings';
   import { uiStore } from '$lib/stores/ui';
   import { networkQualityStore, monitoredEndpointsStore } from '$lib/stores/derived';
   import { buildDiagnosticNarrative, type DiagnosticNarrative } from '$lib/utils/diagnostic-narrative';
+  import { buildHistoryBaselineInsight, type HistoryBaselineInsight } from '$lib/utils/history-baseline';
   import type { VerdictRow } from '$lib/utils/verdict';
   import { tokens } from '$lib/tokens';
   import ChronographDial from './ChronographDial.svelte';
@@ -36,6 +38,7 @@
   // Math.max(0, ...empty) === 0, which is the correct sentinel for "no data yet".
   const p99Across = $derived(Math.max(0, ...monitored.map((ep) => stats[ep.id]?.p99 ?? 0)));
   const measurements = $derived($measurementStore);
+  const history = $derived($historyStore);
   const threshold = $derived(settings.healthThreshold);
   const score = $derived($networkQualityStore);
   const paused = $derived(
@@ -220,6 +223,12 @@
     samplesByEndpoint,
     monitoredEndpointCount: monitored.length,
   }));
+  const historyBaselineInsight: HistoryBaselineInsight = $derived(buildHistoryBaselineInsight({
+    endpoints: monitored,
+    stats,
+    history: history.sessions,
+    currentStartedAt: measurements.startedAt,
+  }));
 
   // Average metrics for the verdict strip triptych (backing evidence).
   const avgP50 = $derived.by(() => {
@@ -302,6 +311,7 @@
         {avgJitter}
         {avgLoss}
         {drillEndpoint}
+        baselineInsight={historyBaselineInsight}
         onDrill={handleEnrichedDrill}
       />
     </div>

@@ -7,6 +7,9 @@
   import { tokens } from '$lib/tokens';
   import { settingsStore } from '$lib/stores/settings';
   import { endpointStore, buildDefaultEndpoints } from '$lib/stores/endpoints';
+  import { historyStore } from '$lib/stores/history';
+  import { measurementStore } from '$lib/stores/measurements';
+  import { statisticsStore } from '$lib/stores/statistics';
   import { uiStore } from '$lib/stores/ui';
   import { MeasurementEngine } from '$lib/engine/measurement-engine';
   import { detectRegion } from '$lib/regional-defaults';
@@ -126,6 +129,7 @@
   let unsubSettings: (() => void) | null = null;
   let unsubEndpoints: (() => void) | null = null;
   let unsubUi: (() => void) | null = null;
+  let unsubHistoryLifecycle: (() => void) | null = null;
   let destroyShortcuts: (() => void) | null = null;
 
   let persistDebounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -179,6 +183,28 @@
     engine.stop();
   }
 
+  function setupHistorySync(): void {
+    void historyStore.hydrate();
+
+    let prevLifecycle = get(measurementStore).lifecycle;
+    unsubHistoryLifecycle = measurementStore.subscribe((state) => {
+      const cur = state.lifecycle;
+      const prev = prevLifecycle;
+      prevLifecycle = cur;
+
+      const endedLocalRun = (cur === 'stopped' || cur === 'completed')
+        && (prev === 'running' || prev === 'stopping');
+      if (!endedLocalRun || get(uiStore).isSharedView) return;
+
+      void historyStore.recordSession({
+        endpoints: get(endpointStore),
+        measurements: state,
+        stats: get(statisticsStore),
+        settings: get(settingsStore),
+      });
+    });
+  }
+
   // ── Mount ────────────────────────────────────────────────────────────────────
   onMount(() => {
     // 1. Bridge tokens to CSS custom properties
@@ -213,6 +239,9 @@
     // 5. Setup persistence sync
     setupPersistenceSync();
 
+    // 6. Local-only history baselines
+    setupHistorySync();
+
     // 7. Register keyboard shortcuts
     destroyShortcuts = initShortcuts();
   });
@@ -222,6 +251,7 @@
     unsubSettings?.();
     unsubEndpoints?.();
     unsubUi?.();
+    unsubHistoryLifecycle?.();
     destroyShortcuts?.();
     if (persistDebounceTimer !== null) clearTimeout(persistDebounceTimer);
   });

@@ -3,6 +3,7 @@
 <script lang="ts">
   import { get } from 'svelte/store';
   import { endpointStore } from '$lib/stores/endpoints';
+  import { historyStore } from '$lib/stores/history';
   import { measurementStore } from '$lib/stores/measurements';
   import { settingsStore } from '$lib/stores/settings';
   import { statisticsStore } from '$lib/stores/statistics';
@@ -10,10 +11,12 @@
   import { buildShareURL } from '$lib/share/share-manager';
   import { buildResultsSharePayload } from '$lib/share/share-payload-builder';
   import { buildDiagnosticReport, formatReportMetric } from '$lib/utils/diagnostic-report';
+  import { buildHistoryBaselineInsight } from '$lib/utils/history-baseline';
   import { tokens } from '$lib/tokens';
 
   const endpoints = $derived($endpointStore);
   const measurements = $derived($measurementStore);
+  const history = $derived($historyStore);
   const settings = $derived($settingsStore);
   const stats = $derived($statisticsStore);
   const context = $derived($uiStore.sharedReportContext);
@@ -27,6 +30,17 @@
   }));
   const additionalLimitations = $derived(
     report.diagnosis.limitations.filter((limit) => limit.id !== 'timing-visibility'),
+  );
+  const baselineInsight = $derived(buildHistoryBaselineInsight({
+    endpoints,
+    stats,
+    history: history.sessions,
+    currentStartedAt: measurements.startedAt,
+  }));
+  const baselineRows = $derived(
+    baselineInsight.comparisons
+      .filter((comparison) => comparison.status !== 'unready')
+      .slice(0, 4),
   );
 
   let copiedSummary = $state(false);
@@ -184,6 +198,27 @@
               {#if limit.action}
                 <small>{limit.action}</small>
               {/if}
+            </div>
+          {/each}
+        </div>
+      {/if}
+    </section>
+
+    <section class="report-panel baseline-panel" aria-label="Baseline context">
+      <div class="section-kicker">Baseline context</div>
+      <h2>{baselineInsight.headline}</h2>
+      <p>{baselineInsight.detail}</p>
+      <p class="privacy-note">{baselineInsight.privacyNote}</p>
+      {#if baselineRows.length > 0}
+        <div class="baseline-list">
+          {#each baselineRows as comparison (comparison.endpointId)}
+            <div
+              class="baseline-row"
+              class:hot={comparison.status === 'elevated' || comparison.status === 'severe'}
+            >
+              <strong>{comparison.label}</strong>
+              <span>{comparison.summary}</span>
+              <small>{comparison.priorSessionCount} prior local {comparison.priorSessionCount === 1 ? 'run' : 'runs'}</small>
             </div>
           {/each}
         </div>
@@ -404,6 +439,39 @@
     color: var(--t2);
     line-height: 1.5;
   }
+  .baseline-panel {
+    grid-column: 1 / -1;
+  }
+  .privacy-note {
+    margin-top: 8px;
+    color: var(--t3) !important;
+    font-size: var(--ts-xs);
+  }
+  .baseline-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .baseline-row {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 10px;
+    border: 1px solid rgba(255,255,255,.07);
+    border-radius: 7px;
+    background: rgba(255,255,255,.035);
+  }
+  .baseline-row.hot {
+    border-color: rgba(251,191,36,.2);
+    background: rgba(251,191,36,.06);
+  }
+  .baseline-row span,
+  .baseline-row small {
+    color: var(--t3);
+    line-height: 1.4;
+  }
   .guidance {
     padding-left: 10px;
     border-left: 2px solid var(--accent-cyan);
@@ -524,6 +592,9 @@
       grid-template-columns: 1fr;
     }
     .evidence-grid {
+      grid-template-columns: 1fr;
+    }
+    .baseline-list {
       grid-template-columns: 1fr;
     }
     .endpoint-table {

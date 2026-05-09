@@ -3,6 +3,7 @@
 <!-- — diagnosis is computed in the parent and passed in whole.                -->
 <script lang="ts">
   import type { DiagnosticNarrative } from '$lib/utils/diagnostic-narrative';
+  import type { HistoryBaselineInsight } from '$lib/utils/history-baseline';
   import type { Endpoint } from '$lib/types';
 
   interface Props {
@@ -11,13 +12,26 @@
     avgJitter: number | null;
     avgLoss: number | null;
     drillEndpoint: Endpoint | null;
+    baselineInsight?: HistoryBaselineInsight | null;
     onDrill: (epId: string) => void;
   }
 
-  let { diagnosis, avgP50, avgJitter, avgLoss, drillEndpoint, onDrill }: Props = $props();
+  let { diagnosis, avgP50, avgJitter, avgLoss, drillEndpoint, baselineInsight = null, onDrill }: Props = $props();
   const verdict = $derived(diagnosis.verdict);
   const primaryLimitation = $derived(diagnosis.limitations[0] ?? null);
   const primaryNextStep = $derived(diagnosis.nextSteps[0] ?? null);
+  const baselineChip = $derived.by(() => {
+    if (baselineInsight === null || diagnosis.kind === 'collecting') return null;
+    if (baselineInsight.status === 'collecting') return null;
+    if (baselineInsight.status === 'no-history') return 'No baseline';
+    if (baselineInsight.status === 'normal') return 'Baseline normal';
+
+    const comparison = baselineInsight.comparisons.find((item) => (
+      item.status === 'severe' || item.status === 'elevated'
+    ));
+    const ratio = Math.max(comparison?.p50Ratio ?? 0, comparison?.p95Ratio ?? 0);
+    return ratio > 0 ? `${ratio.toFixed(1)}x baseline` : 'Baseline high';
+  });
 
   const fmtInt = (n: number | null): string => (n == null ? '—' : String(Math.round(n)));
   const fmt1 = (n: number | null): string => (n == null ? '—' : n.toFixed(1));
@@ -40,6 +54,14 @@
       class:high={diagnosis.confidence === 'high'}
       title={diagnosis.confidenceReason}
     >{diagnosis.confidenceLabel}</span>
+    {#if baselineChip && baselineInsight}
+      <span
+        class="verdict-baseline-chip"
+        class:hot={baselineInsight.status === 'elevated' || baselineInsight.status === 'severe'}
+        class:normal={baselineInsight.status === 'normal'}
+        title={`${baselineInsight.detail} ${baselineInsight.privacyNote}`}
+      >{baselineChip}</span>
+    {/if}
   </div>
   {#if diagnosis.kind !== 'collecting'}
     <p class="verdict-explanation">{diagnosis.explanation}</p>
@@ -185,6 +207,29 @@
   }
   .verdict-confidence.low {
     color: var(--t3);
+  }
+  .verdict-baseline-chip {
+    flex: 0 0 auto;
+    padding: 3px 7px;
+    border-radius: 999px;
+    border: 1px solid var(--border-mid);
+    color: var(--t3);
+    background: rgba(255, 255, 255, 0.03);
+    font-family: var(--mono);
+    font-size: var(--ts-xs);
+    letter-spacing: var(--tr-kicker);
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .verdict-baseline-chip.hot {
+    color: var(--accent-amber);
+    border-color: rgba(251, 191, 36, 0.24);
+    background: rgba(251, 191, 36, 0.06);
+  }
+  .verdict-baseline-chip.normal {
+    color: var(--accent-green);
+    border-color: rgba(134, 239, 172, 0.22);
+    background: rgba(134, 239, 172, 0.05);
   }
   .verdict-explanation {
     grid-column: 1 / -1;

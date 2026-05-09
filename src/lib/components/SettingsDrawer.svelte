@@ -6,6 +6,7 @@
   import { get } from 'svelte/store';
   import { uiStore } from '$lib/stores/ui';
   import { settingsStore } from '$lib/stores/settings';
+  import { historyStore } from '$lib/stores/history';
   import { measurementStore } from '$lib/stores/measurements';
   import { endpointStore } from '$lib/stores/endpoints';
   import { clearPersistedSettings } from '$lib/utils/persistence';
@@ -134,8 +135,10 @@
   }
 
   let showClearConfirm = $state(false);
+  let showClearHistoryConfirm = $state(false);
   let showResetConfirm = $state(false);
   let showResetRegionalConfirm = $state(false);
+  let historyCount = $derived($historyStore.sessions.length);
 
   function requestResetRegional(): void {
     showResetRegionalConfirm = true;
@@ -177,6 +180,20 @@
 
   function cancelClear(): void {
     showClearConfirm = false;
+  }
+
+  function requestClearHistory(): void {
+    showClearHistoryConfirm = true;
+  }
+
+  function confirmClearHistory(): void {
+    if (isRunning) return;
+    showClearHistoryConfirm = false;
+    void historyStore.clear();
+  }
+
+  function cancelClearHistory(): void {
+    showClearHistoryConfirm = false;
   }
 
   function requestReset(): void {
@@ -364,6 +381,21 @@
             <div class="confirm-actions">
               <button type="button" class="btn-danger" disabled={isRunning} onclick={confirmReset}>Yes, reset</button>
               <button type="button" class="btn-secondary" onclick={cancelReset}>Cancel</button>
+            </div>
+          </div>
+        {/if}
+
+        <!-- Clear local history -->
+        {#if !showClearHistoryConfirm}
+          <button type="button" class="btn-danger" disabled={isRunning || historyCount === 0} aria-disabled={isRunning || historyCount === 0} onclick={requestClearHistory}>
+            Clear local history
+          </button>
+        {:else}
+          <div class="confirm-group" role="alert" aria-live="assertive">
+            <p class="confirm-text">Deletes {historyCount} saved baseline {historyCount === 1 ? 'run' : 'runs'} from this browser. Continue?</p>
+            <div class="confirm-actions">
+              <button type="button" class="btn-danger" disabled={isRunning} onclick={confirmClearHistory}>Yes, clear</button>
+              <button type="button" class="btn-secondary" onclick={cancelClearHistory}>Cancel</button>
             </div>
           </div>
         {/if}
