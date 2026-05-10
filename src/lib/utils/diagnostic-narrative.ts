@@ -351,7 +351,7 @@ function nextStepsFor(kind: DiagnosticKind, verdict: Verdict, rows: readonly Ver
       const row = rows.find((candidate) => candidate.ep.id === verdict.worstEpId);
       const label = row?.ep.label ?? 'the slow endpoint';
       return [
-        `Open Diagnose for ${label} and check whether spikes line up with other endpoints.`,
+        `Open Investigate for ${label} and check whether spikes line up with other endpoints.`,
         'Try the same endpoint from another network to confirm whether the origin or CDN is the source.',
       ];
     }
@@ -365,7 +365,7 @@ function nextStepsFor(kind: DiagnosticKind, verdict: Verdict, rows: readonly Ver
     case 'jitter':
       return ['Check Wi-Fi, VPN, and local load first; high jitter often means the path is unstable rather than simply slow.'];
     case 'multiple-slow':
-      return ['Run longer and open Diagnose on the worst endpoint to see whether the slow rounds correlate across sites.'];
+      return ['Run longer and open Investigate on the worst endpoint to see whether the slow rounds correlate across sites.'];
   }
 }
 

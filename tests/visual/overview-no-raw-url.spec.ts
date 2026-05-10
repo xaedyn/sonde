@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 
 // AC5 — fail-closed sweep: no raw URL string appears as the textContent of
-// a primary-identifier element on Overview, Live, or Diagnose views.
+// a primary-identifier element on Status, Live, or Investigate views.
 //
 // "Primary identifier" means the name/label slot for an endpoint — the element
 // the user scans to identify which endpoint is being described.  Subtitle
@@ -10,7 +10,7 @@ import { test, expect, type Page } from '@playwright/test';
 //
 // Class mapping (verified against component source 2026-04-25):
 //   EndpointRail   →  .rail-row-label       (primary)  /  .rail-row-url      (subtitle — excluded)
-//   DiagnoseView   →  .diagnose-title-name  (primary)  /  .diagnose-title-url (subtitle — excluded)
+//   Investigate    →  .diagnose-title-name  (primary)  /  .diagnose-title-url (subtitle — excluded)
 //   EventFeed      →  .feed-name            (primary)  — no URL subtitle element
 //
 // The sentinel test injects a synthetic .rail-row-label with a raw URL into
@@ -93,7 +93,7 @@ const findRawUrlLeaks = async (page: Page): Promise<readonly RawUrlLeak[]> => {
 test.describe('AC5 — no raw URL in primary identifiers', () => {
   for (const vp of VIEWPORTS) {
     test.describe(`@ ${vp.name} (${vp.width}×${vp.height})`, () => {
-      test('Overview view', async ({ page }) => {
+      test('Status view', async ({ page }) => {
         await page.setViewportSize({ width: vp.width, height: vp.height });
         await page.goto('/');
         await page.waitForSelector('#chronoscope-root');
@@ -103,7 +103,7 @@ test.describe('AC5 — no raw URL in primary identifiers', () => {
         const leaks = await findRawUrlLeaks(page);
         expect(
           leaks,
-          `Raw URL(s) found in primary identifier elements on Overview: ${JSON.stringify(leaks)}`,
+          `Raw URL(s) found in primary identifier elements on Status: ${JSON.stringify(leaks)}`,
         ).toEqual([]);
       });
 
@@ -114,9 +114,7 @@ test.describe('AC5 — no raw URL in primary identifiers', () => {
         // Deterministic wait: sweep runs only after primary-identifier content mounts.
         await page.waitForSelector('.rail-row-label, .feed-name', { state: 'attached' });
 
-        // Navigate to the Live view via the ViewSwitcher button.
-        // Anchored regex avoids matching aria-labels like "Diagnose endpoint X…"
-        // on CausalVerdictStrip drill buttons.
+        // Navigate to the Live view via its ViewSwitcher tab.
         await page.getByRole('button', { name: /^Live/ }).click();
         // Assert the Live view section is mounted before sweeping.
         await page.waitForSelector('section[aria-label="Live latency trace"]');
@@ -128,24 +126,24 @@ test.describe('AC5 — no raw URL in primary identifiers', () => {
         ).toEqual([]);
       });
 
-      test('Diagnose view', async ({ page }) => {
+      test('Investigate view', async ({ page }) => {
         await page.setViewportSize({ width: vp.width, height: vp.height });
         await page.goto('/');
         await page.waitForSelector('#chronoscope-root');
         // Deterministic wait: sweep runs only after primary-identifier content mounts.
         await page.waitForSelector('.rail-row-label, .feed-name', { state: 'attached' });
 
-        // Navigate to the Diagnose view via the ViewSwitcher button.
-        // Anchored regex avoids matching aria-labels like "Diagnose endpoint X…"
+        // Navigate to the Investigate view via the ViewSwitcher button.
+        // Anchored regex avoids matching aria-labels like "Investigate endpoint X…"
         // on CausalVerdictStrip drill buttons.
-        await page.getByRole('button', { name: /^Diagnose/ }).click();
-        // Assert the Diagnose view section is mounted before sweeping.
-        await page.waitForSelector('section[aria-label="Diagnose"]');
+        await page.getByRole('button', { name: /^Investigate/ }).click();
+        // Assert the Investigate view section is mounted before sweeping.
+        await page.waitForSelector('section[aria-label="Investigate"]');
 
         const leaks = await findRawUrlLeaks(page);
         expect(
           leaks,
-          `Raw URL(s) found in primary identifier elements on Diagnose: ${JSON.stringify(leaks)}`,
+          `Raw URL(s) found in primary identifier elements on Investigate: ${JSON.stringify(leaks)}`,
         ).toEqual([]);
       });
     });

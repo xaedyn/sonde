@@ -43,6 +43,27 @@ describe('global shortcuts', () => {
     expect(get(uiStore).activeView).toBe('diagnose');
   });
 
+  it('ignores shifted number keys for view tabs', () => {
+    uiStore.setActiveView('live');
+
+    expect(press('1', { shiftKey: true })).toBe(false);
+    expect(get(uiStore).activeView).toBe('live');
+
+    expect(press('2', { shiftKey: true })).toBe(false);
+    expect(get(uiStore).activeView).toBe('live');
+
+    expect(press('3', { shiftKey: true })).toBe(false);
+    expect(get(uiStore).activeView).toBe('live');
+  });
+
+  it('ignores shifted top-row symbols for view tabs', () => {
+    uiStore.setActiveView('live');
+
+    expect(press('!', { code: 'Digit1', shiftKey: true })).toBe(false);
+
+    expect(get(uiStore).activeView).toBe('live');
+  });
+
   it('does not toggle endpoints when users press disabled view numbers', () => {
     const before = get(endpointStore).map((ep) => ep.enabled);
 
@@ -61,6 +82,34 @@ describe('global shortcuts', () => {
 
     expect(get(endpointStore)[0]?.enabled).toBe(false);
     expect(get(uiStore).activeView).toBe('overview');
+  });
+
+  it('keeps Alt plus shifted digit available for endpoint visibility toggles', () => {
+    const first = get(endpointStore)[0];
+    expect(first?.enabled).toBe(true);
+
+    expect(press('1', { altKey: true, shiftKey: true })).toBe(true);
+
+    expect(get(endpointStore)[0]?.enabled).toBe(false);
+    expect(get(uiStore).activeView).toBe('overview');
+  });
+
+  it('keeps Alt plus shifted top-row symbols available for endpoint visibility toggles', () => {
+    const first = get(endpointStore)[0];
+    expect(first?.enabled).toBe(true);
+
+    expect(press('!', { code: 'Digit1', altKey: true, shiftKey: true })).toBe(true);
+
+    expect(get(endpointStore)[0]?.enabled).toBe(false);
+    expect(get(uiStore).activeView).toBe('overview');
+  });
+
+  it('keeps shifted question mark available for keyboard help', () => {
+    expect(get(uiStore).showKeyboardHelp).toBe(false);
+
+    expect(press('?', { shiftKey: true })).toBe(true);
+
+    expect(get(uiStore).showKeyboardHelp).toBe(true);
   });
 
   it('closes panels and clears focused endpoints with Escape', () => {

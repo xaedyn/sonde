@@ -8,36 +8,22 @@ import { measurementStore } from '../../../src/lib/stores/measurements';
 import { get } from 'svelte/store';
 import { tokens } from '../../../src/lib/tokens';
 import type { TestLifecycleState } from '../../../src/lib/types';
-
-// Replicates the runLabel derivation from Topbar.svelte
-function getRunLabel(lifecycle: TestLifecycleState, roundCounter: number): string {
-  if (lifecycle === 'running') return `Round ${roundCounter}`;
-  if (lifecycle === 'starting') return 'Starting\u2026';
-  if (lifecycle === 'stopping') return 'Stopping\u2026';
-  return '';
-}
-
-// Replicates the startStopLabel derivation from Topbar.svelte
-function getStartStopLabel(lifecycle: TestLifecycleState): string {
-  if (lifecycle === 'running') return 'Stop';
-  if (lifecycle === 'starting') return 'Starting\u2026';
-  if (lifecycle === 'stopping') return 'Stopping\u2026';
-  return 'Start';
-}
+import {
+  isStartLifecycle,
+  runStatusText,
+  startStopButtonLabel,
+} from '../../../src/lib/utils/lifecycle-copy';
 
 function isTransitioning(lifecycle: TestLifecycleState): boolean {
   return lifecycle === 'starting' || lifecycle === 'stopping';
 }
 
-// Replicates the showRunStatus derivation from Topbar.svelte
-function showRunStatus(lifecycle: TestLifecycleState): boolean {
-  return lifecycle === 'running' || lifecycle === 'starting' || lifecycle === 'stopping';
-}
-
-// Replicates button modifier class logic from Topbar.svelte (single node, class toggle)
-function getStartStopModifier(lifecycle: TestLifecycleState): 'start' | 'stop' {
-  const isStart = lifecycle === 'idle' || lifecycle === 'stopped' || lifecycle === 'completed';
-  return isStart ? 'start' : 'stop';
+// Replicates Topbar.svelte's class:start and class:stop boolean bindings.
+function getStartStopClasses(lifecycle: TestLifecycleState): { start: boolean; stop: boolean } {
+  return {
+    start: isStartLifecycle(lifecycle),
+    stop: lifecycle === 'running',
+  };
 }
 
 describe('Topbar', () => {
@@ -56,51 +42,50 @@ describe('Topbar', () => {
 
   it('renders Start button when lifecycle is idle', () => {
     const { lifecycle } = get(measurementStore);
-    expect(getStartStopLabel(lifecycle)).toBe('Start');
+    expect(startStopButtonLabel(lifecycle)).toBe('Start');
   });
 
   it('shows "Stop" when running', () => {
     measurementStore.setLifecycle('running');
     const { lifecycle } = get(measurementStore);
-    expect(getStartStopLabel(lifecycle)).toBe('Stop');
+    expect(startStopButtonLabel(lifecycle)).toBe('Stop');
   });
 
-  it('shows "Starting\u2026" when starting', () => {
+  it('shows "Starting..." when starting', () => {
     measurementStore.setLifecycle('starting');
     const { lifecycle } = get(measurementStore);
-    expect(getStartStopLabel(lifecycle)).toBe('Starting\u2026');
+    expect(startStopButtonLabel(lifecycle)).toBe('Starting...');
   });
 
-  it('shows "Stopping\u2026" when stopping', () => {
+  it('shows "Stopping..." when stopping', () => {
     measurementStore.setLifecycle('stopping');
     const { lifecycle } = get(measurementStore);
-    expect(getStartStopLabel(lifecycle)).toBe('Stopping\u2026');
+    expect(startStopButtonLabel(lifecycle)).toBe('Stopping...');
   });
 
   it('shows "Start" after completed', () => {
     measurementStore.setLifecycle('completed');
     const { lifecycle } = get(measurementStore);
-    expect(getStartStopLabel(lifecycle)).toBe('Start');
+    expect(startStopButtonLabel(lifecycle)).toBe('Start');
   });
 
   // ── Run status label ────────────────────────────────────────────────────────
 
-  it('returns empty string when idle', () => {
-    const { lifecycle, roundCounter } = get(measurementStore);
-    expect(getRunLabel(lifecycle, roundCounter)).toBe('');
+  it('shows "Ready" when idle', () => {
+    const { lifecycle } = get(measurementStore);
+    expect(runStatusText(lifecycle)).toBe('Ready');
   });
 
-  it('shows round counter when running', () => {
+  it('shows "Measuring" when running', () => {
     measurementStore.setLifecycle('running');
-    measurementStore.incrementRound();
-    const { lifecycle, roundCounter } = get(measurementStore);
-    expect(getRunLabel(lifecycle, roundCounter)).toBe('Round 1');
+    const { lifecycle } = get(measurementStore);
+    expect(runStatusText(lifecycle)).toBe('Measuring');
   });
 
-  it('returns empty string after completed', () => {
+  it('shows "Complete" after completed', () => {
     measurementStore.setLifecycle('completed');
-    const { lifecycle, roundCounter } = get(measurementStore);
-    expect(getRunLabel(lifecycle, roundCounter)).toBe('');
+    const { lifecycle } = get(measurementStore);
+    expect(runStatusText(lifecycle)).toBe('Complete');
   });
 
   // ── Disabled state ──────────────────────────────────────────────────────────
@@ -133,27 +118,27 @@ describe('Topbar', () => {
   // ── Button hierarchy: start / stop / btn-ghost ─────────────────────
 
   it('applies start class when idle', () => {
-    expect(getStartStopModifier('idle')).toBe('start');
+    expect(getStartStopClasses('idle')).toEqual({ start: true, stop: false });
   });
 
   it('applies start class when stopped', () => {
-    expect(getStartStopModifier('stopped')).toBe('start');
+    expect(getStartStopClasses('stopped')).toEqual({ start: true, stop: false });
   });
 
   it('applies start class when completed', () => {
-    expect(getStartStopModifier('completed')).toBe('start');
+    expect(getStartStopClasses('completed')).toEqual({ start: true, stop: false });
   });
 
   it('applies stop class when running', () => {
-    expect(getStartStopModifier('running')).toBe('stop');
+    expect(getStartStopClasses('running')).toEqual({ start: false, stop: true });
   });
 
-  it('applies stop class during starting transition', () => {
-    expect(getStartStopModifier('starting')).toBe('stop');
+  it('does not apply start or stop class during starting transition', () => {
+    expect(getStartStopClasses('starting')).toEqual({ start: false, stop: false });
   });
 
-  it('applies stop class during stopping transition', () => {
-    expect(getStartStopModifier('stopping')).toBe('stop');
+  it('does not apply start or stop class during stopping transition', () => {
+    expect(getStartStopClasses('stopping')).toEqual({ start: false, stop: false });
   });
 
   // Secondary buttons are always btn-ghost (verified by template — class is static)
@@ -164,34 +149,8 @@ describe('Topbar', () => {
     expect(secondaryClass).toBe('btn-ghost');
   });
 
-  // ── showRunStatus logic ────────────────────────────────────────────────────
-
-  it('hides run status when idle', () => {
-    expect(showRunStatus('idle')).toBe(false);
-  });
-
-  it('hides run status when stopped', () => {
-    expect(showRunStatus('stopped')).toBe(false);
-  });
-
-  it('hides run status when completed', () => {
-    expect(showRunStatus('completed')).toBe(false);
-  });
-
-  it('shows run status when running', () => {
-    expect(showRunStatus('running')).toBe(true);
-  });
-
-  it('shows run status when starting', () => {
-    expect(showRunStatus('starting')).toBe(true);
-  });
-
-  it('shows run status when stopping', () => {
-    expect(showRunStatus('stopping')).toBe(true);
-  });
-
   // statTransition / dotEntrance / dotExit removed in Phase 7 — the surviving
-  // views (Overview / Live / Diagnose) don't consume them.
+  // views (Status / Live / Investigate) don't consume them.
 
   it('btnHover timing token is at least 100ms', () => {
     expect(tokens.timing.btnHover).toBeGreaterThanOrEqual(100);

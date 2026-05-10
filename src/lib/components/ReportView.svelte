@@ -118,6 +118,7 @@
 
   function handleRunOwn(): void {
     uiStore.clearSharedView();
+    uiStore.setAutoStartSuppressionReason(null);
     measurementStore.reset();
   }
 </script>
@@ -259,7 +260,7 @@
         </div>
       {:else}
         <h2>Outside vantage not captured</h2>
-        <p>Run a remote check in Diagnose before sharing when you need evidence from beyond the local browser path.</p>
+        <p>Run a remote check in Investigate before sharing when you need evidence from beyond the local browser path.</p>
       {/if}
     </section>
   </div>

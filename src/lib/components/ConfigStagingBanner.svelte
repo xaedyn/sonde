@@ -7,11 +7,17 @@
 <!-- reaches endpointStore. Cadence settings are never touched, accepted or not.      -->
 <script lang="ts">
   import { uiStore } from '$lib/stores/ui';
+  import { measurementStore } from '$lib/stores/measurements';
   import { acceptPendingShare, dismissPendingShare } from '$lib/share/hash-router';
   import { displayLabel } from '$lib/endpoint/displayLabel';
 
   const pending = $derived($uiStore.pendingShare);
   const count = $derived(pending?.endpoints.length ?? 0);
+  const acceptDisabled = $derived(
+    $measurementStore.lifecycle === 'running' ||
+    $measurementStore.lifecycle === 'starting' ||
+    $measurementStore.lifecycle === 'stopping',
+  );
 </script>
 
 {#if pending}
@@ -20,12 +26,20 @@
       <span class="banner-icon" aria-hidden="true">⚠</span>
       <span class="banner-text">
         Shared link with {count} endpoint{count === 1 ? '' : 's'}. Accepting replaces your current rail.
+        {#if acceptDisabled} Stop measuring before accepting shared endpoints.{/if}
       </span>
       <div class="banner-actions">
         <button type="button" class="btn-dismiss" onclick={dismissPendingShare}>
           Dismiss
         </button>
-        <button type="button" class="btn-accept" onclick={acceptPendingShare}>
+        <button
+          type="button"
+          class="btn-accept"
+          disabled={acceptDisabled}
+          aria-disabled={acceptDisabled}
+          title={acceptDisabled ? 'Stop measuring before accepting shared endpoints.' : undefined}
+          onclick={acceptPendingShare}
+        >
           Accept
         </button>
       </div>
@@ -125,6 +139,13 @@
   .btn-accept:hover {
     background: var(--accent-cyan, #67e8f9);
     color: var(--bg-base, #0c0a14);
+  }
+  .btn-accept:disabled {
+    border-color: var(--border-default, rgba(255, 255, 255, 0.12));
+    background: transparent;
+    color: var(--t2, rgba(255, 255, 255, 0.74));
+    cursor: not-allowed;
+    opacity: 0.72;
   }
 
   .endpoint-list {

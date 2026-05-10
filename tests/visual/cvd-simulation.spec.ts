@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { seedStableSnapshotState, waitForStableSnapshotState } from './stable-snapshot-state';
 
 // CVD simulation matrices — Machado 2009 standard values
 // Source: Machado, Oliveira, Fernandes (2009) "A Physiologically-based Model
@@ -17,8 +18,9 @@ test.describe('CVD Color Simulation', () => {
   for (const name of CVD_FILTERS) {
     test(`${name} simulation screenshot`, async ({ page }) => {
       await page.setViewportSize({ width: 1280, height: 800 });
+      await seedStableSnapshotState(page);
       await page.goto('/');
-      await page.waitForSelector('#chronoscope-root');
+      await waitForStableSnapshotState(page);
 
       // Inject SVG filter and apply to body
       // Safety: all values are hardcoded constants, no user input is involved

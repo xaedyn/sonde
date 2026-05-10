@@ -57,7 +57,7 @@
 
   function handleDrill(epId: string): void {
     uiStore.setFocusedEndpoint(epId);
-    // Phase 3 exits with drill-to-Diagnose pending (Phase 4). Stay in Live (solo)
+    // Phase 3 exits with drill-to-Investigate pending (Phase 4). Stay in Live (solo)
     // after click — keeps the user on the scope they were reading.
   }
 

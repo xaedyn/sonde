@@ -1,7 +1,7 @@
 <!-- src/lib/components/RacingStrip.svelte -->
 <!-- Shared-latency-axis workbench — one row per endpoint plotting p50→p95     -->
 <!-- band, trailing sparkline, live dot on a common x-scale. Compare endpoints  -->
-<!-- directly. Click drills to Live; Shift-click drills to Diagnose.            -->
+<!-- directly. Click drills to Live; Shift-click drills to Investigate.         -->
 <script lang="ts">
   import { tokens } from '$lib/tokens';
   import { fmt, fmtParts } from '$lib/utils/format';
@@ -66,7 +66,7 @@
 
   function handleClick(event: MouseEvent, ep: Endpoint): void {
     uiStore.setFocusedEndpoint(ep.id);
-    // Click → Live; Shift+click → Diagnose (the per-phase waterfall view).
+    // Click → Live; Shift+click → Investigate (the per-phase waterfall view).
     uiStore.setActiveView(event.shiftKey ? 'diagnose' : 'live');
   }
 </script>
@@ -77,7 +77,7 @@
       <h3 class="racing-title">Per-endpoint comparison</h3>
       <p class="racing-sub">Live latencies on shared axis</p>
     </div>
-    <p class="racing-hint">Click → Live · ⇧-click → Diagnose</p>
+    <p class="racing-hint">Click → Live · ⇧-click → Investigate</p>
   </header>
 
   <div class="racing-axis" aria-hidden="true">
@@ -311,7 +311,7 @@
   }
   .racing-stats-p95 {
     font-size: var(--ts-xs);
-    color: var(--t4);
+    color: var(--t2);
     letter-spacing: var(--tr-label);
   }
 
@@ -320,7 +320,7 @@
   }
   .racing-stats-live-unit {
     font-size: var(--ts-xs);
-    color: var(--t4);
+    color: var(--t2);
     letter-spacing: var(--tr-label);
     margin-left: 1px;
   }
@@ -343,7 +343,7 @@
     .racing-axis { padding: 2px 0 4px; margin-bottom: 3px; }
     /* Padding 3px keeps row height at 24px (3 + 18 + 3) — meets WCAG 2.5.8 AA
        (24×24 minimum touch target). Racing rows are clickable (Shift-click →
-       Diagnose), so the per-axis floor applies. Don't tighten further. */
+       Investigate), so the per-axis floor applies. Don't tighten further. */
     .racing-row { padding: 3px 6px; gap: 8px; grid-template-columns: 108px minmax(0, 1fr) max-content; }
     .racing-track { height: 18px; }
     .racing-rows { gap: 1px; }

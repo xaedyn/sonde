@@ -5,10 +5,16 @@
 import { writable } from 'svelte/store';
 import type { LiveTimeRange, PendingShare, SharedReportContext, TerminalEventType, UIState } from '../types';
 
+function normalizeActiveView(view: UIState['activeView']): UIState['activeView'] {
+  return view === 'strata' || view === 'terminal' ? 'overview' : view;
+}
+
 const initialState = (): UIState => ({
   // 'overview' is the v2 default. Phase 7 migration (v6→v7) collapses any
   // persisted Lanes-family view ('lanes'/'timeline'/'heatmap'/'split') to
-  // 'overview' before reaching here, so only the five current views land.
+  // 'overview' before reaching here. 'strata' and 'terminal' remain runtime
+  // route values for backcompat, while primary navigation exposes only
+  // Status / Live / Investigate.
   activeView: 'overview',
   expandedCards: new Set<string>(),
   showSettings: false,
@@ -26,6 +32,7 @@ const initialState = (): UIState => ({
   },
   terminalFilters: new Set<TerminalEventType>(),
   overviewSubtab: 'racing',
+  autoStartSuppressionReason: null,
 });
 
 function createUiStore() {
@@ -33,7 +40,7 @@ function createUiStore() {
   return {
     subscribe,
     setActiveView(view: UIState['activeView']): void {
-      update((s) => ({ ...s, activeView: view }));
+      update((s) => ({ ...s, activeView: normalizeActiveView(view) }));
     },
     toggleCard(endpointId: string): void {
       update((s) => {
@@ -109,6 +116,9 @@ function createUiStore() {
     },
     setOverviewSubtab(tab: UIState['overviewSubtab']): void {
       update((s) => ({ ...s, overviewSubtab: tab }));
+    },
+    setAutoStartSuppressionReason(reason: UIState['autoStartSuppressionReason']): void {
+      update((s) => ({ ...s, autoStartSuppressionReason: reason }));
     },
     reset(): void {
       set(initialState());

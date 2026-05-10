@@ -1,32 +1,116 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Locator, type Page } from '@playwright/test';
 import { encodeSharePayload } from '../../src/lib/share/share-manager';
 import { MAX_CAP } from '../../src/lib/limits';
 import type { SharePayload } from '../../src/lib/types';
 
-async function uniqueEndpointIds(page: Page): Promise<string[]> {
+interface VisibleEndpointTarget {
+  readonly id: string;
+  readonly label: string;
+}
+
+interface SampleSeedSpec {
+  readonly endpointId: string;
+  readonly count: number;
+  readonly latencyMs: number;
+  readonly jitterMs: number;
+}
+
+async function visibleEndpointTargets(page: Page): Promise<VisibleEndpointTarget[]> {
   await page.waitForSelector('[data-endpoint-id]', { state: 'attached', timeout: 3000 });
   return await page
     .locator('[data-endpoint-id]')
-    .evaluateAll((els) =>
-      [...new Set(
-        els.map((el) => el.getAttribute('data-endpoint-id')).filter((id): id is string => Boolean(id)),
-      )],
-    );
+    .evaluateAll((els) => {
+      const seen = new Set<string>();
+      const targets: VisibleEndpointTarget[] = [];
+      for (const el of els) {
+        const id = el.getAttribute('data-endpoint-id');
+        if (!id || seen.has(id)) continue;
+        seen.add(id);
+        const label = el.querySelector('.rail-row-label')?.textContent?.trim() || id;
+        targets.push({ id, label });
+      }
+      return targets;
+    });
+}
+
+async function injectSampleSpecs(page: Page, specs: readonly SampleSeedSpec[]): Promise<void> {
+  await page.waitForFunction(() => typeof window.__chronoscope_inject_samples === 'function');
+  await page.evaluate((seedSpecs) => {
+    const inject = window.__chronoscope_inject_samples;
+    if (!inject) throw new Error('__chronoscope_inject_samples is unavailable');
+    const originalRandom = Math.random;
+    const randomPeriod = Math.max(1, ...seedSpecs.map((spec) => spec.count));
+    let randomStep = 0;
+    Math.random = () => ((randomStep++ % randomPeriod) + 0.5) / randomPeriod;
+    try {
+      inject(seedSpecs);
+    } finally {
+      Math.random = originalRandom;
+    }
+  }, specs);
 }
 
 async function injectVisibleSamples(page: Page): Promise<void> {
-  const ids = await uniqueEndpointIds(page);
-  await page.waitForFunction(() => typeof window.__chronoscope_inject_samples === 'function');
-  await page.evaluate((endpointIds) => {
-    const inject = window.__chronoscope_inject_samples;
-    if (!inject) throw new Error('__chronoscope_inject_samples is unavailable');
-    inject(endpointIds.map((id, index) => ({
-      endpointId: id,
-      count: 12,
-      latencyMs: 40 + index * 20,
-      jitterMs: 3,
-    })));
-  }, ids);
+  const targets = await visibleEndpointTargets(page);
+  await injectSampleSpecs(page, targets.map((target, index) => ({
+    endpointId: target.id,
+    count: 12,
+    latencyMs: 40 + index * 20,
+    jitterMs: 3,
+  })));
+}
+
+async function injectReadyInvestigationSamples(page: Page): Promise<VisibleEndpointTarget> {
+  const targets = await visibleEndpointTargets(page);
+  expect(targets.length).toBeGreaterThan(1);
+  const slowIndex = Math.min(2, targets.length - 1);
+  const expectedTarget = targets[slowIndex]!;
+  await injectSampleSpecs(page, targets.map((target, index) => ({
+    endpointId: target.id,
+    count: 36,
+    latencyMs: index === slowIndex ? 360 : 40 + index * 20,
+    jitterMs: 3,
+  })));
+  return expectedTarget;
+}
+
+const RUN_CONTROL_NAME = /^(?:Start|Starting\.\.\.|Stop)$/i;
+const INVESTIGATE_AUTO_SELECTION_VIEWPORTS = [
+  { name: 'desktop', width: 1440, height: 900 },
+  { name: 'mobile',  width: 390,  height: 844 },
+] as const;
+
+function runControl(page: Page): Locator {
+  return page.getByRole('button', { name: RUN_CONTROL_NAME });
+}
+
+async function expectMeasuringStatus(page: Page): Promise<void> {
+  await expect(page.locator('.run-status')).toHaveAttribute('aria-label', 'Measuring', { timeout: 3000 });
+}
+
+async function pauseRunForStableSamples(page: Page): Promise<void> {
+  const control = runControl(page);
+  await expect(control).toHaveAccessibleName(/^(?:Start|Stop)$/i, { timeout: 5000 });
+  if ((await control.getAttribute('aria-label')) === 'Stop') {
+    await control.click();
+    await expect(runControl(page)).toHaveAccessibleName(/^Start$/i, { timeout: 3000 });
+  }
+}
+
+async function assertVerdictBeforeDial(page: Page): Promise<void> {
+  await page.goto('/');
+  await page.waitForSelector('#chronoscope-root');
+
+  const verdict = page.locator('.verdict.hero');
+  const dial = page.locator('svg.dial');
+  await expect(verdict).toBeVisible();
+  await expect(dial).toBeVisible();
+
+  const verdictBox = await verdict.boundingBox();
+  const dialBox = await dial.boundingBox();
+  expect(verdictBox).not.toBeNull();
+  expect(dialBox).not.toBeNull();
+  expect(verdictBox!.y).toBeLessThan(dialBox!.y);
 }
 
 function sharedReportUrl(): string {
@@ -70,11 +154,11 @@ function sharedReportUrl(): string {
 }
 
 test.describe('Acceptance criteria verification', () => {
-  test('data appears in the current Overview surfaces after samples arrive', async ({ page }) => {
+  test('data appears in the current Status surfaces after samples arrive', async ({ page }) => {
     await page.goto('/');
     await page.waitForSelector('#chronoscope-root');
+    await expectMeasuringStatus(page);
 
-    await page.getByRole('button', { name: /^start$/i }).click();
     await injectVisibleSamples(page);
 
     const racing = page.locator('section[aria-label="Per-endpoint comparison"]');
@@ -82,14 +166,12 @@ test.describe('Acceptance criteria verification', () => {
     await expect(page.locator('svg.dial')).toBeVisible();
   });
 
-  test('start button enters the running control state', async ({ page }) => {
+  test('default public endpoint visit starts measuring', async ({ page }) => {
     await page.goto('/');
     await page.waitForSelector('#chronoscope-root');
 
-    await page.getByRole('button', { name: /^start$/i }).click();
-
-    await expect(page.getByRole('button', { name: /^halt$/i })).toBeVisible({ timeout: 3000 });
-    await expect(page.locator('.run-status')).toHaveText(/measuring|starting/i, { timeout: 3000 });
+    await expectMeasuringStatus(page);
+    await expect(runControl(page)).toHaveAccessibleName(/^Stop$/i, { timeout: 3000 });
   });
 
   test('keyboard shortcut ? opens overlay', async ({ page }) => {
@@ -128,15 +210,67 @@ test.describe('Acceptance criteria verification', () => {
     expect(await endpointButtons.count()).toBeGreaterThan(0);
   });
 
-  test('cold Overview renders dial, racing comparison, and event feed', async ({ page }) => {
+  test('cold Status renders dial, racing comparison, and event feed', async ({ page }) => {
     await page.goto('/');
     await page.waitForSelector('#chronoscope-root');
 
-    await expect(page.locator('section[aria-label="Overview"]')).toBeVisible();
+    await expect(page.locator('section[aria-label="Status"]')).toBeVisible();
     await expect(page.locator('svg.dial')).toBeVisible();
     await expect(page.locator('section[aria-label="Per-endpoint comparison"]')).toBeVisible();
     await expect(page.locator('section[aria-label="Recent events"]')).toBeAttached();
   });
+
+  test('Status first paint shows verdict before the dial on desktop', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await assertVerdictBeforeDial(page);
+  });
+
+  test('Status first paint shows verdict before the dial on mobile', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await assertVerdictBeforeDial(page);
+  });
+
+  for (const vp of INVESTIGATE_AUTO_SELECTION_VIEWPORTS) {
+    test(`Investigate tab auto-selects an endpoint detail with data on ${vp.name}`, async ({ page }) => {
+      await page.setViewportSize({ width: vp.width, height: vp.height });
+      await page.goto('/');
+      await page.waitForSelector('#chronoscope-root');
+      await pauseRunForStableSamples(page);
+      const expectedTarget = await injectReadyInvestigationSamples(page);
+
+      await page.getByRole('group', { name: 'Views' }).getByRole('button', { name: /^Investigate/ }).click();
+
+      const investigate = page.locator('section[aria-label="Investigate"]');
+      await expect(investigate).toBeVisible();
+      await expect(investigate.locator('.diagnose-title-name')).toHaveText(expectedTarget.label, { timeout: 3000 });
+      await expect(investigate.locator('section[aria-label="Diagnostic answer"]')).toBeVisible();
+      await expect(investigate.getByText(/pick an endpoint from the left rail/i)).toHaveCount(0);
+      await expect(investigate.locator('.diagnose-empty')).toHaveCount(0);
+
+      const distribution = investigate.locator('.diagnose-distro');
+      await expect(distribution).toBeVisible();
+      await expect(distribution).toContainText(/p50\s+\d+(?:\.\d+)?\s*ms/i);
+      await expect(distribution).toContainText(/p95\s+\d+(?:\.\d+)?\s*ms/i);
+      await expect(distribution.locator('.distro-stat-meta')).toHaveText(/over last 36 samples/i);
+      await expect(investigate.locator('.diagnose-confidence')).toHaveText(/high confidence/i);
+
+      const comparison = investigate.locator('section[aria-label="Cross-endpoint comparison"]');
+      await expect(comparison).toBeVisible();
+      await expect(comparison.locator('.correlation-headline')).toContainText(/has been steady.*no notable spikes/i);
+      await expect(comparison.locator('.correlation-grid')).toBeVisible();
+
+      const recentSamples = investigate.locator('section[aria-label="Recent samples"]');
+      await expect(recentSamples).toBeVisible();
+      await expect(recentSamples.locator('.diagnose-hypothesis-kicker')).toHaveText(/Last 8 samples/i);
+      await expect(recentSamples.locator('.diagnose-sample-row')).toHaveCount(8);
+      await expect(investigate.locator('section[aria-label="Browser visibility"]')).toBeVisible();
+      await expect(investigate).toHaveScreenshot(`investigate-data-${vp.name}.png`);
+      await comparison.scrollIntoViewIfNeeded();
+      await expect(comparison).toHaveScreenshot(`investigate-comparison-${vp.name}.png`);
+      await recentSamples.scrollIntoViewIfNeeded();
+      await expect(recentSamples).toHaveScreenshot(`investigate-recent-samples-${vp.name}.png`);
+    });
+  }
 
   test('diagnostic narrative exposes confidence and browser timing limits', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
@@ -147,11 +281,11 @@ test.describe('Acceptance criteria verification', () => {
     await expect(page.locator('.verdict-confidence')).toContainText(/confidence/i);
 
     await page.locator('button[data-endpoint-id]').first().click();
-    await page.getByRole('button', { name: /^Diagnose/ }).click();
+    await page.getByRole('button', { name: /^Investigate/ }).click();
 
     await expect(page.locator('section[aria-label="Diagnostic answer"]')).toBeVisible();
     await expect(page.locator('section[aria-label="Browser visibility"]')).toBeVisible();
-    await expect(page.getByText(/Timing-Allow-Origin/i)).toBeVisible();
+    await expect(page.locator('section[aria-label="Browser visibility"] .visibility-action')).toContainText(/Timing-Allow-Origin/i);
   });
 
   test('shared result link opens as a diagnostic report', async ({ page }) => {
@@ -183,11 +317,17 @@ for (const vp of VIEWPORTS) {
       await page.waitForSelector('#chronoscope-root');
     });
 
-    test('Start button uses the current run button contract', async ({ page }) => {
-      const startBtn = page.getByRole('button', { name: /^start$/i });
-      await expect(startBtn).toBeVisible();
-      await expect(startBtn).toHaveClass(/run-btn/);
-      await expect(startBtn).toHaveClass(/start/);
+    test('run button uses the current run button contract', async ({ page }) => {
+      const button = runControl(page);
+      await expect(button).toBeVisible();
+      await expect(button).toHaveClass(/run-btn/);
+
+      const label = (await button.getAttribute('aria-label')) ?? '';
+      expect(label).toMatch(RUN_CONTROL_NAME);
+      const className = (await button.getAttribute('class')) ?? '';
+      if (/^Start$/i.test(label)) expect(className).toContain('start');
+      if (/^Stop$/i.test(label)) expect(className).toContain('stop');
+      if (/^Starting\.\.\.$/i.test(label)) await expect(button).toBeDisabled();
     });
 
     test('secondary topbar buttons do not use the run button class', async ({ page }) => {
@@ -198,14 +338,14 @@ for (const vp of VIEWPORTS) {
 
     test('enabled view shortcuts match the shipped views', async ({ page }) => {
       await expect(page.locator('.view-switcher-trailing')).toContainText('1·2·3');
-      await expect(page.getByRole('button', { name: /^Overview/ })).toBeEnabled();
+      await expect(page.getByRole('button', { name: /^Status/ })).toBeEnabled();
       await expect(page.getByRole('button', { name: /^Live/ })).toBeEnabled();
-      await expect(page.getByRole('button', { name: /^Diagnose/ })).toBeEnabled();
+      await expect(page.getByRole('button', { name: /^Investigate/ })).toBeEnabled();
     });
 
-    test('Start button has a background transition for hover feedback', async ({ page }) => {
-      const startBtn = page.getByRole('button', { name: /^start$/i });
-      const transitionStyle = await startBtn.evaluate(el => window.getComputedStyle(el).transition);
+    test('run button has a background transition for hover feedback', async ({ page }) => {
+      const button = runControl(page);
+      const transitionStyle = await button.evaluate(el => window.getComputedStyle(el).transition);
       expect(transitionStyle).toContain('background');
     });
 
@@ -224,10 +364,10 @@ test.describe('375px specific checks', () => {
   });
 
   test('Start/Stop keeps its text label', async ({ page }) => {
-    const startBtn = page.getByRole('button', { name: /^start$/i });
-    await expect(startBtn).toBeVisible();
-    const text = await startBtn.textContent();
-    expect(text?.trim()).toMatch(/start|halt/i);
+    const button = runControl(page);
+    await expect(button).toBeVisible();
+    const text = await button.textContent();
+    expect(text?.trim()).toMatch(/start|starting|stop/i);
   });
 
   test('secondary topbar buttons keep accessible labels', async ({ page }) => {
@@ -250,11 +390,11 @@ test.describe('prefers-reduced-motion', () => {
     expect(animateCount).toBe(0);
   });
 
-  test('Start button transition-duration is 0s', async ({ page }) => {
-    const startBtn = page.getByRole('button', { name: /^start$/i });
-    const duration = await startBtn.evaluate(el => window.getComputedStyle(el).transitionDuration);
+  test('run button transition-duration is 0s', async ({ page }) => {
+    const button = runControl(page);
+    const duration = await button.evaluate(el => window.getComputedStyle(el).transitionDuration);
     const durations = duration.split(',').map(d => d.trim());
-    const property = await startBtn.evaluate(el => window.getComputedStyle(el).transitionProperty);
+    const property = await button.evaluate(el => window.getComputedStyle(el).transitionProperty);
     expect(property === 'none' || durations.every(d => d === '0s')).toBe(true);
   });
 });

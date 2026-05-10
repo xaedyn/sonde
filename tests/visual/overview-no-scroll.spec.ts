@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 
-// Acceptance: the Overview view fits in one viewport without scrolling at the
+// Acceptance: the Status view fits in one viewport without scrolling at the
 // desktop floor (1366×768) and mobile floor (360×780), across the measurement
 // lifecycle (cold / first round). See
 // docs/superpowers/research/2026-04-22-overview-no-scroll-acceptance-criteria.md.
@@ -17,6 +17,8 @@ const VIEWPORTS = [
   { name: 'desktop-1920',  width: 1920, height: 1080 },
   { name: 'desktop-2560',  width: 2560, height: 1440 },
 ] as const;
+
+const RUNNING_OR_STARTING_CONTROL = /^(?:Starting\.\.\.|Stop)$/i;
 
 interface ScrollerReport {
   readonly tag: string;
@@ -75,7 +77,7 @@ const scrollState = async (page: Page): Promise<ScrollCheck> => {
   });
 };
 
-test.describe('Overview — no scroll on first visit', () => {
+test.describe('Status — no scroll on first visit', () => {
   for (const vp of VIEWPORTS) {
     test(`cold state @ ${vp.name} (${vp.width}×${vp.height})`, async ({ page }) => {
       await page.setViewportSize({ width: vp.width, height: vp.height });
@@ -139,11 +141,15 @@ test.describe('Overview — no scroll on first visit', () => {
     const cold = await scrollState(page);
     expect(cold.overflowingScrollers).toEqual([]);
 
-    // Transition idle → running. The AC here is layout stability across the
-    // state change, not actual measurements landing (headless network may
-    // block probes). Waiting ~1.2 s is enough for the engine lifecycle
-    // transition plus any entrance transitions on the dial / verdict cards.
-    await page.getByRole('button', { name: /^start$/i }).click();
+    // Transition idle → running when auto-start is suppressed. In the default
+    // seeded app state this may already be running by first paint; the AC here
+    // is layout stability across the running lifecycle, not the click itself.
+    const startButton = page.getByRole('button', { name: /^start$/i });
+    if (await startButton.isVisible({ timeout: 200 }).catch(() => false)) {
+      await startButton.click();
+    } else {
+      await expect(page.getByRole('button', { name: RUNNING_OR_STARTING_CONTROL })).toBeVisible();
+    }
     await page.waitForTimeout(1200);
 
     const afterStart = await scrollState(page);
@@ -151,5 +157,59 @@ test.describe('Overview — no scroll on first visit', () => {
       afterStart.overflowingScrollers,
       `new overflow after lifecycle change: ${JSON.stringify(afterStart.overflowingScrollers, null, 2)}`,
     ).toEqual([]);
+  });
+
+  test('status evidence remains reachable on short mobile viewports', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 667 });
+    await page.goto('/');
+    await page.waitForSelector('#chronoscope-root');
+    await page.waitForTimeout(400);
+
+    const reachability = await page.evaluate(() => {
+      const overview = document.querySelector<HTMLElement>('.overview');
+      const shellMain = document.querySelector<HTMLElement>('main#main-content');
+      const subtabStrip = document.querySelector<HTMLElement>('.overview-subtab-strip');
+      const panel = document.querySelector<HTMLElement>('#overview-panel-racing');
+      const docEl = document.documentElement;
+      if (!overview || !shellMain || !subtabStrip || !panel) {
+        return {
+          hasNodes: false,
+          hasScrollPath: false,
+          stripVisibleAfterScroll: false,
+          panelVisibleAfterScroll: false,
+          horizontalOverflow: true,
+        };
+      }
+
+      const hasScrollablePath = (el: HTMLElement): boolean => {
+        const cs = getComputedStyle(el);
+        return (cs.overflowY === 'auto' || cs.overflowY === 'scroll') && el.scrollHeight > el.clientHeight;
+      };
+      const hasScrollPath = hasScrollablePath(overview) || hasScrollablePath(shellMain);
+      const scroller = hasScrollablePath(overview) ? overview : hasScrollablePath(shellMain) ? shellMain : null;
+      if (scroller) scroller.scrollTop = scroller.scrollHeight;
+
+      const viewportH = window.innerHeight;
+      const stripRect = subtabStrip.getBoundingClientRect();
+      const panelRect = panel.getBoundingClientRect();
+      const visible = (rect: DOMRect): boolean => rect.top < viewportH && rect.bottom > 0;
+
+      return {
+        hasNodes: true,
+        hasScrollPath,
+        stripVisibleAfterScroll: visible(stripRect),
+        panelVisibleAfterScroll: visible(panelRect),
+        horizontalOverflow: docEl.scrollWidth > docEl.clientWidth,
+      };
+    });
+
+    expect(reachability.hasNodes).toBe(true);
+    expect(reachability.horizontalOverflow, 'document should not overflow horizontally').toBe(false);
+    expect(
+      reachability.hasScrollPath,
+      'short mobile Status must expose a real vertical scroll path instead of clipping hidden evidence',
+    ).toBe(true);
+    expect(reachability.stripVisibleAfterScroll, 'Status subtab strip should be reachable after scrolling').toBe(true);
+    expect(reachability.panelVisibleAfterScroll, 'Status evidence panel should be reachable after scrolling').toBe(true);
   });
 });

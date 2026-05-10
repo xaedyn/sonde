@@ -151,7 +151,7 @@ describe('buildDiagnosticNarrative', () => {
     expect(narrative.confidence).toBe('medium');
     expect(narrative.explanation).toContain('API is above 120 ms');
     expect(narrative.evidence.some((item) => item.label === 'Likely source' && item.value === 'API')).toBe(true);
-    expect(narrative.nextSteps.join(' ')).toContain('Open Diagnose');
+    expect(narrative.nextSteps.join(' ')).toContain('Open Investigate');
   });
 
   it('adds CORS and Timing-Allow-Origin guidance when timing is total-only', () => {

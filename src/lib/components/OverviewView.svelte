@@ -1,6 +1,6 @@
 <!-- src/lib/components/OverviewView.svelte -->
-<!-- Overview — single layout. Composes the chronograph dial, the              -->
-<!-- CausalVerdictStrip, the RacingStrip, and the EventFeed. Score-history /    -->
+<!-- Overview — verdict-first Status layout. Composes the CausalVerdictStrip, -->
+<!-- chronograph dial, RacingStrip, and EventFeed. Score-history /             -->
 <!-- baseline / events are derived locally here; the underlying stats + samples -->
 <!-- flow through the monitoredEndpointsStore invariant.                        -->
 <!-- The classic Overview mode was retired in v8; pre-v10 payloads that         -->
@@ -24,6 +24,8 @@
   import OverviewSubtabStrip from './OverviewSubtabStrip.svelte';
   import type { Endpoint, MeasurementSample } from '$lib/types';
   import type { FeedEvent } from './EventFeed.svelte';
+
+  let { onStart }: { onStart?: () => void } = $props();
 
   // ── Shared spine ──────────────────────────────────────────────────────────
   // Cross-phase invariant — user-facing aggregates derive from
@@ -291,65 +293,71 @@
   });
 </script>
 
-<section class="overview" aria-label="Overview">
-  <div class="overview-grid">
-    <div class="overview-left">
-      <ChronographDial
-        {score}
-        {liveMedian}
-        {threshold}
-        endpoints={monitored}
-        {lastLatencies}
-        {paused}
-        {scoreHistory}
-        {baseline}
-        {p99Across}
-      />
-      <CausalVerdictStrip
-        diagnosis={diagnosticNarrative}
-        {avgP50}
-        {avgJitter}
-        {avgLoss}
-        {drillEndpoint}
-        baselineInsight={historyBaselineInsight}
-        onDrill={handleEnrichedDrill}
-      />
-    </div>
-    <div class="overview-right" data-subtab={$uiStore.overviewSubtab}>
-      <div class="overview-subtab-strip">
-        <OverviewSubtabStrip
-          selected={$uiStore.overviewSubtab}
-          onSelect={(t) => uiStore.setOverviewSubtab(t)}
-        />
-      </div>
-      <div
-        class="card-slot card-slot--racing"
-        id="overview-panel-racing"
-        role="tabpanel"
-        aria-labelledby="overview-subtab-racing"
-      >
-        <RacingStrip
-          endpoints={monitored}
-          {stats}
-          {lastLatencies}
-          {samplesByEndpoint}
+<section class="overview status-view" aria-label="Status">
+  <div class="status-shell">
+    <CausalVerdictStrip
+      diagnosis={diagnosticNarrative}
+      {avgP50}
+      {avgJitter}
+      {avgLoss}
+      {drillEndpoint}
+      baselineInsight={historyBaselineInsight}
+      autoStartSuppressionReason={$uiStore.autoStartSuppressionReason}
+      onDrill={handleEnrichedDrill}
+      onStart={onStart}
+      variant="hero"
+    />
+
+    <div class="overview-grid">
+      <div class="overview-left">
+        <ChronographDial
+          {score}
+          {liveMedian}
           {threshold}
-          focusedEndpointId={$uiStore.focusedEndpointId}
+          endpoints={monitored}
+          {lastLatencies}
+          {paused}
+          {scoreHistory}
+          {baseline}
           {p99Across}
         />
       </div>
-      <div
-        class="card-slot card-slot--events"
-        id="overview-panel-events"
-        role="tabpanel"
-        aria-labelledby="overview-subtab-events"
-      >
-        <EventFeed
-          {events}
-          endpoints={monitored}
-          {now}
-          onDrill={handleEventDrill}
-        />
+      <div class="overview-right" data-subtab={$uiStore.overviewSubtab}>
+        <div class="overview-subtab-strip">
+          <OverviewSubtabStrip
+            selected={$uiStore.overviewSubtab}
+            onSelect={(t) => uiStore.setOverviewSubtab(t)}
+          />
+        </div>
+        <div
+          class="card-slot card-slot--racing"
+          id="overview-panel-racing"
+          role="tabpanel"
+          aria-labelledby="overview-subtab-racing"
+        >
+          <RacingStrip
+            endpoints={monitored}
+            {stats}
+            {lastLatencies}
+            {samplesByEndpoint}
+            {threshold}
+            focusedEndpointId={$uiStore.focusedEndpointId}
+            {p99Across}
+          />
+        </div>
+        <div
+          class="card-slot card-slot--events"
+          id="overview-panel-events"
+          role="tabpanel"
+          aria-labelledby="overview-subtab-events"
+        >
+          <EventFeed
+            {events}
+            endpoints={monitored}
+            {now}
+            onDrill={handleEventDrill}
+          />
+        </div>
       </div>
     </div>
   </div>
@@ -360,24 +368,33 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 16px;
     padding: 12px 24px 16px;
     min-height: 0;
     overflow: hidden;
   }
 
-  /* Two-column grid: dial + causal verdict on the left, racing strip + event
-     feed on the right. Collapses to one column below 1024 px. Fluid above
-     1440 up to the --content-max-w ceiling so ultrawide monitors use their
-     real estate instead of floating the grid in a centered 1440 box. */
-  .overview-grid {
+  .status-shell {
     width: 100%;
     max-width: min(92vw, var(--content-max-w));
     margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-height: 0;
+  }
+
+  /* Verdict-first Status: answer on top, live dial as the left instrument,
+     endpoint comparison and event feed on the right. Collapses to one column
+     below 1024 px. Fluid above 1440 up to the --content-max-w ceiling so
+     ultrawide monitors use their real estate instead of floating the grid in a
+     centered 1440 box. */
+  .overview-grid {
+    width: 100%;
     display: grid;
-    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
     gap: 20px;
     align-items: start;
+    min-height: 0;
   }
   /* container-type lets the dial size against this column's actual width via
      `cqi`, so it grows with the column on wide viewports without having to
@@ -410,7 +427,14 @@
     .overview-right[data-subtab="events"] .card-slot--racing { display: none; }
   }
   @media (max-width: 767px) {
-    .overview { padding: 6px 12px 6px; gap: 10px; }
+    .overview {
+      padding: 8px 12px;
+      overflow-x: hidden;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .status-shell { gap: 10px; }
+    .overview-grid { grid-template-columns: 1fr; gap: 10px; }
     .overview-left, .overview-right { gap: 8px; }
   }
 </style>

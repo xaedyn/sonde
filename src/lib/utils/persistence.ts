@@ -23,10 +23,12 @@ const STORAGE_KEY = 'chronoscope_settings'; // skipcq: JS-0860 — localStorage 
 const LEGACY_STORAGE_KEY = 'chronoscope_v2_settings'; // skipcq: JS-0860 — localStorage key, not a credential
 export const CURRENT_VERSION = 11;
 
-// Views valid at v10/v11. Used by readActiveView to validate the persisted value.
+// Views valid at v10/v11. Hidden legacy routes normalize to overview below.
 const V10_VIEWS: ReadonlySet<string> = new Set<ActiveView>([
   'overview', 'live', 'diagnose', 'strata', 'terminal',
 ]);
+
+const HIDDEN_VIEWS: ReadonlySet<string> = new Set<ActiveView>(['strata', 'terminal']);
 
 const V10_TIME_RANGES: ReadonlySet<LiveTimeRange> = new Set<LiveTimeRange>([
   '1m', '5m', '15m', '1h', '24h',
@@ -224,6 +226,7 @@ function readActiveView(
   validViews: ReadonlySet<string>,
 ): ActiveView {
   const raw = rawUi['activeView'];
+  if (typeof raw === 'string' && HIDDEN_VIEWS.has(raw)) return 'overview';
   if (typeof raw === 'string' && validViews.has(raw)) return raw as ActiveView;
   return 'overview';
 }

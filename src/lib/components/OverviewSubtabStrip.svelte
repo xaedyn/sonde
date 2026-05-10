@@ -35,7 +35,7 @@
   }
 </script>
 
-<div class="subtab-strip" role="tablist" aria-label="Overview detail">
+<div class="subtab-strip" role="tablist" aria-label="Status detail">
   {#each TABS as tab, idx (tab.id)}
     {@const active = tab.id === selected}
     <button

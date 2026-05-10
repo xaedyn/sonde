@@ -4,7 +4,7 @@
 <script lang="ts">
   import type { DiagnosticNarrative } from '$lib/utils/diagnostic-narrative';
   import type { HistoryBaselineInsight } from '$lib/utils/history-baseline';
-  import type { Endpoint } from '$lib/types';
+  import type { AutoStartSuppressionReason, Endpoint } from '$lib/types';
 
   interface Props {
     diagnosis: DiagnosticNarrative;
@@ -13,10 +13,24 @@
     avgLoss: number | null;
     drillEndpoint: Endpoint | null;
     baselineInsight?: HistoryBaselineInsight | null;
+    autoStartSuppressionReason?: AutoStartSuppressionReason | null;
+    variant?: 'normal' | 'hero';
     onDrill: (epId: string) => void;
+    onStart?: () => void;
   }
 
-  let { diagnosis, avgP50, avgJitter, avgLoss, drillEndpoint, baselineInsight = null, onDrill }: Props = $props();
+  let {
+    diagnosis,
+    avgP50,
+    avgJitter,
+    avgLoss,
+    drillEndpoint,
+    baselineInsight = null,
+    autoStartSuppressionReason = null,
+    variant = 'normal',
+    onDrill,
+    onStart,
+  }: Props = $props();
   const verdict = $derived(diagnosis.verdict);
   const primaryLimitation = $derived(diagnosis.limitations[0] ?? null);
   const primaryNextStep = $derived(diagnosis.nextSteps[0] ?? null);
@@ -32,6 +46,27 @@
     const ratio = Math.max(comparison?.p50Ratio ?? 0, comparison?.p95Ratio ?? 0);
     return ratio > 0 ? `${ratio.toFixed(1)}x baseline` : 'Baseline high';
   });
+  const suppressionMessage = $derived.by(() => {
+    if (diagnosis.kind !== 'collecting') return null;
+    switch (autoStartSuppressionReason) {
+      case 'local-endpoint':
+        return 'Ready to measure. Start when you want Chronoscope to probe your local or private endpoints.';
+      case 'pending-share':
+        return 'Review the shared setup first, or start measuring your saved endpoints.';
+      case 'no-enabled-endpoints':
+        return 'No endpoints are enabled. Enable an endpoint before Chronoscope can measure anything.';
+      case 'shared-report':
+        return 'This is a shared snapshot. Run your own test to measure from your location.';
+      default:
+        return null;
+    }
+  });
+  const canStartSuppressedRun = $derived(
+    diagnosis.kind === 'collecting' &&
+    onStart !== undefined &&
+    (autoStartSuppressionReason === 'local-endpoint' || autoStartSuppressionReason === 'pending-share'),
+  );
+  const showMetrics = $derived(suppressionMessage === null);
 
   const fmtInt = (n: number | null): string => (n == null ? '—' : String(Math.round(n)));
   const fmt1 = (n: number | null): string => (n == null ? '—' : n.toFixed(1));
@@ -39,6 +74,7 @@
 
 <section
   class="verdict"
+  class:hero={variant === 'hero'}
   class:warn={verdict.tone === 'warn'}
   class:good={verdict.tone === 'good'}
   aria-live="polite"
@@ -65,41 +101,52 @@
   </div>
   {#if diagnosis.kind !== 'collecting'}
     <p class="verdict-explanation">{diagnosis.explanation}</p>
+  {:else if suppressionMessage}
+    <p class="verdict-explanation verdict-suppression">{suppressionMessage}</p>
   {/if}
 
-  <dl class="verdict-metrics">
-    <div class="verdict-metric">
-      <dt class="verdict-metric-label">Median</dt>
-      <dd class="verdict-metric-value">
-        <span class="verdict-metric-num">{fmtInt(avgP50)}</span>
-        <span class="verdict-metric-unit">ms</span>
-      </dd>
-    </div>
-    <div class="verdict-metric">
-      <dt class="verdict-metric-label">Jitter</dt>
-      <dd class="verdict-metric-value">
-        <span class="verdict-metric-num">{fmt1(avgJitter)}</span>
-        <span class="verdict-metric-unit">σ</span>
-      </dd>
-    </div>
-    <div class="verdict-metric">
-      <dt class="verdict-metric-label">Loss</dt>
-      <dd class="verdict-metric-value">
-        <span class="verdict-metric-num">{fmt1(avgLoss)}</span>
-        <span class="verdict-metric-unit">%</span>
-      </dd>
-    </div>
-  </dl>
+  {#if showMetrics}
+    <dl class="verdict-metrics">
+      <div class="verdict-metric">
+        <dt class="verdict-metric-label">Median</dt>
+        <dd class="verdict-metric-value">
+          <span class="verdict-metric-num">{fmtInt(avgP50)}</span>
+          <span class="verdict-metric-unit">ms</span>
+        </dd>
+      </div>
+      <div class="verdict-metric">
+        <dt class="verdict-metric-label">Jitter</dt>
+        <dd class="verdict-metric-value">
+          <span class="verdict-metric-num">{fmt1(avgJitter)}</span>
+          <span class="verdict-metric-unit">σ</span>
+        </dd>
+      </div>
+      <div class="verdict-metric">
+        <dt class="verdict-metric-label">Loss</dt>
+        <dd class="verdict-metric-value">
+          <span class="verdict-metric-num">{fmt1(avgLoss)}</span>
+          <span class="verdict-metric-unit">%</span>
+        </dd>
+      </div>
+    </dl>
+  {/if}
 
   {#if drillEndpoint && verdict.tone === 'warn'}
     <button
       type="button"
       class="verdict-drill"
       onclick={() => onDrill(drillEndpoint.id)}
-      aria-label="Diagnose {drillEndpoint.label}, route to diagnose view"
+      aria-label="Investigate {drillEndpoint.label}, route to investigation view"
     >
-      <span class="verdict-drill-text">Diagnose</span>
+      <span class="verdict-drill-text">Investigate</span>
       <span class="verdict-drill-ep" style:color={drillEndpoint.color}>{drillEndpoint.label}</span>
+      <span class="verdict-drill-arrow" aria-hidden="true">→</span>
+    </button>
+  {/if}
+
+  {#if canStartSuppressedRun}
+    <button type="button" class="verdict-drill verdict-start" onclick={() => onStart?.()}>
+      <span class="verdict-drill-text">Start Measuring</span>
       <span class="verdict-drill-arrow" aria-hidden="true">→</span>
     </button>
   {/if}
@@ -143,6 +190,17 @@
     background: linear-gradient(180deg, rgba(251, 191, 36, 0.03), var(--glass-bg-rail-hover));
   }
   .verdict.good { border-color: rgba(134, 239, 172, 0.25); }
+  .verdict.hero {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 16px 20px;
+    border-radius: 12px;
+  }
+  .verdict.hero .verdict-headline {
+    font-size: var(--ts-xl);
+  }
+  .verdict.hero .verdict-explanation {
+    font-size: var(--ts-md);
+  }
 
   .verdict-main {
     grid-column: 1 / -1;
@@ -281,7 +339,7 @@
     letter-spacing: var(--tr-label);
   }
 
-  /* Drill button: sans "Diagnose" + mono endpoint chip + cyan arrow. Matches
+  /* Drill button: sans "Investigate" + mono endpoint chip + cyan arrow. Matches
      v2 prototype .v2-verdict-drill — mixed typography (sans label, mono name)
      signals "act on this specific endpoint" without shouting. */
   .verdict-drill {
@@ -314,6 +372,10 @@
     font-variant-numeric: tabular-nums;
   }
   .verdict-drill-arrow { color: var(--accent-cyan); }
+  .verdict-start {
+    min-height: 44px;
+    white-space: nowrap;
+  }
 
   .verdict-extra {
     grid-column: 1 / -1;

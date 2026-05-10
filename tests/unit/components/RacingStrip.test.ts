@@ -14,14 +14,14 @@ const baseProps = {
 };
 
 describe('RacingStrip — G5 hint copy', () => {
-  it('should render exactly "Click → Live · ⇧-click → Diagnose"', () => {
+  it('should render exactly "Click → Live · ⇧-click → Investigate"', () => {
     const { getByText } = render(RacingStrip, { props: baseProps });
-    expect(getByText('Click → Live · ⇧-click → Diagnose')).toBeTruthy();
+    expect(getByText('Click → Live · ⇧-click → Investigate')).toBeTruthy();
   });
 
-  it('should NOT contain the old ambiguous "⇧ → Diagnose" text', () => {
+  it('should NOT contain the old ambiguous "⇧ → Investigate" text', () => {
     const { queryByText } = render(RacingStrip, { props: baseProps });
-    expect(queryByText('Click → Live · ⇧ → Diagnose')).toBeNull();
+    expect(queryByText('Click → Live · ⇧ → Investigate')).toBeNull();
   });
 });
 
