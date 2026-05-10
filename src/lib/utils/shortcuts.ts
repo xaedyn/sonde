@@ -7,10 +7,10 @@ import { uiStore } from '../stores/ui';
 import type { ActiveView } from '../types';
 import { get } from 'svelte/store';
 
-const VIEW_SHORTCUTS: Readonly<Record<number, ActiveView>> = {
-  0: 'overview',
-  1: 'live',
-  2: 'diagnose',
+const VIEW_BY_KEY: Readonly<Record<string, ActiveView>> = {
+  '1': 'overview',
+  '2': 'live',
+  '3': 'diagnose',
 };
 
 function isTextInput(target: EventTarget | null): boolean {
@@ -28,10 +28,12 @@ function hasSystemModifier(e: KeyboardEvent): boolean {
   return e.ctrlKey || e.metaKey;
 }
 
-function digitIndexFromEvent(e: KeyboardEvent): number | null {
+function digitFromEvent(e: KeyboardEvent): string | null {
   const fromCode = /^Digit([0-9])$/.exec(e.code);
-  const digit = fromCode?.[1] ?? (/^[0-9]$/.test(e.key) ? e.key : null);
-  if (digit === null) return null;
+  return fromCode?.[1] ?? (/^[0-9]$/.test(e.key) ? e.key : null);
+}
+
+function digitIndexFromDigit(digit: string): number {
   return digit === '0' ? 9 : Number(digit) - 1;
 }
 
@@ -75,16 +77,16 @@ function handleKeydown(e: KeyboardEvent): void {
     }
 
     default: {
-      const index = digitIndexFromEvent(e);
-      if (index === null) return;
+      const digit = digitFromEvent(e);
+      if (digit === null) return;
 
       if (e.altKey) {
-        toggleEndpointAtIndex(index);
+        toggleEndpointAtIndex(digitIndexFromDigit(digit));
         e.preventDefault();
         return;
       }
 
-      const view = VIEW_SHORTCUTS[index];
+      const view = VIEW_BY_KEY[digit];
       if (view) {
         uiStore.setActiveView(view);
         e.preventDefault();

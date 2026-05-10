@@ -1,9 +1,6 @@
 <!-- src/lib/components/ViewSwitcher.svelte -->
-<!-- Five-tab view picker. Sits below the topbar, above the main content area. -->
-<!-- Overview / Live / Diagnose are shipped; Strata / Terminal stay            -->
-<!-- disabled-with-tooltip until their prototypes land (issues #50, #51).      -->
-<!-- The Lanes tab was retired in Phase 7. Atlas was renamed to Diagnose at    -->
-<!-- v9 to align with the v2 prototype vocabulary.                             -->
+<!-- Three-tab view picker. Sits below the topbar, above the main content area. -->
+<!-- Route IDs remain stable while labels present the verdict-first IA.         -->
 <script lang="ts">
   import { uiStore } from '$lib/stores/ui';
   import type { ActiveView } from '$lib/types';
@@ -13,22 +10,15 @@
     readonly key: string;
     readonly label: string;
     readonly hint: string;
-    readonly enabled: boolean;
   }
 
-  // Visible label list. Order matches the prototype's left-to-right reading.
-  // Enabled numeric keys mirror this order: 1 Overview, 2 Live, 3 Diagnose.
-  // Subs use the prototype's question-form hints (`shell.jsx:4–8` of the v2
-  // bundle): each tab's sub answers the question that view exists to answer.
+  // Visible label list. Order matches the shipped intent-oriented navigation.
+  // Numeric keys mirror this order: 1 Status, 2 Live, 3 Investigate.
   const VIEWS: readonly ViewDef[] = [
-    { id: 'overview', key: '1', label: 'Overview', hint: 'Is everything okay?',         enabled: true  },
-    { id: 'live',     key: '2', label: 'Live',     hint: "What's happening right now?", enabled: true  },
-    { id: 'diagnose', key: '3', label: 'Diagnose', hint: 'Is it me or them?',            enabled: true  },
-    { id: 'strata',   key: '4', label: 'Strata',   hint: 'How is the distribution?',    enabled: false },
-    { id: 'terminal', key: '5', label: 'Terminal', hint: "What's in the log?",          enabled: false },
+    { id: 'overview', key: '1', label: 'Status',      hint: 'Is everything okay?' },
+    { id: 'live',     key: '2', label: 'Live',        hint: "What's happening right now?" },
+    { id: 'diagnose', key: '3', label: 'Investigate', hint: 'Why does it look that way?' },
   ];
-
-  const DISABLED_TOOLTIP = 'Prototype in progress — not yet available.';
 
   const activeView = $derived($uiStore.activeView);
 
@@ -37,7 +27,6 @@
   }
 
   function selectView(view: ViewDef): void {
-    if (!view.enabled) return;
     uiStore.setActiveView(view.id);
   }
 </script>
@@ -49,12 +38,8 @@
       type="button"
       class="view-tab"
       class:active
-      class:disabled={!view.enabled}
       aria-current={active ? 'page' : undefined}
       aria-pressed={active}
-      aria-disabled={!view.enabled}
-      title={view.enabled ? '' : DISABLED_TOOLTIP}
-      tabindex={view.enabled ? 0 : -1}
       onclick={() => selectView(view)}
     >
       <span class="view-tab-key" aria-hidden="true">{view.key}</span>
@@ -78,11 +63,8 @@
     border-bottom: 1px solid var(--border-mid);
     background: rgba(10, 9, 18, 0.3);
     flex-shrink: 0;
-    /* Enable horizontal scroll with snap at any width where the 5 tabs can't
-       fit. Desktop fits comfortably; the overflow path is the mobile answer.
-       `overflow-x: auto` + snap means the last visible tab is deliberately
-       clipped at narrow widths, signalling that tabs 4–5 exist beyond the
-       edge. Without this, tabs 4 and 5 were unreachable at ≤420 px. */
+    /* Enable horizontal scroll with snap at any width where the tabs need more
+       room. Desktop fits comfortably; the overflow path is the mobile answer. */
     overflow-x: auto;
     scroll-snap-type: x proximity;
     scrollbar-width: none;
@@ -115,7 +97,7 @@
     background: transparent;
     transition: background 200ms ease, box-shadow 200ms ease;
   }
-  .view-tab:hover:not(.disabled) {
+  .view-tab:hover {
     color: var(--t1);
     background: rgba(255, 255, 255, 0.02);
   }
@@ -126,10 +108,6 @@
   .view-tab.active::after {
     background: var(--accent-cyan);
     box-shadow: 0 0 10px var(--glow-cyan);
-  }
-  .view-tab.disabled {
-    cursor: not-allowed;
-    opacity: 0.55;
   }
   .view-tab:focus-visible {
     outline: 1.5px solid var(--accent-cyan);
@@ -198,9 +176,7 @@
   }
 
   /* Mobile: drop the keyboard-shortcut kicker (keyboard isn't reachable
-     anyway) and hide the tab sub-label so tabs pack tighter. Tab 5 still
-     bleeds 20–30 % past the right edge at 360 px, signalling the overflow
-     that the snap strip handles. */
+     anyway) and hide the tab sub-label so tabs pack tighter. */
   @media (max-width: 767px) {
     .view-switcher { padding: 8px 12px 0; gap: 2px; }
     .view-switcher-trailing { display: none; }
