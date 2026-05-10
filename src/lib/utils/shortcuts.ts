@@ -80,13 +80,14 @@ function handleKeydown(e: KeyboardEvent): void {
     default: {
       const digit = digitFromEvent(e);
       if (digit === null) return;
-      if (e.shiftKey) return;
 
       if (e.altKey) {
         toggleEndpointAtIndex(digitIndexFromDigit(digit));
         e.preventDefault();
         return;
       }
+
+      if (e.shiftKey) return;
 
       const view = VIEW_BY_KEY[digit];
       if (view) {
