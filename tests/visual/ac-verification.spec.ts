@@ -30,6 +30,10 @@ async function injectVisibleSamples(page: Page): Promise<void> {
 }
 
 const RUN_CONTROL_NAME = /^(?:Start|Starting\.\.\.|Stop)$/i;
+const INVESTIGATE_AUTO_SELECTION_VIEWPORTS = [
+  { name: 'desktop', width: 1440, height: 900 },
+  { name: 'mobile',  width: 390,  height: 844 },
+] as const;
 
 function runControl(page: Page): Locator {
   return page.getByRole('button', { name: RUN_CONTROL_NAME });
@@ -172,20 +176,23 @@ test.describe('Acceptance criteria verification', () => {
     await assertVerdictBeforeDial(page);
   });
 
-  test('Investigate tab auto-selects an endpoint detail on direct entry', async ({ page }) => {
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto('/');
-    await page.waitForSelector('#chronoscope-root');
+  for (const vp of INVESTIGATE_AUTO_SELECTION_VIEWPORTS) {
+    test(`Investigate tab auto-selects an endpoint detail with data on ${vp.name}`, async ({ page }) => {
+      await page.setViewportSize({ width: vp.width, height: vp.height });
+      await page.goto('/');
+      await page.waitForSelector('#chronoscope-root');
+      await injectVisibleSamples(page);
 
-    await page.getByRole('button', { name: /^Investigate/ }).click();
+      await page.getByRole('group', { name: 'Views' }).getByRole('button', { name: /^Investigate/ }).click();
 
-    const investigate = page.locator('section[aria-label="Investigate"]');
-    await expect(investigate).toBeVisible();
-    await expect(investigate.locator('.diagnose-title-name')).toBeVisible({ timeout: 3000 });
-    await expect(investigate.locator('.diagnose-empty')).toHaveCount(0);
-    await expect(investigate.getByText(/pick an endpoint from the left rail/i)).toHaveCount(0);
-    await expect(investigate.locator('section[aria-label="Diagnostic answer"]')).toBeVisible();
-  });
+      const investigate = page.locator('section[aria-label="Investigate"]');
+      await expect(investigate).toBeVisible();
+      await expect(investigate.locator('.diagnose-title-name')).toBeVisible({ timeout: 3000 });
+      await expect(investigate.locator('section[aria-label="Diagnostic answer"]')).toBeVisible();
+      await expect(investigate.getByText(/pick an endpoint from the left rail/i)).toHaveCount(0);
+      await expect(investigate.locator('.diagnose-empty')).toHaveCount(0);
+    });
+  }
 
   test('diagnostic narrative exposes confidence and browser timing limits', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
