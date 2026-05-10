@@ -81,6 +81,18 @@ describe('buildRemoteVantageInsight', () => {
     expect(insight.headline).toContain('also slow from Cloudflare');
   });
 
+  it('does not call the outside vantage healthy when only the remote side is slow', () => {
+    const insight = buildRemoteVantageInsight({
+      endpoint,
+      stats: { ...slowStats, p50: 80 },
+      threshold: 120,
+      probe: remote({ durationMs: 410, verdict: 'slow' }),
+    });
+
+    expect(insight.status).toBe('remote-slow-only');
+    expect(insight.detail).toContain('outside edge path');
+  });
+
   it('returns a setup state before a remote probe exists', () => {
     const insight = buildRemoteVantageInsight({
       endpoint,

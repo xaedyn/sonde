@@ -79,11 +79,13 @@ export function createRemoteVantageStore(client: RemoteVantageClient = remoteVan
   }
 
   async function createHostedReport(payload: SharePayload): Promise<string | null> {
+    update((state) => ({ ...state, status: 'checking', error: null }));
     try {
       const response = await client.createHostedReport(payload);
       if (!response.ok) {
         update((state) => ({
           ...state,
+          status: 'connected',
           hostedReport: response,
           hostedReportFallback: response.fallback,
           error: null,
@@ -92,13 +94,19 @@ export function createRemoteVantageStore(client: RemoteVantageClient = remoteVan
       }
       update((state) => ({
         ...state,
+        status: 'connected',
         hostedReport: response,
         hostedReportFallback: null,
         error: null,
       }));
       return response.url;
     } catch (error) {
-      update((state) => ({ ...state, hostedReportFallback: 'hash', error: messageFrom(error) }));
+      update((state) => ({
+        ...state,
+        status: 'error',
+        hostedReportFallback: 'hash',
+        error: messageFrom(error),
+      }));
       return null;
     }
   }

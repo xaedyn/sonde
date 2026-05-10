@@ -231,7 +231,7 @@ export function applySharePayload(payload: SharePayload): string[] {
     uiStore.setSharedReportContext(buildSharedReportContext(payload));
     uiStore.setSharedView(true);
     uiStore.setSharedReportMode(true);
-    remoteVantageStore.setProbe(payload.remoteVantage ? { ok: true, ...payload.remoteVantage } : null);
+    remoteVantageStore.setProbe(payload.remoteVantage ? { ...payload.remoteVantage, ok: true } : null);
   } else {
     uiStore.setSharedView(false);
     uiStore.setSharedReportMode(false);

@@ -24,8 +24,9 @@ Configure these on the Cloudflare Pages project:
 - `CHRONOSCOPE_REPORTS`: KV namespace for hosted reports. Reports expire after
   30 days.
 - `CHRONOSCOPE_SATURATION`: optional R2 bucket/object binding. When an object
-  named `chronoscope-saturation.bin` matches the requested byte count exactly,
-  the function serves it; otherwise it generates a deterministic stream.
+  named `chronoscope-saturation.bin` exists and its size matches the requested
+  byte count exactly, the function serves it; otherwise it generates a
+  deterministic stream.
 
 If `CHRONOSCOPE_REPORTS` is absent, report creation returns a structured
 `fallback: "hash"` response and the browser copies the existing hash-based URL

@@ -107,6 +107,22 @@ describe('Cloudflare remote vantage functions', () => {
     expect(fetcher).not.toHaveBeenCalled();
   });
 
+  it('rejects IPv4-mapped IPv6 private probe URLs before fetching', async () => {
+    const fetcher = vi.fn();
+    const request = new Request('https://chronoscope.dev/api/vantage/probe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        targets: [{ id: 'ep-1', label: 'Router', url: 'http://[::ffff:127.0.0.1]/' }],
+      }),
+    });
+
+    const response = await handleRemoteProbe(request, { fetcher });
+
+    expect(response.status).toBe(400);
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
   it('stores and retrieves hosted reports when KV is bound', async () => {
     const kv = new FakeKV();
     const createRequest = new Request('https://chronoscope.dev/api/reports', {
@@ -135,6 +151,22 @@ describe('Cloudflare remote vantage functions', () => {
     await expect(fetched.json()).resolves.toEqual({ ok: true, payload: sharePayload });
   });
 
+  it('returns a structured error when a hosted report is corrupted', async () => {
+    const kv = new FakeKV();
+    await kv.put('report:report_123', '{not json');
+
+    const fetched = await handleGetHostedReport(
+      new Request('https://chronoscope.dev/api/reports/report_123'),
+      { reports: kv, id: 'report_123' },
+    );
+
+    expect(fetched.status).toBe(500);
+    await expect(fetched.json()).resolves.toMatchObject({
+      ok: false,
+      error: 'Stored report is invalid.',
+    });
+  });
+
   it('tells the browser to fall back to hash links when report KV is absent', async () => {
     const response = await handleCreateHostedReport(
       new Request('https://chronoscope.dev/api/reports', {
@@ -160,6 +192,16 @@ describe('Cloudflare remote vantage functions', () => {
     expect(response.status).toBe(200);
     expect(response.headers.get('Content-Length')).toBe('1024');
     expect((await response.arrayBuffer()).byteLength).toBe(1024);
+  });
+
+  it('answers saturation CORS preflight requests', async () => {
+    const response = await handleSaturationRequest(
+      new Request('https://chronoscope.dev/api/vantage/saturation', { method: 'OPTIONS' }),
+      {},
+    );
+
+    expect(response.status).toBe(204);
+    expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
   });
 
   it('generates saturation bytes when the optional R2 object size does not exactly match', async () => {

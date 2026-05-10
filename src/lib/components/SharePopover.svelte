@@ -45,7 +45,7 @@
       get(measurementStore),
       MAX_SHARE_URL_CHARS,
       Date.now(),
-      {},
+      undefined,
       get(remoteVantageStore).lastProbe,
     );
   }

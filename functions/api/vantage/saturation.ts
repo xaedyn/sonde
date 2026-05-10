@@ -15,3 +15,7 @@ export const onRequestHead: PagesFunction<Env> = async (context) => {
     bucket: context.env.CHRONOSCOPE_SATURATION,
   });
 };
+
+export const onRequestOptions: PagesFunction<Env> = async (context) => {
+  return handleSaturationRequest(context.request);
+};

@@ -49,7 +49,7 @@ const PUBLIC_PORTS = new Set(['', '80', '443']);
 const EXPOSED_HEADERS = ['content-type', 'server', 'cache-control', 'cf-cache-status'];
 
 function json(status: number, payload: unknown, extraHeaders: HeadersInit = {}): Response {
-  return new Response(JSON.stringify(payload), {
+  return new Response(status === 204 ? null : JSON.stringify(payload), {
     status,
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
@@ -102,6 +102,29 @@ function isBlockedIPv4(hostname: string): boolean {
   );
 }
 
+function isBlockedIPv4MappedIPv6(hostname: string): boolean {
+  const stripped = hostname.startsWith('[') && hostname.endsWith(']')
+    ? hostname.slice(1, -1)
+    : hostname;
+  if (!stripped.startsWith('::ffff:')) return false;
+
+  const embedded = stripped.slice('::ffff:'.length);
+  if (isBlockedIPv4(embedded)) return true;
+
+  const hexMapped = embedded.match(/^([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
+  if (!hexMapped || hexMapped[1] === undefined || hexMapped[2] === undefined) return false;
+
+  const hi = parseInt(hexMapped[1], 16);
+  const lo = parseInt(hexMapped[2], 16);
+  const ipv4 = [
+    (hi >> 8) & 0xff,
+    hi & 0xff,
+    (lo >> 8) & 0xff,
+    lo & 0xff,
+  ].join('.');
+  return isBlockedIPv4(ipv4);
+}
+
 function isBlockedHostname(hostname: string): boolean {
   const lower = hostname.toLowerCase();
   if (
@@ -112,6 +135,8 @@ function isBlockedHostname(hostname: string): boolean {
   ) return true;
   if (isBlockedIPv4(lower)) return true;
   if (lower.includes(':')) {
+    const stripped = lower.startsWith('[') && lower.endsWith(']') ? lower.slice(1, -1) : lower;
+    if (isBlockedIPv4MappedIPv6(stripped)) return true;
     return lower === '::1' ||
       lower === '[::1]' ||
       lower.startsWith('fc') ||
@@ -325,9 +350,13 @@ export async function handleGetHostedReport(request: Request, options: HostedRep
   const stored = await options.reports.get(`report:${id}`);
   if (!stored) return json(404, { ok: false, error: 'Report not found or expired.' });
 
-  const payload = JSON.parse(stored) as unknown;
-  if (!isSharePayloadLike(payload)) return json(500, { ok: false, error: 'Stored report is invalid.' });
-  return json(200, { ok: true, payload } satisfies HostedReportLoadResponse);
+  try {
+    const payload = JSON.parse(stored) as unknown;
+    if (!isSharePayloadLike(payload)) return json(500, { ok: false, error: 'Stored report is invalid.' });
+    return json(200, { ok: true, payload } satisfies HostedReportLoadResponse);
+  } catch {
+    return json(500, { ok: false, error: 'Stored report is invalid.' });
+  }
 }
 
 function requestedSaturationBytes(request: Request): number {
@@ -356,6 +385,7 @@ function generatedSaturationStream(totalBytes: number): ReadableStream<Uint8Arra
 }
 
 export async function handleSaturationRequest(request: Request, options: SaturationOptions = {}): Promise<Response> {
+  if (request.method === 'OPTIONS') return json(204, {});
   if (request.method !== 'GET' && request.method !== 'HEAD') {
     return json(405, { ok: false, error: 'Method not allowed.' });
   }

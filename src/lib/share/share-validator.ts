@@ -28,6 +28,8 @@ const ALLOWED_REMOTE_RESULT_KEYS = new Set([
   'error',
 ]);
 const ALLOWED_REMOTE_HEADERS = new Set(['content-type', 'server', 'cache-control', 'cf-cache-status']);
+const ALLOWED_RESULT_KEYS = new Set(['samples']);
+const MAX_DELAY_MS = 60_000;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -144,7 +146,7 @@ export function validateSharePayload(data: unknown): SharePayload | null {
   const settings = obj['settings'];
   if (!isRecord(settings)) return null;
   if (!isNonNegativeFiniteNumber(settings['timeout']) || (settings['timeout'] as number) > 15000) return null;
-  if (!isNonNegativeFiniteNumber(settings['delay'])) return null;
+  if (!isNonNegativeFiniteNumber(settings['delay']) || (settings['delay'] as number) > MAX_DELAY_MS) return null;
   if (!isNonNegativeFiniteNumber(settings['cap']) || (settings['cap'] as number) > MAX_CAP) return null;
   if (settings['burstRounds'] !== undefined && (!isNonNegativeFiniteNumber(settings['burstRounds']) || (settings['burstRounds'] as number) > 500)) return null;
   if (settings['monitorDelay'] !== undefined && (!isNonNegativeFiniteNumber(settings['monitorDelay']) || (settings['monitorDelay'] as number) > 60000)) return null;
@@ -162,6 +164,7 @@ export function validateSharePayload(data: unknown): SharePayload | null {
     if ((obj['results'] as unknown[]).length > 50) return null;
     for (const result of obj['results'] as unknown[]) {
       if (!isRecord(result)) return null;
+      if (!hasOnlyKeys(result, ALLOWED_RESULT_KEYS)) return null;
       if (!Array.isArray(result['samples'])) return null;
       if ((result['samples'] as unknown[]).length > 10_000) return null;
       for (const sample of result['samples'] as unknown[]) {

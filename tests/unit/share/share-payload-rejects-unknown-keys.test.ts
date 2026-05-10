@@ -86,6 +86,34 @@ describe('validateSharePayload: top-level unknown key rejection', () => {
     expect(decodeSharePayload(encoded)).toBeNull();
   });
 
+  it('rejects unbounded delay values', () => {
+    const payload = {
+      v: 1,
+      mode: 'config',
+      endpoints: [{ url: 'https://example.com', enabled: true }],
+      settings: { timeout: 5000, delay: 60001, cap: MAX_CAP, corsMode: 'no-cors' as const },
+    };
+    const encoded = encodeSharePayload(payload as never);
+    expect(decodeSharePayload(encoded)).toBeNull();
+  });
+
+  it('rejects unknown result object keys', () => {
+    const payload = {
+      v: 1,
+      mode: 'results',
+      endpoints: [{ url: 'https://example.com', enabled: true }],
+      settings: { timeout: 5000, delay: 0, cap: MAX_CAP, corsMode: 'no-cors' as const },
+      results: [
+        {
+          samples: [{ round: 0, latency: 42, status: 'ok' as const }],
+          extra: 'injected',
+        },
+      ],
+    };
+    const encoded = encodeSharePayload(payload as never);
+    expect(decodeSharePayload(encoded)).toBeNull();
+  });
+
   it('accepts { v, mode, endpoints, settings } (config mode baseline)', () => {
     const payload: SharePayload = {
       v: 1,

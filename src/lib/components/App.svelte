@@ -250,7 +250,9 @@
   }
 
   onMount(() => {
-    void bootstrap();
+    void bootstrap().catch((error) => {
+      console.warn('[Chronoscope] App bootstrap failed:', error);
+    });
   });
 
   onDestroy(() => {

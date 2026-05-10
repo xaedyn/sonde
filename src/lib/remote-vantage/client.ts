@@ -29,14 +29,17 @@ export interface RemoteVantageClient {
   loadHostedReport(id: string): Promise<HostedReportLoadResponse>;
 }
 
-async function parseJsonResponse<T>(response: Response): Promise<T> {
+async function parseJsonResponse<T>(response: Response, allowedStatuses: readonly number[] = []): Promise<T> {
   const text = await response.text();
   const payload = text ? JSON.parse(text) as unknown : null;
-  if (!response.ok) {
+  if (!response.ok && !allowedStatuses.includes(response.status)) {
     const message = typeof payload === 'object' && payload !== null && 'error' in payload
       ? String((payload as { error: unknown }).error)
       : `Remote vantage request failed with HTTP ${response.status}`;
     throw new Error(message);
+  }
+  if (payload === null) {
+    throw new Error('Remote vantage returned an empty response.');
   }
   return payload as T;
 }
@@ -74,10 +77,7 @@ export function createRemoteVantageClient(fetcher: typeof fetch = fetch): Remote
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ payload }),
       });
-      if (response.status === 503) {
-        return response.json() as Promise<HostedReportCreateResponse>;
-      }
-      return parseJsonResponse<HostedReportCreateResponse>(response);
+      return parseJsonResponse<HostedReportCreateResponse>(response, [503]);
     },
 
     async loadHostedReport(id: string): Promise<HostedReportLoadResponse> {

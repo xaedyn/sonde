@@ -4,6 +4,7 @@ import type { RemoteVantageProbeResponse, RemoteVantageResult } from './types';
 export type RemoteVantageInsightStatus =
   | 'unavailable'
   | 'remote-normal'
+  | 'remote-slow-only'
   | 'local-path'
   | 'remote-confirms'
   | 'remote-error';
@@ -89,6 +90,17 @@ export function buildRemoteVantageInsight(input: RemoteVantageInsightInput): Rem
       headline: `${label} is also slow from Cloudflare`,
       detail: `${edge} took ${fmtMs(result.durationMs)} and your browser p50 is ${fmtMs(browserP50 ?? 0)}, so the endpoint, CDN, or a broad upstream path is implicated.`,
       action: 'Share the report with the service owner; it now contains outside-vantage evidence.',
+      edgeLabel: edge,
+      result,
+    };
+  }
+
+  if (!browserSlow && remoteSlow) {
+    return {
+      status: 'remote-slow-only',
+      headline: `${label} is slow from ${edge}, but not your browser`,
+      detail: `${edge} took ${fmtMs(result.durationMs)}${browserP50 !== null ? ` while your browser p50 is ${fmtMs(browserP50)}` : ''}, suggesting the outside edge path or origin may be inconsistent right now.`,
+      action: 'Run the check again or compare another outside vantage before blaming the local network.',
       edgeLabel: edge,
       result,
     };
