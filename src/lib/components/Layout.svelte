@@ -90,7 +90,7 @@
               compatibility, but the primary ViewSwitcher exposes only Status,
               Live, and Investigate.
             -->
-            <OverviewView />
+            <OverviewView {onStart} />
           {/if}
         </main>
       </div>

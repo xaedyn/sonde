@@ -4,7 +4,7 @@
 <script lang="ts">
   import type { DiagnosticNarrative } from '$lib/utils/diagnostic-narrative';
   import type { HistoryBaselineInsight } from '$lib/utils/history-baseline';
-  import type { Endpoint } from '$lib/types';
+  import type { AutoStartSuppressionReason, Endpoint } from '$lib/types';
 
   interface Props {
     diagnosis: DiagnosticNarrative;
@@ -13,10 +13,24 @@
     avgLoss: number | null;
     drillEndpoint: Endpoint | null;
     baselineInsight?: HistoryBaselineInsight | null;
+    autoStartSuppressionReason?: AutoStartSuppressionReason | null;
+    variant?: 'normal' | 'hero';
     onDrill: (epId: string) => void;
+    onStart?: () => void;
   }
 
-  let { diagnosis, avgP50, avgJitter, avgLoss, drillEndpoint, baselineInsight = null, onDrill }: Props = $props();
+  let {
+    diagnosis,
+    avgP50,
+    avgJitter,
+    avgLoss,
+    drillEndpoint,
+    baselineInsight = null,
+    autoStartSuppressionReason = null,
+    variant = 'normal',
+    onDrill,
+    onStart,
+  }: Props = $props();
   const verdict = $derived(diagnosis.verdict);
   const primaryLimitation = $derived(diagnosis.limitations[0] ?? null);
   const primaryNextStep = $derived(diagnosis.nextSteps[0] ?? null);
@@ -39,6 +53,7 @@
 
 <section
   class="verdict"
+  class:hero={variant === 'hero'}
   class:warn={verdict.tone === 'warn'}
   class:good={verdict.tone === 'good'}
   aria-live="polite"
@@ -104,6 +119,13 @@
     </button>
   {/if}
 
+  {#if autoStartSuppressionReason && diagnosis.kind === 'collecting'}
+    <button type="button" class="verdict-drill verdict-start" onclick={() => onStart?.()}>
+      <span class="verdict-drill-text">Start Measuring</span>
+      <span class="verdict-drill-arrow" aria-hidden="true">→</span>
+    </button>
+  {/if}
+
   {#if diagnosis.kind !== 'collecting'}
     <div class="verdict-extra">
       {#if primaryLimitation}
@@ -143,6 +165,17 @@
     background: linear-gradient(180deg, rgba(251, 191, 36, 0.03), var(--glass-bg-rail-hover));
   }
   .verdict.good { border-color: rgba(134, 239, 172, 0.25); }
+  .verdict.hero {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 16px 20px;
+    border-radius: 12px;
+  }
+  .verdict.hero .verdict-headline {
+    font-size: var(--ts-xl);
+  }
+  .verdict.hero .verdict-explanation {
+    font-size: var(--ts-md);
+  }
 
   .verdict-main {
     grid-column: 1 / -1;
@@ -314,6 +347,7 @@
     font-variant-numeric: tabular-nums;
   }
   .verdict-drill-arrow { color: var(--accent-cyan); }
+  .verdict-start { white-space: nowrap; }
 
   .verdict-extra {
     grid-column: 1 / -1;
