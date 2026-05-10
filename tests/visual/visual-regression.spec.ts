@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { seedStableSnapshotState, waitForStableSnapshotState } from './stable-snapshot-state';
 
 const BREAKPOINTS = [
   { name: 'mobile', width: 375, height: 812 },
@@ -11,8 +12,9 @@ for (const bp of BREAKPOINTS) {
   test.describe(`Visual regression @ ${bp.name} (${bp.width}px)`, () => {
     test.beforeEach(async ({ page }) => {
       await page.setViewportSize({ width: bp.width, height: bp.height });
+      await seedStableSnapshotState(page);
       await page.goto('/');
-      await page.waitForSelector('#chronoscope-root');
+      await waitForStableSnapshotState(page);
     });
 
     test(`empty state`, async ({ page }) => {
