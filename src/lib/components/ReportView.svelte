@@ -118,6 +118,7 @@
 
   function handleRunOwn(): void {
     uiStore.clearSharedView();
+    uiStore.setAutoStartSuppressionReason(null);
     measurementStore.reset();
   }
 </script>

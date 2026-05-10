@@ -134,6 +134,17 @@ describe('autoStartDecision', () => {
     ).toEqual({ shouldStart: false, reason: 'pending-share' });
   });
 
+  it('prioritizes no enabled endpoints over pending config share', () => {
+    expect(
+      autoStartDecision({
+        endpoints: [{ ...ep('api'), enabled: false }],
+        isSharedView: false,
+        sharedReportMode: false,
+        hasPendingShare: true,
+      }),
+    ).toEqual({ shouldStart: false, reason: 'no-enabled-endpoints' });
+  });
+
   it('suppresses when no endpoints are enabled', () => {
     expect(
       autoStartDecision({

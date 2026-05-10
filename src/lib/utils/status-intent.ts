@@ -23,13 +23,13 @@ export function autoStartDecision(input: {
     return { shouldStart: false, reason: 'shared-report' };
   }
 
-  if (input.hasPendingShare) {
-    return { shouldStart: false, reason: 'pending-share' };
-  }
-
   const enabledEndpoints = input.endpoints.filter((endpoint) => endpoint.enabled);
   if (enabledEndpoints.length === 0) {
     return { shouldStart: false, reason: 'no-enabled-endpoints' };
+  }
+
+  if (input.hasPendingShare) {
+    return { shouldStart: false, reason: 'pending-share' };
   }
 
   if (enabledEndpoints.some((endpoint) => !isSafeSharedUrl(endpoint.url))) {

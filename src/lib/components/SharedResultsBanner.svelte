@@ -13,6 +13,7 @@
 
   function handleRunAgain(): void {
     uiStore.clearSharedView();
+    uiStore.setAutoStartSuppressionReason(null);
     measurementStore.reset();
   }
 </script>
