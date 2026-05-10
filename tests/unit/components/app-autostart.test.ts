@@ -9,6 +9,12 @@ import { uiStore } from '../../../src/lib/stores/ui';
 import { DEFAULT_SETTINGS } from '../../../src/lib/types';
 import type { Endpoint, PersistedSettings } from '../../../src/lib/types';
 
+interface OrderedMock {
+  readonly mock: {
+    readonly invocationCallOrder: readonly number[];
+  };
+}
+
 const mocks = vi.hoisted(() => ({
   engineStart: vi.fn(),
   engineStop: vi.fn(),
@@ -91,6 +97,16 @@ function persistedSettings(endpoints: PersistedSettings['endpoints']): Persisted
   };
 }
 
+function firstCallOrder(mock: OrderedMock): number {
+  const order = mock.mock.invocationCallOrder[0];
+  expect(order).toBeDefined();
+  return order ?? Number.POSITIVE_INFINITY;
+}
+
+function expectCalledBefore(first: OrderedMock, second: OrderedMock): void {
+  expect(firstCallOrder(first)).toBeLessThan(firstCallOrder(second));
+}
+
 async function renderAndWaitForBootstrap(): Promise<void> {
   render(App);
   await waitFor(() => {
@@ -121,8 +137,8 @@ describe('App auto-start bootstrap', () => {
   it('starts normal public sessions after share and persistence initialization', async () => {
     await renderAndWaitForBootstrap();
 
-    expect(mocks.initHashRouter).toHaveBeenCalledBefore(mocks.loadPersistedSettings);
-    expect(mocks.loadPersistedSettings).toHaveBeenCalledBefore(mocks.engineStart);
+    expectCalledBefore(mocks.initHashRouter, mocks.loadPersistedSettings);
+    expectCalledBefore(mocks.loadPersistedSettings, mocks.engineStart);
     expect(mocks.engineStart).toHaveBeenCalledTimes(1);
     expect(get(uiStore).autoStartSuppressionReason).toBeNull();
   });
@@ -138,7 +154,7 @@ describe('App auto-start bootstrap', () => {
 
     await renderAndWaitForBootstrap();
 
-    expect(mocks.initHashRouter).toHaveBeenCalledBefore(mocks.loadPersistedSettings);
+    expectCalledBefore(mocks.initHashRouter, mocks.loadPersistedSettings);
     expect(mocks.engineStart).not.toHaveBeenCalled();
     expect(get(uiStore).autoStartSuppressionReason).toBe('pending-share');
   });
