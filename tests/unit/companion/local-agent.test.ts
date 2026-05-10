@@ -101,6 +101,35 @@ describe('local companion agent helpers', () => {
     })).toMatchObject({ ok: false, reason: 'replay' });
   });
 
+  it('rejects malformed hex signatures without throwing', () => {
+    expect(agent.verifySignedRequest({
+      method: 'POST',
+      path: '/v1/probe',
+      body: '{}',
+      headers: {
+        'x-chronoscope-timestamp': '1765300000000',
+        'x-chronoscope-nonce': 'nonce-1',
+        'x-chronoscope-signature': 'not-hex',
+      },
+      secret: 'pairing-secret',
+      now: 1765300000100,
+    })).toMatchObject({ ok: false, reason: 'bad-signature' });
+  });
+
+  it('reveals private WiFi identifiers only when explicitly requested', () => {
+    expect(agent.redactWifiInfo({
+      ssid: 'Home Network',
+      bssid: 'aa:bb:cc:dd:ee:ff',
+      rssi: -61,
+      noise: -92,
+    }, true)).toEqual({
+      ssid: 'Home Network',
+      bssid: 'aa:bb:cc:dd:ee:ff',
+      rssi: -61,
+      noise: -92,
+    });
+  });
+
   it('redacts private WiFi identifiers by default', () => {
     expect(agent.redactWifiInfo({
       ssid: 'Home Network',
@@ -116,8 +145,8 @@ describe('local companion agent helpers', () => {
   });
 
   it('records probe summaries in SQLite history', () => {
-    const path = ':memory:';
-    const history = agent.createHistoryStore(path);
+    const dbPath = ':memory:';
+    const history = agent.createHistoryStore(dbPath);
 
     history.record({
       id: 'probe-1',

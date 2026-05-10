@@ -73,6 +73,12 @@ export function signAgentRequest(secret, message) {
 }
 
 function timingSafeEqualHex(a, b) {
+  if (
+    !/^[0-9a-f]+$/i.test(a) ||
+    !/^[0-9a-f]+$/i.test(b) ||
+    a.length % 2 !== 0 ||
+    b.length % 2 !== 0
+  ) return false;
   const left = Buffer.from(a, 'hex');
   const right = Buffer.from(b, 'hex');
   return left.length === right.length && crypto.timingSafeEqual(left, right);
@@ -314,6 +320,15 @@ export function createHistoryStore(databasePath) {
   const insert = db.prepare('INSERT OR REPLACE INTO probes (id, target_host, created_at, summary, payload) VALUES (?, ?, ?, ?, ?)');
   const listStatement = db.prepare('SELECT id, target_host AS targetHost, created_at AS createdAt, summary, payload FROM probes ORDER BY created_at DESC LIMIT ?');
 
+  function parseStoredPayload(row) {
+    try {
+      return JSON.parse(row.payload);
+    } catch {
+      console.warn(`[Chronoscope companion] Ignoring corrupted history payload for ${row.id}`);
+      return null;
+    }
+  }
+
   return {
     record(entry) {
       insert.run(entry.id, entry.targetHost, entry.createdAt, entry.summary, JSON.stringify(entry.payload));
@@ -321,7 +336,7 @@ export function createHistoryStore(databasePath) {
     list(limit = 20) {
       return listStatement.all(limit).map((row) => ({
         ...row,
-        payload: JSON.parse(row.payload),
+        payload: parseStoredPayload(row),
       }));
     },
     close() {

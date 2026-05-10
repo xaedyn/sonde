@@ -32,8 +32,8 @@ means it can measure HTTP fetch timing from the user's browser, but browser
 Resource Timing phase data is limited for cross-origin endpoints unless the
 target server exposes timing headers.
 
-The optional local companion agent adds local-only DNS, TLS, route, WiFi, and
-browser-history context when run by the user.
+The optional local diagnostic companion agent adds local-only DNS, TLS, route,
+WiFi, and browser-history context when run by the user.
 
 ## Quick Start
 
@@ -67,7 +67,7 @@ npm run companion
 - `src/lib/share/` - compressed share payload generation and validation.
 - `src/lib/security/` - URL safety checks for direct and shared endpoints.
 - `src/lib/regional-defaults.ts` - region detection and default endpoint sets.
-- `companion/` - optional signed local-only diagnostic companion agent.
+- `companion/` - optional signed local diagnostic companion agent.
 - `tests/unit/` - Vitest unit and component coverage.
 - `tests/visual/` - Playwright visual, accessibility, and browser-flow checks.
 - `docs/vision/` - product vision and longer-term platform direction.

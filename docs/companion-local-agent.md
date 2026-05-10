@@ -24,4 +24,4 @@ The HTTP server binds to `127.0.0.1` and rejects non-loopback browser configurat
 
 ## Privacy
 
-WiFi SSID and BSSID are redacted unless `Private WiFi` is selected. Probe history is stored locally in SQLite at `~/.chronoscope/agent-history.sqlite` by default.
+WiFi SSID and BSSID are shown only when `Private WiFi` is selected; otherwise they are redacted. Probe history is stored locally in SQLite at `~/.chronoscope/agent-history.sqlite` by default.

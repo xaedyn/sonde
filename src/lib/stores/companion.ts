@@ -57,7 +57,10 @@ export function createCompanionStore(client: CompanionClient = companionClient):
   let currentBaseUrl = DEFAULT_COMPANION_BASE_URL;
 
   function configure(input: { readonly baseUrl?: string; readonly secret?: string }): void {
-    if (input.baseUrl !== undefined) currentBaseUrl = input.baseUrl.trim();
+    if (input.baseUrl !== undefined) {
+      const trimmed = input.baseUrl.trim();
+      currentBaseUrl = trimmed.length > 0 ? trimmed : DEFAULT_COMPANION_BASE_URL;
+    }
     if (input.secret !== undefined) secret = input.secret.trim();
     update((state) => ({
       ...state,
@@ -135,7 +138,16 @@ export function createCompanionStore(client: CompanionClient = companionClient):
 
   function clearSecret(): void {
     secret = '';
-    update((state) => ({ ...state, hasSecret: false, history: [] }));
+    update((state) => ({
+      ...state,
+      hasSecret: false,
+      status: 'idle',
+      version: null,
+      capabilities: null,
+      lastProbe: null,
+      history: [],
+      error: null,
+    }));
   }
 
   return {

@@ -88,7 +88,10 @@ describe('CompanionPanel', () => {
     const { getByLabelText, getByRole, findByText } = render(CompanionPanel, { props: { agentStore: store } });
 
     expect((getByLabelText('Probe URL') as HTMLInputElement).value).toBe('https://b.example.com');
-    await fireEvent.click(getByLabelText('Route/MTR'));
+    const routeToggle = getByLabelText('Route/MTR') as HTMLInputElement;
+    expect(routeToggle.checked).toBe(true);
+    await fireEvent.click(routeToggle);
+    expect(routeToggle.checked).toBe(false);
     await fireEvent.click(getByRole('button', { name: /run local probe/i }));
 
     expect(store.runProbe).toHaveBeenCalledWith('https://b.example.com', {
