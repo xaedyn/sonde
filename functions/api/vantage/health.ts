@@ -3,7 +3,7 @@ interface Env {
   CHRONOSCOPE_SATURATION?: unknown;
 }
 
-export const onRequestGet: PagesFunction<Env> = async (context) => {
+export const onRequestGet: PagesFunction<Env> = (context) => {
   const edge = {
     ...(context.request.cf?.colo ? { colo: String(context.request.cf.colo) } : {}),
     ...(context.request.cf?.country ? { country: String(context.request.cf.country) } : {}),

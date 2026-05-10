@@ -74,10 +74,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
-function isFiniteNumber(value: unknown): value is number {
-  return typeof value === 'number' && Number.isFinite(value);
-}
-
 function parseIPv4(hostname: string): number[] | null {
   const parts = hostname.split('.');
   if (parts.length !== 4) return null;
@@ -292,8 +288,7 @@ function isSharePayloadLike(value: unknown): value is SharePayload {
   if (value.mode !== 'config' && value.mode !== 'results') return false;
   if (!Array.isArray(value.endpoints) || value.endpoints.length > 50) return false;
   if (!isRecord(value.settings)) return false;
-  if (value.mode === 'results' && !Array.isArray(value.results)) return false;
-  return true;
+  return value.mode !== 'results' || Array.isArray(value.results);
 }
 
 function reportId(factory?: () => string): string {

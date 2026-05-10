@@ -4,12 +4,12 @@ interface Env {
   CHRONOSCOPE_REPORTS?: ReportKV;
 }
 
-export const onRequestPost: PagesFunction<Env> = async (context) => {
+export const onRequestPost: PagesFunction<Env> = (context) => {
   return handleCreateHostedReport(context.request, {
     reports: context.env.CHRONOSCOPE_REPORTS,
   });
 };
 
-export const onRequestOptions: PagesFunction<Env> = async (context) => {
+export const onRequestOptions: PagesFunction<Env> = (context) => {
   return handleCreateHostedReport(context.request);
 };

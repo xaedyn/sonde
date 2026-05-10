@@ -62,13 +62,13 @@ beforeEach(() => {
 describe('initHostedReportRouter', () => {
   it('loads /r/:id reports from the Cloudflare report API', async () => {
     history.replaceState(null, '', '/r/report_123');
-    const fetcher = vi.fn(async () => new Response(JSON.stringify({
+    const fetcher = vi.fn(() => Promise.resolve(new Response(JSON.stringify({
       ok: true,
       payload: hostedPayload(),
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
-    }));
+    })));
 
     await expect(initHostedReportRouter(fetcher)).resolves.toBe('results');
 

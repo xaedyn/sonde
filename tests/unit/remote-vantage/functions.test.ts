@@ -12,12 +12,13 @@ import type { SharePayload } from '../../../src/lib/types';
 class FakeKV {
   private readonly values = new Map<string, string>();
 
-  async put(key: string, value: string): Promise<void> {
+  put(key: string, value: string): Promise<void> {
     this.values.set(key, value);
+    return Promise.resolve();
   }
 
-  async get(key: string): Promise<string | null> {
-    return this.values.get(key) ?? null;
+  get(key: string): Promise<string | null> {
+    return Promise.resolve(this.values.get(key) ?? null);
   }
 }
 
@@ -47,13 +48,13 @@ const sharePayload: SharePayload = {
 
 describe('Cloudflare remote vantage functions', () => {
   it('probes public targets from the edge and returns bounded evidence', async () => {
-    const fetcher = vi.fn(async () => new Response('ok', {
+    const fetcher = vi.fn(() => Promise.resolve(new Response('ok', {
       status: 200,
       headers: {
         'content-type': 'text/plain',
         server: 'origin',
       },
-    }));
+    })));
     const request = new Request('https://chronoscope.dev/api/vantage/probe', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -215,7 +216,7 @@ describe('Cloudflare remote vantage functions', () => {
       new Request('https://chronoscope.dev/api/vantage/saturation?bytes=1024'),
       {
         bucket: {
-          get: vi.fn(async () => ({ body: largerObject, size: 2048 })),
+          get: vi.fn(() => Promise.resolve({ body: largerObject, size: 2048 })),
         },
       },
     );

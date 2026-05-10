@@ -8,14 +8,14 @@ function reportId(params: EventContext<Env, string, { id?: string }>['params']):
   return typeof params.id === 'string' ? params.id : '';
 }
 
-export const onRequestGet: PagesFunction<Env> = async (context) => {
+export const onRequestGet: PagesFunction<Env> = (context) => {
   return handleGetHostedReport(context.request, {
     reports: context.env.CHRONOSCOPE_REPORTS,
     id: reportId(context.params),
   });
 };
 
-export const onRequestOptions: PagesFunction<Env> = async (context) => {
+export const onRequestOptions: PagesFunction<Env> = (context) => {
   return handleGetHostedReport(context.request, {
     id: reportId(context.params),
   });

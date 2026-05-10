@@ -1,13 +1,13 @@
 import { handleRemoteProbe } from '../../_shared/remote-vantage';
 
-interface Env {}
+type Env = Record<string, never>;
 
-export const onRequestPost: PagesFunction<Env> = async (context) => {
+export const onRequestPost: PagesFunction<Env> = (context) => {
   return handleRemoteProbe(context.request, {
     cf: context.request.cf,
   });
 };
 
-export const onRequestOptions: PagesFunction<Env> = async (context) => {
+export const onRequestOptions: PagesFunction<Env> = (context) => {
   return handleRemoteProbe(context.request);
 };
