@@ -50,6 +50,16 @@ const ATTACKER_URLS = [
   'https://other-victim.example.com/api',
 ];
 
+function endpoint(url: string, enabled = true) {
+  return {
+    id: `current-${url}`,
+    url,
+    enabled,
+    label: url,
+    color: '#67e8f9',
+  };
+}
+
 function configPayload(): SharePayload {
   return {
     v: 1,
@@ -217,6 +227,55 @@ describe('hash-router: config-mode staging', () => {
     expect(get(endpointStore)).toEqual([]);
     expect(get(uiStore).pendingShare).toBeNull();
     expect(get(uiStore).isSharedView).toBe(false);
+  });
+
+  it('dismissPendingShare clears stale pending-share suppression when current endpoints are startable', () => {
+    endpointStore.setEndpoints([endpoint('https://current.example.com')]);
+    applySharePayload(configPayload());
+    uiStore.setAutoStartSuppressionReason('pending-share');
+
+    dismissPendingShare();
+
+    expect(get(uiStore).pendingShare).toBeNull();
+    expect(get(uiStore).autoStartSuppressionReason).toBeNull();
+  });
+
+  it('acceptPendingShare clears stale no-enabled suppression when accepted endpoints are startable', () => {
+    endpointStore.setEndpoints([endpoint('https://disabled.example.com', false)]);
+    applySharePayload(configPayload());
+    uiStore.setAutoStartSuppressionReason('no-enabled-endpoints');
+
+    acceptPendingShare();
+
+    expect(get(endpointStore).every((ep) => ep.enabled)).toBe(true);
+    expect(get(uiStore).pendingShare).toBeNull();
+    expect(get(uiStore).autoStartSuppressionReason).toBeNull();
+  });
+
+  it('dismissPendingShare recomputes local-endpoint suppression from current endpoints', () => {
+    endpointStore.setEndpoints([endpoint('http://localhost')]);
+    applySharePayload(configPayload());
+    uiStore.setAutoStartSuppressionReason('pending-share');
+
+    dismissPendingShare();
+
+    expect(get(uiStore).pendingShare).toBeNull();
+    expect(get(uiStore).autoStartSuppressionReason).toBe('local-endpoint');
+  });
+
+  it('acceptPendingShare recomputes no-enabled suppression from accepted endpoints', () => {
+    const disabledPayload: SharePayload = {
+      ...configPayload(),
+      endpoints: [{ url: 'https://disabled-share.example.com', enabled: false }],
+    };
+    applySharePayload(disabledPayload);
+    uiStore.setAutoStartSuppressionReason('pending-share');
+
+    acceptPendingShare();
+
+    expect(get(endpointStore).every((ep) => !ep.enabled)).toBe(true);
+    expect(get(uiStore).pendingShare).toBeNull();
+    expect(get(uiStore).autoStartSuppressionReason).toBe('no-enabled-endpoints');
   });
 
   it('acceptPendingShare is a no-op when nothing is staged', () => {

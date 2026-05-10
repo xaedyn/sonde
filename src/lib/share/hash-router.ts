@@ -31,6 +31,7 @@ import { tokens } from '../tokens';
 import { get } from 'svelte/store';
 import { displayLabel } from '../endpoint/displayLabel';
 import { validateSharePayload } from './share-validator';
+import { autoStartDecision } from '../utils/status-intent';
 
 // Upper bound for the round counter materialized from a share payload.
 // Matches the sample cap (10 000 per endpoint × 50 endpoints) with generous
@@ -127,6 +128,17 @@ function buildSharedReportContext(payload: SharePayload): SharedReportContext | 
     truncated: false,
     sourceVersion: 1,
   };
+}
+
+function refreshAutoStartSuppressionReason(): void {
+  const ui = get(uiStore);
+  const decision = autoStartDecision({
+    endpoints: get(endpointStore),
+    isSharedView: ui.isSharedView,
+    sharedReportMode: ui.sharedReportMode,
+    hasPendingShare: ui.pendingShare !== null,
+  });
+  uiStore.setAutoStartSuppressionReason(decision.reason);
 }
 
 /**
@@ -259,6 +271,7 @@ export function acceptPendingShare(): void {
   if (!pending) return;
   endpointStore.setEndpoints(buildEndpoints(pending.endpoints));
   uiStore.clearPendingShare();
+  refreshAutoStartSuppressionReason();
 }
 
 /**
@@ -267,6 +280,7 @@ export function acceptPendingShare(): void {
  */
 export function dismissPendingShare(): void {
   uiStore.clearPendingShare();
+  refreshAutoStartSuppressionReason();
 }
 
 /**
