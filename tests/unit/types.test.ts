@@ -155,7 +155,7 @@ describe('types', () => {
       autoStartSuppressionReason: 'local-endpoint',
     };
     expect(state.autoStartSuppressionReason).toBe('local-endpoint');
-    expectTypeOf<keyof PersistedSettings['ui']>().not.toEqualTypeOf<'autoStartSuppressionReason'>();
+    expectTypeOf<'autoStartSuppressionReason'>().not.toMatchTypeOf<keyof PersistedSettings['ui']>();
   });
 });
 

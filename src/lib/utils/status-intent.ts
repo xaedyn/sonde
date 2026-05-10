@@ -19,7 +19,7 @@ export function autoStartDecision(input: {
   readonly sharedReportMode: boolean;
   readonly hasPendingShare: boolean;
 }): AutoStartDecision {
-  if (input.isSharedView && input.sharedReportMode) {
+  if (input.isSharedView) {
     return { shouldStart: false, reason: 'shared-report' };
   }
 

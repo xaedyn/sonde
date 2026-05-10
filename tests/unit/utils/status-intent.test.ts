@@ -112,6 +112,17 @@ describe('autoStartDecision', () => {
     ).toEqual({ shouldStart: false, reason: 'shared-report' });
   });
 
+  it('suppresses any shared view, even outside report mode', () => {
+    expect(
+      autoStartDecision({
+        endpoints: [ep('api')],
+        isSharedView: true,
+        sharedReportMode: false,
+        hasPendingShare: false,
+      }),
+    ).toEqual({ shouldStart: false, reason: 'shared-report' });
+  });
+
   it('suppresses staged config share pending', () => {
     expect(
       autoStartDecision({
