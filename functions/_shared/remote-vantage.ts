@@ -264,7 +264,7 @@ export async function handleRemoteProbe(request: Request, options: RemoteProbeOp
   try {
     const body = await parseBody(request);
     const parsed: RemoteVantageProbeRequest = { targets: parseTargets(body) };
-    const fetcher = options.fetcher ?? fetch;
+    const fetcher = options.fetcher ?? globalThis.fetch.bind(globalThis);
     const now = options.now ?? Date.now;
     const results = await Promise.all(parsed.targets.map((target) => probeTarget(target, { fetcher, now })));
     const payload: RemoteVantageProbeResponse = {

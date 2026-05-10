@@ -1,6 +1,6 @@
 // @vitest-environment node
 
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   handleCreateHostedReport,
   handleGetHostedReport,
@@ -47,6 +47,10 @@ const sharePayload: SharePayload = {
 };
 
 describe('Cloudflare remote vantage functions', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it('probes public targets from the edge and returns bounded evidence', async () => {
     const fetcher = vi.fn(() => Promise.resolve(new Response('ok', {
       status: 200,
@@ -87,6 +91,33 @@ describe('Cloudflare remote vantage functions', () => {
     expect(payload.results[0].headers).toEqual({
       'content-type': 'text/plain',
       server: 'origin',
+    });
+  });
+
+  it('preserves the global fetch receiver when no fetcher is injected', async () => {
+    const fetcher = vi.fn(function fetchWithRequiredReceiver(this: unknown) {
+      if (this !== globalThis) {
+        throw new TypeError('Illegal invocation');
+      }
+      return Promise.resolve(new Response('ok', { status: 200 }));
+    });
+    vi.stubGlobal('fetch', fetcher);
+    const request = new Request('https://chronoscope.dev/api/vantage/probe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        targets: [{ id: 'ep-1', label: 'Origin', url: 'https://example.com/probe' }],
+      }),
+    });
+
+    const response = await handleRemoteProbe(request, { now: () => 1778352000000 });
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.results[0]).toMatchObject({
+      ok: true,
+      status: 200,
+      verdict: 'reachable',
     });
   });
 
