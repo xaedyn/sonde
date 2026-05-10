@@ -15,6 +15,7 @@
   import { tokens } from '$lib/tokens';
   import { REGIONS, REGION_DISPLAY_NAMES, detectRegion } from '$lib/regional-defaults';
   import type { Region } from '$lib/regional-defaults';
+  import CompanionPanel from './CompanionPanel.svelte';
 
 
   let dialogEl: HTMLDialogElement;
@@ -345,6 +346,8 @@
           {/each}
         </select>
       </div>
+
+      <CompanionPanel />
 
       <!-- Divider -->
       <div class="divider" aria-hidden="true"></div>

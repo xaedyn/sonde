@@ -15,6 +15,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:visual": "playwright test",
+    "companion": "node companion/local-agent.mjs",
     "deploy": "npm run build && wrangler pages deploy dist --project-name chronoscope"
   },
   "devDependencies": {
