@@ -5,7 +5,7 @@
   import { uiStore } from '$lib/stores/ui';
 
   const shortcuts: { keys: string; description: string }[] = [
-    { keys: '1 / 2 / 3', description: 'Switch Overview / Live / Diagnose' },
+    { keys: '1 / 2 / 3', description: 'Switch Status / Live / Investigate' },
     { keys: 'Alt + 1 – 9', description: 'Toggle endpoint 1–9 visibility' },
     { keys: 'Alt + 0', description: 'Toggle endpoint 10 visibility' },
     { keys: '?', description: 'Show / hide this overlay' },

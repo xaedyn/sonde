@@ -8,7 +8,9 @@ import type { LiveTimeRange, PendingShare, SharedReportContext, TerminalEventTyp
 const initialState = (): UIState => ({
   // 'overview' is the v2 default. Phase 7 migration (v6→v7) collapses any
   // persisted Lanes-family view ('lanes'/'timeline'/'heatmap'/'split') to
-  // 'overview' before reaching here, so only the five current views land.
+  // 'overview' before reaching here. 'strata' and 'terminal' remain runtime
+  // route values for backcompat, while primary navigation exposes only
+  // Status / Live / Investigate.
   activeView: 'overview',
   expandedCards: new Set<string>(),
   showSettings: false,

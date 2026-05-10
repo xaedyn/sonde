@@ -1,16 +1,53 @@
-import { render } from '@testing-library/svelte';
-import { describe, expect, it } from 'vitest';
+import { fireEvent, render } from '@testing-library/svelte';
+import { get } from 'svelte/store';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import ViewSwitcher from '../../../src/lib/components/ViewSwitcher.svelte';
+import { uiStore } from '../../../src/lib/stores/ui';
+
+function buttonFor(label: HTMLElement): HTMLButtonElement {
+  const button = label.closest('button');
+  expect(button).toBeTruthy();
+  return button as HTMLButtonElement;
+}
 
 describe('ViewSwitcher', () => {
-  it('shows only shipped intent-oriented views', () => {
-    const { queryByText, getByText } = render(ViewSwitcher);
-    expect(getByText('Status')).toBeTruthy();
-    expect(getByText('Live')).toBeTruthy();
-    expect(getByText('Investigate')).toBeTruthy();
+  beforeEach(() => {
+    uiStore.reset();
+  });
+
+  afterEach(() => {
+    uiStore.reset();
+  });
+
+  it('shows only shipped intent-oriented views', async () => {
+    const { queryByText, getByText, getAllByRole } = render(ViewSwitcher);
+
+    const buttons = getAllByRole('button');
+    expect(buttons).toHaveLength(3);
+    expect(buttons.every((button) => !button.hasAttribute('aria-disabled'))).toBe(true);
+
+    const status = buttonFor(getByText('Status'));
+    const live = buttonFor(getByText('Live'));
+    const investigate = buttonFor(getByText('Investigate'));
+
     expect(queryByText('Overview')).toBeNull();
     expect(queryByText('Diagnose')).toBeNull();
     expect(queryByText('Strata')).toBeNull();
     expect(queryByText('Terminal')).toBeNull();
+
+    await fireEvent.click(status);
+    expect(get(uiStore).activeView).toBe('overview');
+    expect(status.getAttribute('aria-current')).toBe('page');
+    expect(status.getAttribute('aria-pressed')).toBe('true');
+
+    await fireEvent.click(live);
+    expect(get(uiStore).activeView).toBe('live');
+    expect(live.getAttribute('aria-current')).toBe('page');
+    expect(live.getAttribute('aria-pressed')).toBe('true');
+
+    await fireEvent.click(investigate);
+    expect(get(uiStore).activeView).toBe('diagnose');
+    expect(investigate.getAttribute('aria-current')).toBe('page');
+    expect(investigate.getAttribute('aria-pressed')).toBe('true');
   });
 });
