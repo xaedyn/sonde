@@ -11,7 +11,7 @@ const STABLE_SNAPSHOT_PAYLOAD = {
     { url: 'https://www.cloudflare.com/favicon.ico', enabled: false, nickname: 'Cloudflare' },
     { url: 'https://www.fastly.com/favicon.ico', enabled: false, nickname: 'Fastly' },
   ],
-  settings: { ...DEFAULT_SETTINGS },
+  settings: { ...DEFAULT_SETTINGS, region: 'north-america' },
   ui: {
     expandedCards: [],
     activeView: 'overview',

@@ -3,37 +3,75 @@ import { encodeSharePayload } from '../../src/lib/share/share-manager';
 import { MAX_CAP } from '../../src/lib/limits';
 import type { SharePayload } from '../../src/lib/types';
 
-async function uniqueEndpointIds(page: Page): Promise<string[]> {
+interface VisibleEndpointTarget {
+  readonly id: string;
+  readonly label: string;
+}
+
+interface SampleSeedSpec {
+  readonly endpointId: string;
+  readonly count: number;
+  readonly latencyMs: number;
+  readonly jitterMs: number;
+}
+
+async function visibleEndpointTargets(page: Page): Promise<VisibleEndpointTarget[]> {
   await page.waitForSelector('[data-endpoint-id]', { state: 'attached', timeout: 3000 });
   return await page
     .locator('[data-endpoint-id]')
-    .evaluateAll((els) =>
-      [...new Set(
-        els.map((el) => el.getAttribute('data-endpoint-id')).filter((id): id is string => Boolean(id)),
-      )],
-    );
+    .evaluateAll((els) => {
+      const seen = new Set<string>();
+      const targets: VisibleEndpointTarget[] = [];
+      for (const el of els) {
+        const id = el.getAttribute('data-endpoint-id');
+        if (!id || seen.has(id)) continue;
+        seen.add(id);
+        const label = el.querySelector('.rail-row-label')?.textContent?.trim() || id;
+        targets.push({ id, label });
+      }
+      return targets;
+    });
 }
 
-async function injectVisibleSamples(page: Page): Promise<void> {
-  const ids = await uniqueEndpointIds(page);
+async function injectSampleSpecs(page: Page, specs: readonly SampleSeedSpec[]): Promise<void> {
   await page.waitForFunction(() => typeof window.__chronoscope_inject_samples === 'function');
-  await page.evaluate((endpointIds) => {
+  await page.evaluate((seedSpecs) => {
     const inject = window.__chronoscope_inject_samples;
     if (!inject) throw new Error('__chronoscope_inject_samples is unavailable');
     const originalRandom = Math.random;
+    const randomPeriod = Math.max(1, ...seedSpecs.map((spec) => spec.count));
     let randomStep = 0;
-    Math.random = () => ((randomStep++ % 12) + 0.5) / 12;
+    Math.random = () => ((randomStep++ % randomPeriod) + 0.5) / randomPeriod;
     try {
-      inject(endpointIds.map((id, index) => ({
-        endpointId: id,
-        count: 12,
-        latencyMs: 40 + index * 20,
-        jitterMs: 3,
-      })));
+      inject(seedSpecs);
     } finally {
       Math.random = originalRandom;
     }
-  }, ids);
+  }, specs);
+}
+
+async function injectVisibleSamples(page: Page): Promise<void> {
+  const targets = await visibleEndpointTargets(page);
+  await injectSampleSpecs(page, targets.map((target, index) => ({
+    endpointId: target.id,
+    count: 12,
+    latencyMs: 40 + index * 20,
+    jitterMs: 3,
+  })));
+}
+
+async function injectReadyInvestigationSamples(page: Page): Promise<VisibleEndpointTarget> {
+  const targets = await visibleEndpointTargets(page);
+  expect(targets.length).toBeGreaterThan(1);
+  const slowIndex = Math.min(2, targets.length - 1);
+  const expectedTarget = targets[slowIndex]!;
+  await injectSampleSpecs(page, targets.map((target, index) => ({
+    endpointId: target.id,
+    count: 36,
+    latencyMs: index === slowIndex ? 360 : 40 + index * 20,
+    jitterMs: 3,
+  })));
+  return expectedTarget;
 }
 
 const RUN_CONTROL_NAME = /^(?:Start|Starting\.\.\.|Stop)$/i;
@@ -198,13 +236,13 @@ test.describe('Acceptance criteria verification', () => {
       await page.goto('/');
       await page.waitForSelector('#chronoscope-root');
       await pauseRunForStableSamples(page);
-      await injectVisibleSamples(page);
+      const expectedTarget = await injectReadyInvestigationSamples(page);
 
       await page.getByRole('group', { name: 'Views' }).getByRole('button', { name: /^Investigate/ }).click();
 
       const investigate = page.locator('section[aria-label="Investigate"]');
       await expect(investigate).toBeVisible();
-      await expect(investigate.locator('.diagnose-title-name')).toBeVisible({ timeout: 3000 });
+      await expect(investigate.locator('.diagnose-title-name')).toHaveText(expectedTarget.label, { timeout: 3000 });
       await expect(investigate.locator('section[aria-label="Diagnostic answer"]')).toBeVisible();
       await expect(investigate.getByText(/pick an endpoint from the left rail/i)).toHaveCount(0);
       await expect(investigate.locator('.diagnose-empty')).toHaveCount(0);
@@ -213,7 +251,8 @@ test.describe('Acceptance criteria verification', () => {
       await expect(distribution).toBeVisible();
       await expect(distribution).toContainText(/p50\s+\d+(?:\.\d+)?\s*ms/i);
       await expect(distribution).toContainText(/p95\s+\d+(?:\.\d+)?\s*ms/i);
-      await expect(distribution.locator('.distro-stat-meta')).toHaveText(/over last 12 samples/i);
+      await expect(distribution.locator('.distro-stat-meta')).toHaveText(/over last 36 samples/i);
+      await expect(investigate.locator('.diagnose-confidence')).toHaveText(/high confidence/i);
 
       const comparison = investigate.locator('section[aria-label="Cross-endpoint comparison"]');
       await expect(comparison).toBeVisible();
@@ -226,6 +265,10 @@ test.describe('Acceptance criteria verification', () => {
       await expect(recentSamples.locator('.diagnose-sample-row')).toHaveCount(8);
       await expect(investigate.locator('section[aria-label="Browser visibility"]')).toBeVisible();
       await expect(investigate).toHaveScreenshot(`investigate-data-${vp.name}.png`);
+      await comparison.scrollIntoViewIfNeeded();
+      await expect(comparison).toHaveScreenshot(`investigate-comparison-${vp.name}.png`);
+      await recentSamples.scrollIntoViewIfNeeded();
+      await expect(recentSamples).toHaveScreenshot(`investigate-recent-samples-${vp.name}.png`);
     });
   }
 
