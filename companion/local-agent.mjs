@@ -180,7 +180,6 @@ async function tlsCheck(hostname, port) {
       host: hostname,
       port,
       servername: hostname,
-      rejectUnauthorized: false,
       timeout: 7000,
     }, () => {
       const cert = socket.getPeerCertificate();
@@ -351,6 +350,14 @@ function defaultHistoryPath() {
   return path.join(dir, 'agent-history.sqlite');
 }
 
+function writePairingToken(secret) {
+  const dir = path.join(os.homedir(), '.chronoscope');
+  fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+  const tokenPath = path.join(dir, 'agent-token.txt');
+  fs.writeFileSync(tokenPath, `${secret}\n`, { mode: 0o600 });
+  return tokenPath;
+}
+
 function capabilitySnapshot() {
   return {
     dns: true,
@@ -476,8 +483,8 @@ export function createServer(options = {}) {
       }
 
       json(response, 404, { error: 'Not found.' }, allowedOrigin);
-    } catch (error) {
-      json(response, 500, { error: error instanceof Error ? error.message : String(error) }, allowedOrigin);
+    } catch {
+      json(response, 500, { error: 'Internal companion error.' }, allowedOrigin);
     }
   });
 
@@ -488,9 +495,10 @@ function main() {
   const port = Number(process.env.CHRONOSCOPE_AGENT_PORT ?? DEFAULT_PORT);
   const { server, secret } = createServer();
   server.listen(port, '127.0.0.1', () => {
+    const tokenPath = writePairingToken(secret);
     console.log(`Chronoscope local companion listening on http://127.0.0.1:${port}`);
-    console.log(`Pairing token: ${secret}`);
-    console.log('Keep this token private; paste it into Chronoscope Settings to enable signed probes.');
+    console.log(`Pairing token written to ${tokenPath}`);
+    console.log('Keep this file private; paste its token into Chronoscope Settings to enable signed probes.');
   });
 }
 

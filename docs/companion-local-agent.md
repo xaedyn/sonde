@@ -8,7 +8,7 @@ The local companion agent is optional. It runs on loopback only and gives the br
 npm run companion
 ```
 
-The agent prints a one-time pairing token. Paste that token into Chronoscope Settings under `Local Companion`.
+The agent writes a one-time pairing token to `~/.chronoscope/agent-token.txt`. Paste that token into Chronoscope Settings under `Local Companion`.
 
 ## Configuration
 
