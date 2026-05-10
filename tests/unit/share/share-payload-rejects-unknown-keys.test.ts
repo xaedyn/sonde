@@ -4,7 +4,7 @@
 // harvesting, prototype-pollution surface, future round-trip footgun) at both
 // the top level and per-entry level. The validator must reject any payload
 // that contains keys outside the declared allowlists:
-//   - Top-level:  { v, mode, endpoints, settings, results }
+//   - Top-level:  { v, mode, endpoints, settings, results, report, remoteVantage }
 //   - Per-entry:  { url, enabled }
 //
 // Uses the encodeSharePayload / decodeSharePayload round-trip so the full
@@ -86,6 +86,34 @@ describe('validateSharePayload: top-level unknown key rejection', () => {
     expect(decodeSharePayload(encoded)).toBeNull();
   });
 
+  it('rejects unbounded delay values', () => {
+    const payload = {
+      v: 1,
+      mode: 'config',
+      endpoints: [{ url: 'https://example.com', enabled: true }],
+      settings: { timeout: 5000, delay: 60001, cap: MAX_CAP, corsMode: 'no-cors' as const },
+    };
+    const encoded = encodeSharePayload(payload as never);
+    expect(decodeSharePayload(encoded)).toBeNull();
+  });
+
+  it('rejects unknown result object keys', () => {
+    const payload = {
+      v: 1,
+      mode: 'results',
+      endpoints: [{ url: 'https://example.com', enabled: true }],
+      settings: { timeout: 5000, delay: 0, cap: MAX_CAP, corsMode: 'no-cors' as const },
+      results: [
+        {
+          samples: [{ round: 0, latency: 42, status: 'ok' as const }],
+          extra: 'injected',
+        },
+      ],
+    };
+    const encoded = encodeSharePayload(payload as never);
+    expect(decodeSharePayload(encoded)).toBeNull();
+  });
+
   it('accepts { v, mode, endpoints, settings } (config mode baseline)', () => {
     const payload: SharePayload = {
       v: 1,
@@ -111,6 +139,81 @@ describe('validateSharePayload: top-level unknown key rejection', () => {
     };
     const encoded = encodeSharePayload(payload);
     expect(decodeSharePayload(encoded)).not.toBeNull();
+  });
+
+  it('accepts a bounded remoteVantage snapshot in v2 results mode', () => {
+    const payload: SharePayload = {
+      v: 2,
+      mode: 'results',
+      endpoints: [{ url: 'https://example.com', enabled: true }],
+      settings: { timeout: 5000, delay: 0, cap: MAX_CAP, corsMode: 'no-cors' },
+      report: {
+        createdAt: 1778352000000,
+        healthThreshold: 120,
+        corsMode: 'no-cors',
+        roundCount: 1,
+        totalSampleCount: 1,
+        keptSampleCount: 1,
+        truncated: false,
+      },
+      remoteVantage: {
+        generatedAt: 1778352000500,
+        edge: { colo: 'IAD', country: 'US' },
+        results: [{
+          endpointId: 'ep-1',
+          label: 'Example',
+          url: 'https://example.com',
+          ok: true,
+          status: 200,
+          statusText: 'OK',
+          durationMs: 42,
+          checkedAt: 1778352000500,
+          verdict: 'reachable',
+          headers: { 'content-type': 'text/html' },
+        }],
+      },
+      results: [{ samples: [{ round: 0, latency: 42, status: 'ok' }] }],
+    };
+    const encoded = encodeSharePayload(payload);
+    expect(decodeSharePayload(encoded)).not.toBeNull();
+  });
+
+  it('rejects unknown remoteVantage nested keys', () => {
+    const payload = {
+      v: 2,
+      mode: 'results',
+      endpoints: [{ url: 'https://example.com', enabled: true }],
+      settings: { timeout: 5000, delay: 0, cap: MAX_CAP, corsMode: 'no-cors' as const },
+      report: {
+        createdAt: 1778352000000,
+        healthThreshold: 120,
+        corsMode: 'no-cors' as const,
+        roundCount: 1,
+        totalSampleCount: 1,
+        keptSampleCount: 1,
+        truncated: false,
+      },
+      remoteVantage: {
+        generatedAt: 1778352000500,
+        edge: { colo: 'IAD' },
+        injected: true,
+        results: [{
+          endpointId: 'ep-1',
+          label: 'Example',
+          url: 'https://example.com',
+          ok: true,
+          status: 200,
+          statusText: 'OK',
+          durationMs: 42,
+          checkedAt: 1778352000500,
+          verdict: 'reachable' as const,
+          headers: {},
+        }],
+      },
+      results: [{ samples: [{ round: 0, latency: 42, status: 'ok' as const }] }],
+    };
+    const encoded = encodeSharePayload(payload as never);
+    expect(decodeSharePayload(encoded)).toBeNull();
   });
 });
 

@@ -4,8 +4,7 @@
 
 import LZString from 'lz-string';
 import type { SharePayload, Settings } from '../types';
-import { isSafeSharedUrl } from '../utils/url-safety';
-import { MAX_CAP } from '../limits';
+import { validateSharePayload } from './share-validator';
 
 // ── Share settings helper ──────────────────────────────────────────────────
 // Explicitly destructures only the 6 allowed share fields.
@@ -41,111 +40,6 @@ export function decodeSharePayload(encoded: string): SharePayload | null {
     console.warn('[Chronoscope] Share URL decode error:', err);
     return null;
   }
-}
-
-// ── Schema validation ──────────────────────────────────────────────────────
-
-function isFiniteNumber(v: unknown): boolean {
-  return typeof v === 'number' && Number.isFinite(v);
-}
-
-function isNonNegativeFiniteNumber(v: unknown): boolean {
-  return isFiniteNumber(v) && (v as number) >= 0;
-}
-
-function validateSharePayload(data: unknown): SharePayload | null {
-  if (data === null || typeof data !== 'object') return null;
-  const obj = data as Record<string, unknown>;
-
-  if (obj['v'] !== 1 && obj['v'] !== 2) return null;
-  if (obj['mode'] !== 'config' && obj['mode'] !== 'results') return null;
-  if (!Array.isArray(obj['endpoints'])) return null;
-  if ((obj['endpoints'] as unknown[]).length > 50) return null;
-
-  // mode:'results' without a results array is structurally invalid: the
-  // payload claims to carry a snapshot but doesn't. Pre-fix, the apply
-  // path silently took the else branch (no measurement load, no shared
-  // banner) but had already written endpoints to endpointStore — leaving
-  // the user with attacker URLs in the rail and no indicator. Reject at
-  // the validator so the apply path never sees a half-formed payload.
-  if (obj['mode'] === 'results' && obj['results'] === undefined) return null;
-
-  for (const ep of obj['endpoints'] as unknown[]) {
-    if (ep === null || typeof ep !== 'object') return null;
-    const e = ep as Record<string, unknown>;
-    if (!isSafeSharedUrl(e['url'])) return null;
-    if (typeof e['enabled'] !== 'boolean') return null;
-    // Reject unknown per-entry keys. Allowlist: url, enabled. Hybrid Bet (share-side): nicknames stay local; schema-level rejection at boundary.
-    for (const key of Object.keys(e)) {
-      if (key !== 'url' && key !== 'enabled') return null;
-    }
-  }
-
-  const settings = obj['settings'];
-  if (settings === null || typeof settings !== 'object') return null;
-  const s = settings as Record<string, unknown>;
-  if (!isNonNegativeFiniteNumber(s['timeout']) || (s['timeout'] as number) > 15000) return null;
-  if (!isNonNegativeFiniteNumber(s['delay'])) return null;
-  if (!isNonNegativeFiniteNumber(s['cap']) || (s['cap'] as number) > MAX_CAP) return null;
-  if (s['burstRounds'] !== undefined && (!isNonNegativeFiniteNumber(s['burstRounds']) || (s['burstRounds'] as number) > 500)) return null;
-  if (s['monitorDelay'] !== undefined && (!isNonNegativeFiniteNumber(s['monitorDelay']) || (s['monitorDelay'] as number) > 60000)) return null;
-  if (s['corsMode'] !== 'no-cors' && s['corsMode'] !== 'cors') return null;
-
-  if (obj['report'] !== undefined) {
-    if (obj['mode'] !== 'results') return null;
-    if (obj['v'] !== 2) return null;
-    const report = obj['report'];
-    if (report === null || typeof report !== 'object') return null;
-    const r = report as Record<string, unknown>;
-    const allowedReportKeys = new Set([
-      'createdAt',
-      'healthThreshold',
-      'corsMode',
-      'roundCount',
-      'totalSampleCount',
-      'keptSampleCount',
-      'truncated',
-    ]);
-    for (const key of Object.keys(r)) {
-      if (!allowedReportKeys.has(key)) return null;
-    }
-    if (!isNonNegativeFiniteNumber(r['createdAt'])) return null;
-    if (!isNonNegativeFiniteNumber(r['healthThreshold']) || (r['healthThreshold'] as number) > 15000) return null;
-    if (r['corsMode'] !== 'no-cors' && r['corsMode'] !== 'cors') return null;
-    if (!isNonNegativeFiniteNumber(r['roundCount']) || (r['roundCount'] as number) > 1_000_000) return null;
-    if (!isNonNegativeFiniteNumber(r['totalSampleCount']) || (r['totalSampleCount'] as number) > 500_000) return null;
-    if (!isNonNegativeFiniteNumber(r['keptSampleCount']) || (r['keptSampleCount'] as number) > 500_000) return null;
-    if ((r['keptSampleCount'] as number) > (r['totalSampleCount'] as number)) return null;
-    if (typeof r['truncated'] !== 'boolean') return null;
-  }
-
-  // Reject unknown top-level keys. Allowlist: v, mode, endpoints, settings, results, report. Symmetric with per-entry.
-  const ALLOWED_TOP_LEVEL = new Set(['v', 'mode', 'endpoints', 'settings', 'results', 'report']);
-  for (const key of Object.keys(obj)) {
-    if (!ALLOWED_TOP_LEVEL.has(key)) return null;
-  }
-
-  if (obj['results'] !== undefined) {
-    if (!Array.isArray(obj['results'])) return null;
-    if ((obj['results'] as unknown[]).length > 50) return null;
-    for (const result of obj['results'] as unknown[]) {
-      if (result === null || typeof result !== 'object') return null;
-      const r = result as Record<string, unknown>;
-      if (!Array.isArray(r['samples'])) return null;
-      if ((r['samples'] as unknown[]).length > 10_000) return null;
-      for (const sample of r['samples'] as unknown[]) {
-        if (sample === null || typeof sample !== 'object') return null;
-        const samp = sample as Record<string, unknown>;
-        if (
-          !isNonNegativeFiniteNumber(samp['round']) ||
-          !isNonNegativeFiniteNumber(samp['latency']) ||
-          (samp['status'] !== 'ok' && samp['status'] !== 'timeout' && samp['status'] !== 'error')
-        ) return null;
-      }
-    }
-  }
-
-  return data as SharePayload;
 }
 
 // ── URL construction ───────────────────────────────────────────────────────

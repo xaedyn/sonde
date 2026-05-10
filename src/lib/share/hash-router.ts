@@ -18,6 +18,7 @@
 import { parseShareURL } from './share-manager';
 import { endpointStore, MAX_ENDPOINTS } from '../stores/endpoints';
 import { measurementStore } from '../stores/measurements';
+import { remoteVantageStore } from '../stores/remote-vantage';
 import { uiStore } from '../stores/ui';
 import type {
   SharePayload,
@@ -29,6 +30,7 @@ import type {
 import { tokens } from '../tokens';
 import { get } from 'svelte/store';
 import { displayLabel } from '../endpoint/displayLabel';
+import { validateSharePayload } from './share-validator';
 
 // Upper bound for the round counter materialized from a share payload.
 // Matches the sample cap (10 000 per endpoint × 50 endpoints) with generous
@@ -146,6 +148,7 @@ export function applySharePayload(payload: SharePayload): string[] {
   // timeout=100); applying it would amplify a future Start click. The
   // receiver always probes at their own defaults, full stop.
   if (payload.mode === 'config') {
+    remoteVantageStore.setProbe(null);
     uiStore.setPendingShare({
       mode: 'config',
       endpoints: uniqueEndpoints(payload.endpoints),
@@ -228,10 +231,12 @@ export function applySharePayload(payload: SharePayload): string[] {
     uiStore.setSharedReportContext(buildSharedReportContext(payload));
     uiStore.setSharedView(true);
     uiStore.setSharedReportMode(true);
+    remoteVantageStore.setProbe(payload.remoteVantage ? { ...payload.remoteVantage, ok: true } : null);
   } else {
     uiStore.setSharedView(false);
     uiStore.setSharedReportMode(false);
     uiStore.setSharedReportContext(null);
+    remoteVantageStore.setProbe(null);
   }
 
   return ids;
@@ -291,4 +296,30 @@ export function initHashRouter(): 'config' | 'results' | null {
   history.replaceState(null, '', window.location.pathname + window.location.search);
 
   return payload.mode;
+}
+
+export async function initHostedReportRouter(fetcher: typeof fetch = fetch): Promise<'config' | 'results' | null> {
+  if (typeof window === 'undefined') return null;
+
+  const match = /^\/r\/([^/?#]+)\/?$/.exec(window.location.pathname);
+  if (!match) return null;
+
+  const id = match[1];
+  if (!id) return null;
+
+  try {
+    const response = await fetcher(`/api/reports/${encodeURIComponent(id)}`, { method: 'GET' });
+    if (!response.ok) return null;
+    const body = await response.json() as unknown;
+    if (body === null || typeof body !== 'object' || (body as { ok?: unknown }).ok !== true) return null;
+    const payload = validateSharePayload((body as { payload?: unknown }).payload);
+    if (!payload) return null;
+
+    applySharePayload(payload);
+    history.replaceState(null, '', `/${window.location.search}`);
+    return payload.mode;
+  } catch (error) {
+    console.warn('[Chronoscope] Hosted report load failed:', error);
+    return null;
+  }
 }

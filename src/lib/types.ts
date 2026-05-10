@@ -297,6 +297,36 @@ export interface SharedReportContext {
   readonly sourceVersion: 1 | 2;
 }
 
+export interface ShareRemoteVantageEdge {
+  readonly colo?: string;
+  readonly country?: string;
+  readonly city?: string;
+  readonly region?: string;
+  readonly timezone?: string;
+}
+
+export type ShareRemoteVantageVerdict = 'reachable' | 'slow' | 'http-error' | 'unreachable';
+
+export interface ShareRemoteVantageResult {
+  readonly endpointId: string;
+  readonly label: string;
+  readonly url: string;
+  readonly ok: boolean;
+  readonly status: number | null;
+  readonly statusText: string | null;
+  readonly durationMs: number;
+  readonly checkedAt: number;
+  readonly verdict: ShareRemoteVantageVerdict;
+  readonly headers: Readonly<Record<string, string>>;
+  readonly error?: string;
+}
+
+export interface ShareRemoteVantageSnapshot {
+  readonly generatedAt: number;
+  readonly edge: ShareRemoteVantageEdge;
+  readonly results: readonly ShareRemoteVantageResult[];
+}
+
 export interface SharePayload {
   readonly v: 1 | 2;
   readonly mode: 'config' | 'results';
@@ -310,6 +340,7 @@ export interface SharePayload {
     readonly corsMode: 'no-cors' | 'cors';
   };
   readonly report?: ShareReportMetadata;
+  readonly remoteVantage?: ShareRemoteVantageSnapshot;
   readonly results?: readonly {
     readonly samples: readonly {
       readonly round: number;

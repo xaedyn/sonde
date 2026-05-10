@@ -8,9 +8,11 @@
 <script lang="ts">
   import { monitoredEndpointsStore } from '$lib/stores/derived';
   import { measurementStore } from '$lib/stores/measurements';
+  import { remoteVantageStore } from '$lib/stores/remote-vantage';
   import { settingsStore } from '$lib/stores/settings';
   import { statisticsStore } from '$lib/stores/statistics';
   import { uiStore } from '$lib/stores/ui';
+  import { buildRemoteVantageInsight } from '$lib/remote-vantage/insight';
   import { describeTimingVisibility, type DiagnosticConfidence } from '$lib/utils/diagnostic-narrative';
   import { phaseHypothesis, PHASE_LABELS, type PhaseBreakdown, type Tier2Phase } from '$lib/utils/verdict';
   import { buildHistogram, buildCorrelation } from '$lib/utils/diagnose-stats';
@@ -22,12 +24,20 @@
   const stats = $derived($statisticsStore);
   const measurements = $derived($measurementStore);
   const settings = $derived($settingsStore);
+  const remoteVantage = $derived($remoteVantageStore);
   const focusedId = $derived($uiStore.focusedEndpointId);
 
   const focusedEndpoint = $derived(
     focusedId === null ? null : monitored.find((ep) => ep.id === focusedId) ?? null,
   );
   const focusedStats = $derived(focusedEndpoint ? stats[focusedEndpoint.id] : undefined);
+  const remoteInsight = $derived(buildRemoteVantageInsight({
+    endpoint: focusedEndpoint,
+    stats: focusedStats,
+    threshold: settings.healthThreshold,
+    probe: remoteVantage.lastProbe,
+  }));
+  const remoteBusy = $derived(remoteVantage.status === 'checking' || remoteVantage.status === 'probing');
 
   // ── Mode toggle ──────────────────────────────────────────────────────────
   let mode = $state<'p50' | 'p95'>('p50');
@@ -195,6 +205,10 @@
     mode = next;
   }
 
+  async function handleRemoteCheck(): Promise<void> {
+    await remoteVantageStore.runProbe(monitored);
+  }
+
   // ── Accessibility summary for the hero bar ────────────────────────────────
   const heroAria = $derived(
     phases === null
@@ -324,6 +338,49 @@
       <p class="visibility-detail">{timingVisibility.detail}</p>
       {#if timingVisibility.action}
         <p class="visibility-action">{timingVisibility.action}</p>
+      {/if}
+    </section>
+
+    <section
+      class="diagnose-remote"
+      class:local-path={remoteInsight.status === 'local-path'}
+      class:remote-confirms={remoteInsight.status === 'remote-confirms' || remoteInsight.status === 'remote-error'}
+      aria-label="Remote vantage"
+    >
+      <div class="remote-head">
+        <div>
+          <div class="diagnose-section-kicker">Remote vantage</div>
+          <p class="remote-headline">{remoteInsight.headline}</p>
+        </div>
+        <button
+          type="button"
+          class="diagnose-chip diagnose-chip-action"
+          disabled={remoteBusy}
+          aria-disabled={remoteBusy}
+          onclick={handleRemoteCheck}
+        >
+          {remoteBusy ? 'Checking…' : 'Check from Cloudflare'}
+        </button>
+      </div>
+      <p class="remote-detail">{remoteInsight.detail}</p>
+      <dl class="remote-evidence">
+        <div>
+          <dt>Edge</dt>
+          <dd>{remoteInsight.edgeLabel}</dd>
+        </div>
+        <div>
+          <dt>Status</dt>
+          <dd>{remoteInsight.result?.status ?? '—'}</dd>
+        </div>
+        <div>
+          <dt>Remote time</dt>
+          <dd>{remoteInsight.result ? `${fmt(remoteInsight.result.durationMs)} ms` : '—'}</dd>
+        </div>
+      </dl>
+      {#if remoteVantage.error}
+        <p class="remote-error">{remoteVantage.error}</p>
+      {:else}
+        <p class="remote-action">{remoteInsight.action}</p>
       {/if}
     </section>
 
@@ -576,7 +633,8 @@
 
   /* ── Diagnostic answer + browser visibility ───────────────────────────── */
   .diagnose-answer,
-  .diagnose-visibility {
+  .diagnose-visibility,
+  .diagnose-remote {
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -670,6 +728,74 @@
   }
   .visibility-action {
     color: var(--accent-cyan);
+  }
+
+  .diagnose-remote.local-path {
+    border-color: rgba(103, 232, 249, 0.28);
+    background: rgba(103, 232, 249, 0.04);
+  }
+  .diagnose-remote.remote-confirms {
+    border-color: rgba(251, 191, 36, 0.28);
+    background: rgba(251, 191, 36, 0.045);
+  }
+  .remote-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .remote-headline,
+  .remote-detail,
+  .remote-action,
+  .remote-error {
+    margin: 0;
+  }
+  .remote-headline {
+    color: var(--t1);
+    font-size: var(--ts-md);
+    line-height: 1.4;
+  }
+  .remote-detail,
+  .remote-action,
+  .remote-error {
+    color: var(--t3);
+    font-size: var(--ts-sm);
+    line-height: 1.45;
+  }
+  .remote-action {
+    color: var(--accent-cyan);
+  }
+  .remote-error {
+    color: var(--accent-amber);
+  }
+  .remote-evidence {
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .remote-evidence div {
+    min-width: 0;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-mid);
+  }
+  .remote-evidence dt {
+    margin: 0 0 3px;
+    color: var(--t4);
+    font-family: var(--mono);
+    font-size: var(--ts-xs);
+    letter-spacing: var(--tr-kicker);
+    text-transform: uppercase;
+  }
+  .remote-evidence dd {
+    margin: 0;
+    color: var(--t1);
+    font-family: var(--mono);
+    font-size: var(--ts-sm);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   /* ── Cross-endpoint correlation ────────────────────────────────────────── */

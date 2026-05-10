@@ -10,7 +10,8 @@ latency, not a synthetic cloud monitor.
 
 ## What It Does Today
 
-- Runs entirely in the browser with no account or backend required.
+- Runs in the browser with no account required; optional Cloudflare Functions
+  add an outside vantage point and short hosted report links.
 - Probes enabled endpoints in synchronized rounds using Web Workers.
 - Starts with region-aware default endpoints and supports custom endpoints.
 - Shows three shipped views:
@@ -21,7 +22,10 @@ latency, not a synthetic cloud monitor.
     browser timing data is available, and recent samples.
 - Supports endpoint nicknames, reordering, enabling/disabling, regional resets,
   timing settings, CORS mode selection, and local persistence.
-- Shares configs and result snapshots through compressed URL hashes.
+- Shares configs and result snapshots through compressed URL hashes, with
+  optional KV-backed `/r/:id` hosted report permalinks on Cloudflare.
+- Can compare the browser's path with a Cloudflare edge probe, then preserve
+  that outside-vantage evidence in shared reports.
 - Blocks private/local hosts from shared URLs while still allowing local testing
   for endpoints added directly by the current user.
 
@@ -33,7 +37,9 @@ Resource Timing phase data is limited for cross-origin endpoints unless the
 target server exposes timing headers.
 
 The optional local diagnostic companion agent adds local-only DNS, TLS, route,
-WiFi, and browser-history context when run by the user.
+WiFi, and browser-history context when run by the user. The optional Cloudflare
+layer adds remote edge probes, short hosted report links, and a saturation
+endpoint; see `docs/cloudflare-remote-vantage.md`.
 
 ## Quick Start
 
@@ -53,6 +59,7 @@ npm test
 npm run build
 npm run test:visual
 npm run companion
+npm run deploy
 ```
 
 `npm run test:visual` uses Playwright and starts the Vite dev server from
@@ -65,9 +72,13 @@ npm run companion
   settings, and UI state.
 - `src/lib/components/` - topbar, rail, views, drawers, popovers, and charts.
 - `src/lib/share/` - compressed share payload generation and validation.
+- `src/lib/remote-vantage/` - Cloudflare edge probe client, report persistence
+  client, and browser/remote diagnosis fusion.
+- `functions/` - Cloudflare Pages Functions for remote probes, hosted reports,
+  health, and saturation downloads.
+- `companion/` - optional signed local diagnostic companion agent.
 - `src/lib/security/` - URL safety checks for direct and shared endpoints.
 - `src/lib/regional-defaults.ts` - region detection and default endpoint sets.
-- `companion/` - optional signed local diagnostic companion agent.
 - `tests/unit/` - Vitest unit and component coverage.
 - `tests/visual/` - Playwright visual, accessibility, and browser-flow checks.
 - `docs/vision/` - product vision and longer-term platform direction.

@@ -8,8 +8,9 @@
   import { settingsStore } from '$lib/stores/settings';
   import { statisticsStore } from '$lib/stores/statistics';
   import { uiStore } from '$lib/stores/ui';
+  import { remoteVantageStore } from '$lib/stores/remote-vantage';
   import { buildShareURL } from '$lib/share/share-manager';
-  import { buildResultsSharePayload } from '$lib/share/share-payload-builder';
+  import { buildResultsSharePayload, MAX_SHARE_URL_CHARS } from '$lib/share/share-payload-builder';
   import { buildDiagnosticReport, formatReportMetric } from '$lib/utils/diagnostic-report';
   import { buildHistoryBaselineInsight } from '$lib/utils/history-baseline';
   import { tokens } from '$lib/tokens';
@@ -17,6 +18,7 @@
   const endpoints = $derived($endpointStore);
   const measurements = $derived($measurementStore);
   const history = $derived($historyStore);
+  const remoteVantage = $derived($remoteVantageStore);
   const settings = $derived($settingsStore);
   const stats = $derived($statisticsStore);
   const context = $derived($uiStore.sharedReportContext);
@@ -63,28 +65,42 @@
     });
   }
 
-  function handleCopyLink(): void {
+  async function handleCopyLink(): Promise<void> {
     const settingsForReport = {
       ...get(settingsStore),
       healthThreshold: report.threshold,
       corsMode: report.corsMode,
     };
-    const built = buildResultsSharePayload(
+    const metadata = {
+      createdAt: report.createdAt ?? Date.now(),
+      healthThreshold: report.threshold,
+      corsMode: report.corsMode,
+      roundCount: report.roundCount,
+      totalSampleCount: report.totalSampleCount,
+      truncated: report.truncated,
+    };
+    const builtForHostedReport = buildResultsSharePayload(
       get(endpointStore),
       settingsForReport,
       get(measurementStore),
-      undefined,
+      100_000,
       Date.now(),
-      {
-        createdAt: report.createdAt ?? Date.now(),
-        healthThreshold: report.threshold,
-        corsMode: report.corsMode,
-        roundCount: report.roundCount,
-        totalSampleCount: report.totalSampleCount,
-        truncated: report.truncated,
-      },
+      metadata,
+      get(remoteVantageStore).lastProbe,
     );
-    copyText(buildShareURL(built.payload), () => {
+    const hostedUrl = await remoteVantageStore.createHostedReport(builtForHostedReport.payload);
+    const fallbackPayload = hostedUrl === null
+      ? buildResultsSharePayload(
+          get(endpointStore),
+          settingsForReport,
+          get(measurementStore),
+          MAX_SHARE_URL_CHARS,
+          Date.now(),
+          metadata,
+          get(remoteVantageStore).lastProbe,
+        ).payload
+      : null;
+    copyText(hostedUrl ?? buildShareURL(fallbackPayload ?? builtForHostedReport.payload), () => {
       copiedLink = true;
     });
   }
@@ -222,6 +238,28 @@
             </div>
           {/each}
         </div>
+      {/if}
+    </section>
+
+    <section class="report-panel remote-panel" aria-label="Remote vantage">
+      <div class="section-kicker">Remote vantage</div>
+      {#if remoteVantage.lastProbe}
+        <h2>{remoteVantage.lastProbe.edge.colo ?? 'Cloudflare edge'} outside check</h2>
+        <p>{remoteVantage.lastProbe.edge.city || remoteVantage.lastProbe.edge.country
+          ? [remoteVantage.lastProbe.edge.city, remoteVantage.lastProbe.edge.country].filter(Boolean).join(' · ')
+          : 'Cloudflare checked these endpoints from outside the browser network.'}</p>
+        <div class="remote-list">
+          {#each remoteVantage.lastProbe.results.slice(0, 4) as result (result.endpointId)}
+            <div class="remote-row" class:hot={result.verdict === 'slow' || result.verdict === 'http-error' || result.verdict === 'unreachable'}>
+              <strong>{result.label}</strong>
+              <span>{result.status ?? 'failed'} · {Math.round(result.durationMs)} ms</span>
+              <small>{result.verdict}</small>
+            </div>
+          {/each}
+        </div>
+      {:else}
+        <h2>Outside vantage not captured</h2>
+        <p>Run a remote check in Diagnose before sharing when you need evidence from beyond the local browser path.</p>
       {/if}
     </section>
   </div>
@@ -469,6 +507,31 @@
   }
   .baseline-row span,
   .baseline-row small {
+    color: var(--t3);
+    line-height: 1.4;
+  }
+  .remote-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .remote-row {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 10px;
+    border: 1px solid rgba(103,232,249,.16);
+    border-radius: 7px;
+    background: rgba(103,232,249,.045);
+  }
+  .remote-row.hot {
+    border-color: rgba(251,191,36,.22);
+    background: rgba(251,191,36,.06);
+  }
+  .remote-row span,
+  .remote-row small {
     color: var(--t3);
     line-height: 1.4;
   }

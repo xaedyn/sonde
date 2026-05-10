@@ -15,7 +15,7 @@
   import { detectRegion } from '$lib/regional-defaults';
   import { applyPersistedSettings } from '$lib/utils/apply-persisted-settings';
   import { loadPersistedSettings, saveSettings, CURRENT_VERSION } from '$lib/utils/persistence';
-  import { initHashRouter } from '$lib/share/hash-router';
+  import { initHashRouter, initHostedReportRouter } from '$lib/share/hash-router';
   import { initShortcuts } from '$lib/utils/shortcuts';
   import type { PersistedSettings } from '$lib/types';
   import Layout from './Layout.svelte';
@@ -206,12 +206,15 @@
   }
 
   // ── Mount ────────────────────────────────────────────────────────────────────
-  onMount(() => {
+  async function bootstrap(): Promise<void> {
     // 1. Bridge tokens to CSS custom properties
     bridgeTokensToCss();
 
     // 2. Check for share URL — takes priority over persisted settings
-    const shareMode = initHashRouter();
+    let shareMode = initHashRouter();
+    if (shareMode === null) {
+      shareMode = await initHostedReportRouter();
+    }
 
     // 3. Load persisted settings. Skip ONLY for results-mode shares — those
     //    mutate the stores (endpoints + measurement snapshot) for read-only
@@ -244,6 +247,12 @@
 
     // 7. Register keyboard shortcuts
     destroyShortcuts = initShortcuts();
+  }
+
+  onMount(() => {
+    void bootstrap().catch((error) => {
+      console.warn('[Chronoscope] App bootstrap failed:', error);
+    });
   });
 
   onDestroy(() => {

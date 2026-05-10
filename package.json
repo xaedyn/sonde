@@ -9,7 +9,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && npm run typecheck:functions",
+    "typecheck:functions": "tsc -p functions/tsconfig.json --noEmit",
     "lint": "eslint src",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -20,6 +21,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.1",
+    "@cloudflare/workers-types": "^4.20260509.1",
     "@playwright/test": "^1.59.1",
     "@sveltejs/vite-plugin-svelte": "^7.0.0",
     "@testing-library/svelte": "^5.3.1",

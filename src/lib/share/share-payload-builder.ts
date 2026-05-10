@@ -2,7 +2,14 @@
 // Pure builders for config and result share payloads. Keeping this outside the
 // popover lets ReportView copy the exact report link that SharePopover emits.
 
-import type { Endpoint, MeasurementState, Settings, SharePayload, ShareReportMetadata } from '../types';
+import type {
+  Endpoint,
+  MeasurementState,
+  Settings,
+  SharePayload,
+  ShareRemoteVantageSnapshot,
+  ShareReportMetadata,
+} from '../types';
 import { estimateShareSize, toSharedSettings, truncatePayload } from './share-manager';
 
 export const MAX_SHARE_URL_CHARS = 8000;
@@ -55,6 +62,29 @@ function withReportMetadata(
   return { ...payload, report: metadata };
 }
 
+function serializeRemoteVantage(
+  remoteVantage: ShareRemoteVantageSnapshot | null | undefined,
+): ShareRemoteVantageSnapshot | undefined {
+  if (!remoteVantage) return undefined;
+  return {
+    generatedAt: remoteVantage.generatedAt,
+    edge: { ...remoteVantage.edge },
+    results: remoteVantage.results.slice(0, 8).map((result) => ({
+      endpointId: result.endpointId,
+      label: result.label,
+      url: result.url,
+      ok: result.ok,
+      status: result.status,
+      statusText: result.statusText,
+      durationMs: result.durationMs,
+      checkedAt: result.checkedAt,
+      verdict: result.verdict,
+      headers: { ...result.headers },
+      ...(result.error ? { error: result.error } : {}),
+    })),
+  };
+}
+
 export function buildResultsSharePayload(
   endpoints: readonly Endpoint[],
   settings: Settings,
@@ -62,6 +92,7 @@ export function buildResultsSharePayload(
   maxChars = MAX_SHARE_URL_CHARS,
   now = Date.now(),
   reportMetadata: Partial<ShareReportMetadata> = {},
+  remoteVantage: ShareRemoteVantageSnapshot | null = null,
 ): BuiltResultsSharePayload {
   const results = buildResults(endpoints, measurements);
   const keptSampleCount = countSamples(results);
@@ -79,6 +110,7 @@ export function buildResultsSharePayload(
     keptSampleCount,
     truncated: reportMetadata.truncated ?? false,
   };
+  const serializedRemoteVantage = serializeRemoteVantage(remoteVantage);
 
   const basePayload: SharePayload = {
     v: 2,
@@ -86,6 +118,7 @@ export function buildResultsSharePayload(
     endpoints: endpoints.map(ep => ({ url: ep.url, enabled: ep.enabled })),
     settings: toSharedSettings(settings),
     report: metadata,
+    ...(serializedRemoteVantage ? { remoteVantage: serializedRemoteVantage } : {}),
     results,
   };
 

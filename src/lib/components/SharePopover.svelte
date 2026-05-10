@@ -8,6 +8,7 @@
   import { endpointStore } from '$lib/stores/endpoints';
   import { settingsStore } from '$lib/stores/settings';
   import { measurementStore } from '$lib/stores/measurements';
+  import { remoteVantageStore } from '$lib/stores/remote-vantage';
   import { buildShareURL } from '$lib/share/share-manager';
   import {
     buildConfigSharePayload,
@@ -43,6 +44,9 @@
       get(settingsStore),
       get(measurementStore),
       MAX_SHARE_URL_CHARS,
+      Date.now(),
+      undefined,
+      get(remoteVantageStore).lastProbe,
     );
   }
 
