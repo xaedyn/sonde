@@ -252,6 +252,19 @@ describe('hash-router: config-mode staging', () => {
     expect(get(uiStore).autoStartSuppressionReason).toBeNull();
   });
 
+  it('acceptPendingShare keeps staged endpoints while measurement is running', () => {
+    endpointStore.setEndpoints([endpoint('https://current.example.com')]);
+    applySharePayload(configPayload());
+    measurementStore.setLifecycle('running');
+    uiStore.setAutoStartSuppressionReason('pending-share');
+
+    acceptPendingShare();
+
+    expect(get(endpointStore).map((e) => e.url)).toEqual(['https://current.example.com']);
+    expect(get(uiStore).pendingShare).not.toBeNull();
+    expect(get(uiStore).autoStartSuppressionReason).toBeNull();
+  });
+
   it('dismissPendingShare recomputes local-endpoint suppression from current endpoints', () => {
     endpointStore.setEndpoints([endpoint('http://localhost')]);
     applySharePayload(configPayload());
@@ -261,6 +274,18 @@ describe('hash-router: config-mode staging', () => {
 
     expect(get(uiStore).pendingShare).toBeNull();
     expect(get(uiStore).autoStartSuppressionReason).toBe('local-endpoint');
+  });
+
+  it('dismissPendingShare clears suppression copy while measurement is running', () => {
+    endpointStore.setEndpoints([endpoint('http://localhost')]);
+    applySharePayload(configPayload());
+    measurementStore.setLifecycle('running');
+    uiStore.setAutoStartSuppressionReason('pending-share');
+
+    dismissPendingShare();
+
+    expect(get(uiStore).pendingShare).toBeNull();
+    expect(get(uiStore).autoStartSuppressionReason).toBeNull();
   });
 
   it('acceptPendingShare recomputes no-enabled suppression from accepted endpoints', () => {

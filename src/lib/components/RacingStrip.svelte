@@ -311,7 +311,7 @@
   }
   .racing-stats-p95 {
     font-size: var(--ts-xs);
-    color: var(--t4);
+    color: var(--t2);
     letter-spacing: var(--tr-label);
   }
 
@@ -320,7 +320,7 @@
   }
   .racing-stats-live-unit {
     font-size: var(--ts-xs);
-    color: var(--t4);
+    color: var(--t2);
     letter-spacing: var(--tr-label);
     margin-left: 1px;
   }

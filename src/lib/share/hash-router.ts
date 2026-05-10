@@ -131,6 +131,12 @@ function buildSharedReportContext(payload: SharePayload): SharedReportContext | 
 }
 
 function refreshAutoStartSuppressionReason(): void {
+  const lifecycle = get(measurementStore).lifecycle;
+  if (lifecycle === 'running' || lifecycle === 'starting' || lifecycle === 'stopping') {
+    uiStore.setAutoStartSuppressionReason(null);
+    return;
+  }
+
   const ui = get(uiStore);
   const decision = autoStartDecision({
     endpoints: get(endpointStore),
@@ -269,6 +275,11 @@ export function applySharePayload(payload: SharePayload): string[] {
 export function acceptPendingShare(): void {
   const pending = get(uiStore).pendingShare;
   if (!pending) return;
+  const lifecycle = get(measurementStore).lifecycle;
+  if (lifecycle === 'running' || lifecycle === 'starting' || lifecycle === 'stopping') {
+    refreshAutoStartSuppressionReason();
+    return;
+  }
   endpointStore.setEndpoints(buildEndpoints(pending.endpoints));
   uiStore.clearPendingShare();
   refreshAutoStartSuppressionReason();
