@@ -27,14 +27,13 @@ latency, not a synthetic cloud monitor.
 
 ## Current Limits
 
-Chronoscope's shipped product is intentionally browser-only. That means it can
-measure HTTP fetch timing from the user's browser, but it cannot perform true
-traceroute, MTR, packet capture, WiFi diagnostics, full DNS tracing, or TLS
-certificate inspection. Browser Resource Timing phase data is also limited for
-cross-origin endpoints unless the target server exposes timing headers.
+Chronoscope's core measurement loop is still intentionally browser-first. That
+means it can measure HTTP fetch timing from the user's browser, but browser
+Resource Timing phase data is limited for cross-origin endpoints unless the
+target server exposes timing headers.
 
-The larger product vision in `docs/vision/` describes an optional local agent
-and community telemetry layer. Those are not part of the current app.
+The optional local diagnostic companion agent adds local-only DNS, TLS, route,
+WiFi, and browser-history context when run by the user.
 
 ## Quick Start
 
@@ -53,6 +52,7 @@ npm run lint
 npm test
 npm run build
 npm run test:visual
+npm run companion
 ```
 
 `npm run test:visual` uses Playwright and starts the Vite dev server from
@@ -67,6 +67,7 @@ npm run test:visual
 - `src/lib/share/` - compressed share payload generation and validation.
 - `src/lib/security/` - URL safety checks for direct and shared endpoints.
 - `src/lib/regional-defaults.ts` - region detection and default endpoint sets.
+- `companion/` - optional signed local diagnostic companion agent.
 - `tests/unit/` - Vitest unit and component coverage.
 - `tests/visual/` - Playwright visual, accessibility, and browser-flow checks.
 - `docs/vision/` - product vision and longer-term platform direction.

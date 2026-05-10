@@ -32,7 +32,8 @@ name = "javascript"
 enabled = true
 
   [analyzers.meta]
-  environment = ["browser"]
+  module_system = "es-modules"
+  environment = ["browser", "nodejs", "vitest"]
   dialect = "typescript"
   plugins = ["svelte"]
 
