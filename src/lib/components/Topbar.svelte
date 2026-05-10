@@ -10,6 +10,7 @@
   import { measurementStore } from '$lib/stores/measurements';
   import { uiStore } from '$lib/stores/ui';
   import type { TestLifecycleState } from '$lib/types';
+  import { isStartLifecycle, runStatusText, startStopButtonLabel } from '$lib/utils/lifecycle-copy';
 
   let { onStart, onStop }: {
     onStart?: () => void;
@@ -23,24 +24,12 @@
   const isRunning = $derived(lifecycle === 'running');
   const isTransitioning = $derived(lifecycle === 'starting' || lifecycle === 'stopping');
 
-  const runText = $derived.by(() => {
-    if (lifecycle === 'running')  return 'Measuring';
-    if (lifecycle === 'starting') return 'Starting…';
-    if (lifecycle === 'stopping') return 'Stopping…';
-    return 'Halted';
-  });
+  const runText = $derived(runStatusText(lifecycle));
 
   const tickText = $derived(`T+${String(roundCounter).padStart(4, '0')}`);
 
-  const startStopLabel = $derived.by(() => {
-    if (lifecycle === 'running') return 'Halt';
-    if (lifecycle === 'starting') return 'Starting…';
-    if (lifecycle === 'stopping') return 'Stopping…';
-    return 'Start';
-  });
-  const isStartButton = $derived(
-    lifecycle === 'idle' || lifecycle === 'stopped' || lifecycle === 'completed',
-  );
+  const startStopLabel = $derived(startStopButtonLabel(lifecycle));
+  const isStartButton = $derived(isStartLifecycle(lifecycle));
 
   function handleStartStop(): void {
     if (lifecycle === 'running') onStop?.();
