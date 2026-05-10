@@ -1,7 +1,7 @@
 // @vitest-environment node
 
 import { describe, expect, it } from 'vitest';
-import { pathToFileURL } from 'node:url';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 
 interface AgentHistoryStore {
@@ -16,7 +16,8 @@ interface AgentHistoryStore {
   close(): void;
 }
 
-const agent = await import(pathToFileURL(path.resolve('companion/local-agent.js')).href) as {
+const requireAgent = createRequire(import.meta.url);
+const agent = requireAgent(path.resolve('companion/local-agent.cjs')) as {
   canonicalSignedRequest(input: {
     method: string;
     path: string;

@@ -1,18 +1,17 @@
 #!/usr/bin/env node
-// companion/local-agent.js
+// companion/local-agent.cjs
 // Optional Chronoscope localhost companion. Binds to loopback only and requires
 // signed requests for diagnostics.
 
-import crypto from 'node:crypto';
-import dns from 'node:dns/promises';
-import fs from 'node:fs';
-import http from 'node:http';
-import os from 'node:os';
-import path from 'node:path';
-import { spawn } from 'node:child_process';
-import { pathToFileURL } from 'node:url';
-import tls from 'node:tls';
-import { DatabaseSync } from 'node:sqlite';
+const crypto = require('node:crypto');
+const dns = require('node:dns/promises');
+const fs = require('node:fs');
+const http = require('node:http');
+const os = require('node:os');
+const path = require('node:path');
+const { spawn } = require('node:child_process');
+const tls = require('node:tls');
+const { DatabaseSync } = require('node:sqlite');
 
 const VERSION = '0.1.0';
 const PROTOCOL_VERSION = 1;
@@ -58,7 +57,7 @@ function readBody(request) {
   });
 }
 
-export function canonicalSignedRequest(input) {
+function canonicalSignedRequest(input) {
   return [
     input.method.toUpperCase(),
     input.path,
@@ -68,7 +67,7 @@ export function canonicalSignedRequest(input) {
   ].join('\n');
 }
 
-export function signAgentRequest(secret, message) {
+function signAgentRequest(secret, message) {
   return crypto.createHmac('sha256', secret).update(message).digest('hex');
 }
 
@@ -84,7 +83,7 @@ function timingSafeEqualHex(a, b) {
   return left.length === right.length && crypto.timingSafeEqual(left, right);
 }
 
-export function verifySignedRequest(input) {
+function verifySignedRequest(input) {
   const timestamp = input.headers['x-chronoscope-timestamp'];
   const nonce = input.headers['x-chronoscope-nonce'];
   const signature = input.headers['x-chronoscope-signature'];
@@ -268,7 +267,7 @@ async function routeTrace(hostname) {
   return { ok: result.code === 0, tool: 'traceroute', hops: parseRouteOutput(result.stdout), stderr: result.stderr };
 }
 
-export function redactWifiInfo(input, includePrivate = false) {
+function redactWifiInfo(input, includePrivate = false) {
   return {
     ssid: includePrivate && input.ssid ? input.ssid : input.ssid ? 'redacted' : undefined,
     bssid: includePrivate && input.bssid ? input.bssid : input.bssid ? 'redacted' : undefined,
@@ -304,7 +303,7 @@ async function wifiSignal(includePrivate) {
   return { ok: true, ...redactWifiInfo(parseAirportInfo(result.stdout), includePrivate) };
 }
 
-export function createHistoryStore(databasePath) {
+function createHistoryStore(databasePath) {
   const db = new DatabaseSync(databasePath);
   db.exec(`
     CREATE TABLE IF NOT EXISTS probes (
@@ -405,7 +404,7 @@ function parseAllowedOrigins() {
     .filter(Boolean));
 }
 
-export function createServer(options = {}) {
+function createServer(options = {}) {
   const secret = options.secret ?? process.env.CHRONOSCOPE_AGENT_SECRET ?? crypto.randomBytes(24).toString('base64url');
   const allowedOrigins = options.allowedOrigins ?? parseAllowedOrigins();
   const seenNonces = new Set();
@@ -502,6 +501,15 @@ function main() {
   });
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
+if (require.main === module) {
   main();
 }
+
+module.exports = {
+  canonicalSignedRequest,
+  signAgentRequest,
+  verifySignedRequest,
+  redactWifiInfo,
+  createHistoryStore,
+  createServer,
+};
