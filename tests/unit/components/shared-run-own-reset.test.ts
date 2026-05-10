@@ -7,11 +7,17 @@ import ReportView from '../../../src/lib/components/ReportView.svelte';
 import { measurementStore } from '../../../src/lib/stores/measurements';
 import { uiStore } from '../../../src/lib/stores/ui';
 
+const mocks = vi.hoisted(() => ({
+  historyUnsubscribe: vi.fn(),
+  remoteUnsubscribe: vi.fn(),
+  createHostedReport: vi.fn<() => Promise<null>>().mockResolvedValue(null),
+}));
+
 vi.mock('$lib/stores/history', () => ({
   historyStore: {
     subscribe(run: (state: { sessions: readonly unknown[] }) => void): () => void {
       run({ sessions: [] });
-      return () => {};
+      return mocks.historyUnsubscribe;
     },
   },
 }));
@@ -20,9 +26,9 @@ vi.mock('$lib/stores/remote-vantage', () => ({
   remoteVantageStore: {
     subscribe(run: (state: { lastProbe: null }) => void): () => void {
       run({ lastProbe: null });
-      return () => {};
+      return mocks.remoteUnsubscribe;
     },
-    createHostedReport: vi.fn<() => Promise<null>>().mockResolvedValue(null),
+    createHostedReport: mocks.createHostedReport,
   },
 }));
 
@@ -36,6 +42,7 @@ function seedSharedSuppression(): void {
 
 describe('shared run-own reset', () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     seedSharedSuppression();
   });
 

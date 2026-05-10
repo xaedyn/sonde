@@ -18,18 +18,21 @@ const mocks = vi.hoisted(() => ({
   saveSettings: vi.fn(),
   historyHydrate: vi.fn<() => Promise<readonly unknown[]>>(),
   historyRecordSession: vi.fn<() => Promise<unknown | null>>(),
+  historyUnsubscribe: vi.fn(),
   shortcutCleanup: vi.fn(),
   initShortcuts: vi.fn<() => () => void>(),
 }));
 
-vi.mock('$lib/engine/measurement-engine', () => ({
-  MeasurementEngine: vi.fn().mockImplementation(function () {
-    return {
-      start: mocks.engineStart,
-      stop: mocks.engineStop,
-    };
-  }),
-}));
+vi.mock('$lib/engine/measurement-engine', () => {
+  class MockMeasurementEngine {
+    start = mocks.engineStart;
+    stop = mocks.engineStop;
+  }
+
+  return {
+    MeasurementEngine: vi.fn(MockMeasurementEngine),
+  };
+});
 
 vi.mock('$lib/share/hash-router', () => ({
   initHashRouter: mocks.initHashRouter,
@@ -55,7 +58,7 @@ vi.mock('$lib/stores/history', () => ({
       error: string | null;
     }) => void): () => void {
       run({ sessions: [], hydrated: true, saving: false, error: null });
-      return () => {};
+      return mocks.historyUnsubscribe;
     },
     hydrate: mocks.historyHydrate,
     recordSession: mocks.historyRecordSession,
