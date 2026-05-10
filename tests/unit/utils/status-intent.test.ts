@@ -146,6 +146,17 @@ describe('autoStartDecision', () => {
       ).toEqual({ shouldStart: false, reason: 'local-endpoint' });
     }
   });
+
+  it('ignores disabled unsafe endpoints when an enabled public endpoint exists', () => {
+    expect(
+      autoStartDecision({
+        endpoints: [{ ...ep('router', 'http://192.168.1.1'), enabled: false }, ep('api')],
+        isSharedView: false,
+        sharedReportMode: false,
+        hasPendingShare: false,
+      }),
+    ).toEqual({ shouldStart: true, reason: null });
+  });
 });
 
 describe('selectInvestigationEndpointId', () => {
@@ -194,6 +205,10 @@ describe('selectInvestigationEndpointId', () => {
     expect(
       select({
         stats: { api: stat('api', 110), cdn: stat('cdn', 300), search: stat('search', 250) },
+        recentEventEndpointIds: ['search'],
+        measurements: measurementState({
+          api: [sample(1)],
+        }),
       }),
     ).toBe('cdn');
   });
@@ -203,6 +218,9 @@ describe('selectInvestigationEndpointId', () => {
       select({
         stats: { api: stat('api', 110, false), cdn: stat('cdn', 300, false) },
         recentEventEndpointIds: ['stale', 'search', 'api'],
+        measurements: measurementState({
+          cdn: [sample(1)],
+        }),
       }),
     ).toBe('search');
   });
