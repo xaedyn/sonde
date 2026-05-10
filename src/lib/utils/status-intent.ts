@@ -1,11 +1,12 @@
-import type { Endpoint, MeasurementState, StatisticsState } from '../types';
+import type {
+  AutoStartSuppressionReason,
+  Endpoint,
+  MeasurementState,
+  StatisticsState,
+} from '../types';
 import { isSafeSharedUrl } from './url-safety';
 
-export type AutoStartSuppressionReason =
-  | 'shared-report'
-  | 'pending-share'
-  | 'no-enabled-endpoints'
-  | 'local-endpoint';
+export type { AutoStartSuppressionReason } from '../types';
 
 export interface AutoStartDecision {
   readonly shouldStart: boolean;

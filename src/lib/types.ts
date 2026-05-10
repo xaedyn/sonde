@@ -243,6 +243,12 @@ export interface PendingShare {
   readonly endpoints: readonly { url: string; enabled: boolean }[];
 }
 
+export type AutoStartSuppressionReason =
+  | 'shared-report'
+  | 'pending-share'
+  | 'no-enabled-endpoints'
+  | 'local-endpoint';
+
 export interface UIState {
   activeView: ActiveView;
   expandedCards: Set<string>;
@@ -273,6 +279,9 @@ export interface UIState {
   // (≤1023 px). Desktop shows both side-by-side and ignores this flag.
   // Ephemeral — not persisted; first visit defaults to 'racing'.
   overviewSubtab: 'racing' | 'events';
+
+  // Session-derived reason the app did not auto-start at boot. Not persisted.
+  autoStartSuppressionReason: AutoStartSuppressionReason | null;
 }
 
 // ── Share payload ──────────────────────────────────────────────────────────

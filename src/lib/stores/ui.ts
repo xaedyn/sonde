@@ -26,6 +26,7 @@ const initialState = (): UIState => ({
   },
   terminalFilters: new Set<TerminalEventType>(),
   overviewSubtab: 'racing',
+  autoStartSuppressionReason: null,
 });
 
 function createUiStore() {
@@ -109,6 +110,9 @@ function createUiStore() {
     },
     setOverviewSubtab(tab: UIState['overviewSubtab']): void {
       update((s) => ({ ...s, overviewSubtab: tab }));
+    },
+    setAutoStartSuppressionReason(reason: UIState['autoStartSuppressionReason']): void {
+      update((s) => ({ ...s, autoStartSuppressionReason: reason }));
     },
     reset(): void {
       set(initialState());

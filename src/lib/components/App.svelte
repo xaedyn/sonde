@@ -17,6 +17,7 @@
   import { loadPersistedSettings, saveSettings, CURRENT_VERSION } from '$lib/utils/persistence';
   import { initHashRouter, initHostedReportRouter } from '$lib/share/hash-router';
   import { initShortcuts } from '$lib/utils/shortcuts';
+  import { autoStartDecision } from '$lib/utils/status-intent';
   import type { PersistedSettings } from '$lib/types';
   import Layout from './Layout.svelte';
   import SettingsDrawer from './SettingsDrawer.svelte';
@@ -175,6 +176,7 @@
   // we call engine.start() from the previous tick, so we track prior lifecycle.
   function handleStart(): void {
     if (!engine) return;
+    uiStore.setAutoStartSuppressionReason(null);
     engine.start();
   }
 
@@ -247,6 +249,19 @@
 
     // 7. Register keyboard shortcuts
     destroyShortcuts = initShortcuts();
+
+    // 8. Safe auto-start for ordinary public sessions only
+    const ui = get(uiStore);
+    const decision = autoStartDecision({
+      endpoints: get(endpointStore),
+      isSharedView: ui.isSharedView,
+      sharedReportMode: ui.sharedReportMode,
+      hasPendingShare: ui.pendingShare !== null,
+    });
+    uiStore.setAutoStartSuppressionReason(decision.reason);
+    if (decision.shouldStart) {
+      engine.start();
+    }
   }
 
   onMount(() => {

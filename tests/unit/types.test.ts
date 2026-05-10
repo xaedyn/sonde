@@ -102,10 +102,15 @@ describe('types', () => {
       showShare: false,
       showKeyboardHelp: false,
       isSharedView: false,
+      sharedReportMode: false,
+      sharedReportContext: null,
+      pendingShare: null,
       showEndpoints: false,
       focusedEndpointId: null,
       liveOptions: { split: false, timeRange: '5m' },
       terminalFilters: new Set(),
+      overviewSubtab: 'racing',
+      autoStartSuppressionReason: null,
     };
     expect(state.showKeyboardHelp).toBe(false);
   });
@@ -118,12 +123,39 @@ describe('types', () => {
       showShare: false,
       showKeyboardHelp: false,
       isSharedView: false,
+      sharedReportMode: false,
+      sharedReportContext: null,
+      pendingShare: null,
       showEndpoints: false,
       focusedEndpointId: null,
       liveOptions: { split: false, timeRange: '5m' },
       terminalFilters: new Set(),
+      overviewSubtab: 'racing',
+      autoStartSuppressionReason: null,
     };
     expect(state.isSharedView).toBe(false);
+  });
+
+  it('UIState tracks auto-start suppression without persistence coupling', () => {
+    const state: UIState = {
+      activeView: 'overview',
+      expandedCards: new Set(),
+      showSettings: false,
+      showShare: false,
+      showKeyboardHelp: false,
+      isSharedView: false,
+      sharedReportMode: false,
+      sharedReportContext: null,
+      pendingShare: null,
+      showEndpoints: false,
+      focusedEndpointId: null,
+      liveOptions: { split: false, timeRange: '5m' },
+      terminalFilters: new Set(),
+      overviewSubtab: 'racing',
+      autoStartSuppressionReason: 'local-endpoint',
+    };
+    expect(state.autoStartSuppressionReason).toBe('local-endpoint');
+    expectTypeOf<keyof PersistedSettings['ui']>().not.toEqualTypeOf<'autoStartSuppressionReason'>();
   });
 });
 
@@ -211,4 +243,3 @@ describe('types — timingFallback additions', () => {
     expectTypeOf(sample).toMatchTypeOf<MeasurementSample>();
   });
 });
-
