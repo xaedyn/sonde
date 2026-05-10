@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 
 // AC5 — fail-closed sweep: no raw URL string appears as the textContent of
-// a primary-identifier element on Overview, Live, or Investigate views.
+// a primary-identifier element on Status, Live, or Investigate views.
 //
 // "Primary identifier" means the name/label slot for an endpoint — the element
 // the user scans to identify which endpoint is being described.  Subtitle
@@ -93,7 +93,7 @@ const findRawUrlLeaks = async (page: Page): Promise<readonly RawUrlLeak[]> => {
 test.describe('AC5 — no raw URL in primary identifiers', () => {
   for (const vp of VIEWPORTS) {
     test.describe(`@ ${vp.name} (${vp.width}×${vp.height})`, () => {
-      test('Overview view', async ({ page }) => {
+      test('Status view', async ({ page }) => {
         await page.setViewportSize({ width: vp.width, height: vp.height });
         await page.goto('/');
         await page.waitForSelector('#chronoscope-root');
@@ -103,7 +103,7 @@ test.describe('AC5 — no raw URL in primary identifiers', () => {
         const leaks = await findRawUrlLeaks(page);
         expect(
           leaks,
-          `Raw URL(s) found in primary identifier elements on Overview: ${JSON.stringify(leaks)}`,
+          `Raw URL(s) found in primary identifier elements on Status: ${JSON.stringify(leaks)}`,
         ).toEqual([]);
       });
 

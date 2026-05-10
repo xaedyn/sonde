@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Locator, type Page } from '@playwright/test';
 import { encodeSharePayload } from '../../src/lib/share/share-manager';
 import { MAX_CAP } from '../../src/lib/limits';
 import type { SharePayload } from '../../src/lib/types';
@@ -27,6 +27,32 @@ async function injectVisibleSamples(page: Page): Promise<void> {
       jitterMs: 3,
     })));
   }, ids);
+}
+
+const RUN_CONTROL_NAME = /^(?:Start|Starting\.\.\.|Stop)$/i;
+
+function runControl(page: Page): Locator {
+  return page.getByRole('button', { name: RUN_CONTROL_NAME });
+}
+
+async function expectMeasuringStatus(page: Page): Promise<void> {
+  await expect(page.locator('.run-status')).toHaveAttribute('aria-label', 'Measuring', { timeout: 3000 });
+}
+
+async function assertVerdictBeforeDial(page: Page): Promise<void> {
+  await page.goto('/');
+  await page.waitForSelector('#chronoscope-root');
+
+  const verdict = page.locator('.verdict.hero');
+  const dial = page.locator('svg.dial');
+  await expect(verdict).toBeVisible();
+  await expect(dial).toBeVisible();
+
+  const verdictBox = await verdict.boundingBox();
+  const dialBox = await dial.boundingBox();
+  expect(verdictBox).not.toBeNull();
+  expect(dialBox).not.toBeNull();
+  expect(verdictBox!.y).toBeLessThan(dialBox!.y);
 }
 
 function sharedReportUrl(): string {
@@ -70,11 +96,11 @@ function sharedReportUrl(): string {
 }
 
 test.describe('Acceptance criteria verification', () => {
-  test('data appears in the current Overview surfaces after samples arrive', async ({ page }) => {
+  test('data appears in the current Status surfaces after samples arrive', async ({ page }) => {
     await page.goto('/');
     await page.waitForSelector('#chronoscope-root');
+    await expectMeasuringStatus(page);
 
-    await page.getByRole('button', { name: /^start$/i }).click();
     await injectVisibleSamples(page);
 
     const racing = page.locator('section[aria-label="Per-endpoint comparison"]');
@@ -82,14 +108,12 @@ test.describe('Acceptance criteria verification', () => {
     await expect(page.locator('svg.dial')).toBeVisible();
   });
 
-  test('start button enters the running control state', async ({ page }) => {
+  test('default public endpoint visit starts measuring', async ({ page }) => {
     await page.goto('/');
     await page.waitForSelector('#chronoscope-root');
 
-    await page.getByRole('button', { name: /^start$/i }).click();
-
-    await expect(page.getByRole('button', { name: /^halt$/i })).toBeVisible({ timeout: 3000 });
-    await expect(page.locator('.run-status')).toHaveText(/measuring|starting/i, { timeout: 3000 });
+    await expectMeasuringStatus(page);
+    await expect(runControl(page)).toHaveAccessibleName(/^Stop$/i, { timeout: 3000 });
   });
 
   test('keyboard shortcut ? opens overlay', async ({ page }) => {
@@ -128,7 +152,7 @@ test.describe('Acceptance criteria verification', () => {
     expect(await endpointButtons.count()).toBeGreaterThan(0);
   });
 
-  test('cold Overview renders dial, racing comparison, and event feed', async ({ page }) => {
+  test('cold Status renders dial, racing comparison, and event feed', async ({ page }) => {
     await page.goto('/');
     await page.waitForSelector('#chronoscope-root');
 
@@ -136,6 +160,31 @@ test.describe('Acceptance criteria verification', () => {
     await expect(page.locator('svg.dial')).toBeVisible();
     await expect(page.locator('section[aria-label="Per-endpoint comparison"]')).toBeVisible();
     await expect(page.locator('section[aria-label="Recent events"]')).toBeAttached();
+  });
+
+  test('Status first paint shows verdict before the dial on desktop', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await assertVerdictBeforeDial(page);
+  });
+
+  test('Status first paint shows verdict before the dial on mobile', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await assertVerdictBeforeDial(page);
+  });
+
+  test('Investigate tab auto-selects an endpoint detail on direct entry', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/');
+    await page.waitForSelector('#chronoscope-root');
+
+    await page.getByRole('button', { name: /^Investigate/ }).click();
+
+    const investigate = page.locator('section[aria-label="Investigate"]');
+    await expect(investigate).toBeVisible();
+    await expect(investigate.locator('.diagnose-title-name')).toBeVisible({ timeout: 3000 });
+    await expect(investigate.locator('.diagnose-empty')).toHaveCount(0);
+    await expect(investigate.getByText(/pick an endpoint from the left rail/i)).toHaveCount(0);
+    await expect(investigate.locator('section[aria-label="Diagnostic answer"]')).toBeVisible();
   });
 
   test('diagnostic narrative exposes confidence and browser timing limits', async ({ page }) => {
@@ -151,7 +200,7 @@ test.describe('Acceptance criteria verification', () => {
 
     await expect(page.locator('section[aria-label="Diagnostic answer"]')).toBeVisible();
     await expect(page.locator('section[aria-label="Browser visibility"]')).toBeVisible();
-    await expect(page.getByText(/Timing-Allow-Origin/i)).toBeVisible();
+    await expect(page.locator('section[aria-label="Browser visibility"] .visibility-action')).toContainText(/Timing-Allow-Origin/i);
   });
 
   test('shared result link opens as a diagnostic report', async ({ page }) => {
@@ -183,11 +232,17 @@ for (const vp of VIEWPORTS) {
       await page.waitForSelector('#chronoscope-root');
     });
 
-    test('Start button uses the current run button contract', async ({ page }) => {
-      const startBtn = page.getByRole('button', { name: /^start$/i });
-      await expect(startBtn).toBeVisible();
-      await expect(startBtn).toHaveClass(/run-btn/);
-      await expect(startBtn).toHaveClass(/start/);
+    test('run button uses the current run button contract', async ({ page }) => {
+      const button = runControl(page);
+      await expect(button).toBeVisible();
+      await expect(button).toHaveClass(/run-btn/);
+
+      const label = (await button.getAttribute('aria-label')) ?? '';
+      expect(label).toMatch(RUN_CONTROL_NAME);
+      const className = (await button.getAttribute('class')) ?? '';
+      if (/^Start$/i.test(label)) expect(className).toContain('start');
+      if (/^Stop$/i.test(label)) expect(className).toContain('stop');
+      if (/^Starting\.\.\.$/i.test(label)) await expect(button).toBeDisabled();
     });
 
     test('secondary topbar buttons do not use the run button class', async ({ page }) => {
@@ -203,9 +258,9 @@ for (const vp of VIEWPORTS) {
       await expect(page.getByRole('button', { name: /^Investigate/ })).toBeEnabled();
     });
 
-    test('Start button has a background transition for hover feedback', async ({ page }) => {
-      const startBtn = page.getByRole('button', { name: /^start$/i });
-      const transitionStyle = await startBtn.evaluate(el => window.getComputedStyle(el).transition);
+    test('run button has a background transition for hover feedback', async ({ page }) => {
+      const button = runControl(page);
+      const transitionStyle = await button.evaluate(el => window.getComputedStyle(el).transition);
       expect(transitionStyle).toContain('background');
     });
 
@@ -224,10 +279,10 @@ test.describe('375px specific checks', () => {
   });
 
   test('Start/Stop keeps its text label', async ({ page }) => {
-    const startBtn = page.getByRole('button', { name: /^start$/i });
-    await expect(startBtn).toBeVisible();
-    const text = await startBtn.textContent();
-    expect(text?.trim()).toMatch(/start|halt/i);
+    const button = runControl(page);
+    await expect(button).toBeVisible();
+    const text = await button.textContent();
+    expect(text?.trim()).toMatch(/start|starting|stop/i);
   });
 
   test('secondary topbar buttons keep accessible labels', async ({ page }) => {
@@ -250,11 +305,11 @@ test.describe('prefers-reduced-motion', () => {
     expect(animateCount).toBe(0);
   });
 
-  test('Start button transition-duration is 0s', async ({ page }) => {
-    const startBtn = page.getByRole('button', { name: /^start$/i });
-    const duration = await startBtn.evaluate(el => window.getComputedStyle(el).transitionDuration);
+  test('run button transition-duration is 0s', async ({ page }) => {
+    const button = runControl(page);
+    const duration = await button.evaluate(el => window.getComputedStyle(el).transitionDuration);
     const durations = duration.split(',').map(d => d.trim());
-    const property = await startBtn.evaluate(el => window.getComputedStyle(el).transitionProperty);
+    const property = await button.evaluate(el => window.getComputedStyle(el).transitionProperty);
     expect(property === 'none' || durations.every(d => d === '0s')).toBe(true);
   });
 });

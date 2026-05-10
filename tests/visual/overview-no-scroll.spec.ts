@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 
-// Acceptance: the Overview view fits in one viewport without scrolling at the
+// Acceptance: the Status view fits in one viewport without scrolling at the
 // desktop floor (1366×768) and mobile floor (360×780), across the measurement
 // lifecycle (cold / first round). See
 // docs/superpowers/research/2026-04-22-overview-no-scroll-acceptance-criteria.md.
@@ -17,6 +17,8 @@ const VIEWPORTS = [
   { name: 'desktop-1920',  width: 1920, height: 1080 },
   { name: 'desktop-2560',  width: 2560, height: 1440 },
 ] as const;
+
+const RUNNING_OR_STARTING_CONTROL = /^(?:Starting\.\.\.|Stop)$/i;
 
 interface ScrollerReport {
   readonly tag: string;
@@ -75,7 +77,7 @@ const scrollState = async (page: Page): Promise<ScrollCheck> => {
   });
 };
 
-test.describe('Overview — no scroll on first visit', () => {
+test.describe('Status — no scroll on first visit', () => {
   for (const vp of VIEWPORTS) {
     test(`cold state @ ${vp.name} (${vp.width}×${vp.height})`, async ({ page }) => {
       await page.setViewportSize({ width: vp.width, height: vp.height });
@@ -146,7 +148,7 @@ test.describe('Overview — no scroll on first visit', () => {
     if (await startButton.isVisible({ timeout: 200 }).catch(() => false)) {
       await startButton.click();
     } else {
-      await expect(page.getByRole('button', { name: /^stop$/i })).toBeVisible();
+      await expect(page.getByRole('button', { name: RUNNING_OR_STARTING_CONTROL })).toBeVisible();
     }
     await page.waitForTimeout(1200);
 

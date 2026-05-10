@@ -2,11 +2,17 @@ import { test, expect } from '@playwright/test';
 
 // ── View navigation helper ──────────────────────────────────────────────────
 // Chronoscope has NO hash router for view selection — `page.goto('/#live')`
-// silently lands on the default Overview (round-3 reviewer caught this).
+// silently lands on the default Status surface (round-3 reviewer caught this).
 // View selection lives in `uiStore.activeView`, set via ViewSwitcher button
 // clicks. The default view is 'overview' per `src/lib/stores/ui.ts:12`, so
-// tests targeting Overview use `page.goto('/')` alone; tests targeting Live
+// tests targeting Status use `page.goto('/')` alone; tests targeting Live
 // must explicitly click the Live tab.
+const VIEW_LABELS: Record<'overview' | 'live' | 'diagnose', string> = {
+  overview: 'Status',
+  live: 'Live',
+  diagnose: 'Investigate',
+};
+
 async function gotoView(
   page: import('@playwright/test').Page,
   view: 'overview' | 'live' | 'diagnose'
@@ -16,10 +22,10 @@ async function gotoView(
   if (view !== 'overview') {
     // ViewSwitcher buttons have text like "2 Live What's happening right now?" so
     // match by the label span text using a precise locator rather than a role name.
-    await page.locator('.view-tab', { hasText: new RegExp(`^\\d\\s+${view}`, 'i') }).click();
+    await page.locator('.view-tab', { hasText: new RegExp(`^\\d\\s+${VIEW_LABELS[view]}`, 'i') }).click();
     const surfaceSelector =
       view === 'live' ? '.live-wrap' :
-      view === 'diagnose' ? '.diagnose-distro' :
+      view === 'diagnose' ? 'section[aria-label="Investigate"]' :
       '#chronoscope-root';
     await page.waitForSelector(surfaceSelector, { timeout: 3000 });
   }
@@ -145,7 +151,7 @@ test.describe('AC8: axis-label-max parity', () => {
     await injectHighBaselineStats(page);
   });
 
-  test('AC8 OverviewView: Dial and RacingStrip show same maxMs', async ({ page }) => {
+  test('AC8 Status: Dial and RacingStrip show same maxMs', async ({ page }) => {
     const texts = await page.locator('[data-role="axis-label-max"]').allTextContents();
     expect(texts.length).toBeGreaterThanOrEqual(2);
     const unique = new Set(texts);
