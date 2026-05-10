@@ -46,6 +46,27 @@
     const ratio = Math.max(comparison?.p50Ratio ?? 0, comparison?.p95Ratio ?? 0);
     return ratio > 0 ? `${ratio.toFixed(1)}x baseline` : 'Baseline high';
   });
+  const suppressionMessage = $derived.by(() => {
+    if (diagnosis.kind !== 'collecting') return null;
+    switch (autoStartSuppressionReason) {
+      case 'local-endpoint':
+        return 'Ready to measure. Start when you want Chronoscope to probe your local or private endpoints.';
+      case 'pending-share':
+        return 'Review the shared setup first, or start measuring your saved endpoints.';
+      case 'no-enabled-endpoints':
+        return 'No endpoints are enabled. Enable an endpoint before Chronoscope can measure anything.';
+      case 'shared-report':
+        return 'This is a shared snapshot. Run your own test to measure from your location.';
+      default:
+        return null;
+    }
+  });
+  const canStartSuppressedRun = $derived(
+    diagnosis.kind === 'collecting' &&
+    onStart !== undefined &&
+    (autoStartSuppressionReason === 'local-endpoint' || autoStartSuppressionReason === 'pending-share'),
+  );
+  const showMetrics = $derived(suppressionMessage === null);
 
   const fmtInt = (n: number | null): string => (n == null ? '—' : String(Math.round(n)));
   const fmt1 = (n: number | null): string => (n == null ? '—' : n.toFixed(1));
@@ -80,31 +101,35 @@
   </div>
   {#if diagnosis.kind !== 'collecting'}
     <p class="verdict-explanation">{diagnosis.explanation}</p>
+  {:else if suppressionMessage}
+    <p class="verdict-explanation verdict-suppression">{suppressionMessage}</p>
   {/if}
 
-  <dl class="verdict-metrics">
-    <div class="verdict-metric">
-      <dt class="verdict-metric-label">Median</dt>
-      <dd class="verdict-metric-value">
-        <span class="verdict-metric-num">{fmtInt(avgP50)}</span>
-        <span class="verdict-metric-unit">ms</span>
-      </dd>
-    </div>
-    <div class="verdict-metric">
-      <dt class="verdict-metric-label">Jitter</dt>
-      <dd class="verdict-metric-value">
-        <span class="verdict-metric-num">{fmt1(avgJitter)}</span>
-        <span class="verdict-metric-unit">σ</span>
-      </dd>
-    </div>
-    <div class="verdict-metric">
-      <dt class="verdict-metric-label">Loss</dt>
-      <dd class="verdict-metric-value">
-        <span class="verdict-metric-num">{fmt1(avgLoss)}</span>
-        <span class="verdict-metric-unit">%</span>
-      </dd>
-    </div>
-  </dl>
+  {#if showMetrics}
+    <dl class="verdict-metrics">
+      <div class="verdict-metric">
+        <dt class="verdict-metric-label">Median</dt>
+        <dd class="verdict-metric-value">
+          <span class="verdict-metric-num">{fmtInt(avgP50)}</span>
+          <span class="verdict-metric-unit">ms</span>
+        </dd>
+      </div>
+      <div class="verdict-metric">
+        <dt class="verdict-metric-label">Jitter</dt>
+        <dd class="verdict-metric-value">
+          <span class="verdict-metric-num">{fmt1(avgJitter)}</span>
+          <span class="verdict-metric-unit">σ</span>
+        </dd>
+      </div>
+      <div class="verdict-metric">
+        <dt class="verdict-metric-label">Loss</dt>
+        <dd class="verdict-metric-value">
+          <span class="verdict-metric-num">{fmt1(avgLoss)}</span>
+          <span class="verdict-metric-unit">%</span>
+        </dd>
+      </div>
+    </dl>
+  {/if}
 
   {#if drillEndpoint && verdict.tone === 'warn'}
     <button
@@ -119,7 +144,7 @@
     </button>
   {/if}
 
-  {#if autoStartSuppressionReason && autoStartSuppressionReason !== 'shared-report' && diagnosis.kind === 'collecting' && onStart}
+  {#if canStartSuppressedRun}
     <button type="button" class="verdict-drill verdict-start" onclick={() => onStart?.()}>
       <span class="verdict-drill-text">Start Measuring</span>
       <span class="verdict-drill-arrow" aria-hidden="true">→</span>

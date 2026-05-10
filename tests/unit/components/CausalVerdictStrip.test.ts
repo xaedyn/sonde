@@ -96,6 +96,38 @@ describe('CausalVerdictStrip start CTA', () => {
     expect(queryByRole('button', { name: /start measuring/i })).toBeNull();
   });
 
+  it('explains no enabled endpoints without rendering Start Measuring', () => {
+    const { getByText, queryByRole } = renderStrip({
+      autoStartSuppressionReason: 'no-enabled-endpoints',
+      onStart: vi.fn(),
+    });
+
+    expect(queryByRole('button', { name: /start measuring/i })).toBeNull();
+    expect(getByText(/no endpoints are enabled/i)).toBeTruthy();
+    expect(getByText(/enable an endpoint before chronoscope can measure anything/i)).toBeTruthy();
+  });
+
+  it('explains local endpoint suppression and renders Start Measuring', () => {
+    const { getByRole, getByText } = renderStrip({
+      autoStartSuppressionReason: 'local-endpoint',
+      onStart: vi.fn(),
+    });
+
+    expect(getByRole('button', { name: /start measuring/i })).toBeTruthy();
+    expect(getByText(/start when you want chronoscope to probe your local or private endpoints/i)).toBeTruthy();
+  });
+
+  it('explains shared report suppression without rendering Start Measuring', () => {
+    const { getByText, queryByRole } = renderStrip({
+      autoStartSuppressionReason: 'shared-report',
+      onStart: vi.fn(),
+    });
+
+    expect(queryByRole('button', { name: /start measuring/i })).toBeNull();
+    expect(getByText(/this is a shared snapshot/i)).toBeTruthy();
+    expect(getByText(/run your own test to measure from your location/i)).toBeTruthy();
+  });
+
   it('hides Start Measuring outside collecting states', () => {
     const { queryByRole } = renderStrip({
       diagnosis: degradedDiagnosis,
