@@ -3,7 +3,7 @@ import { createCompanionClient } from '../../../src/lib/companion/client';
 
 describe('companion client', () => {
   it('sends health checks with an abort signal', async () => {
-    const fetcher = vi.fn(async () => new Response(JSON.stringify({
+    const fetcher = vi.fn(() => Promise.resolve(new Response(JSON.stringify({
       ok: true,
       version: '0.1.0',
       protocolVersion: 1,
@@ -17,7 +17,7 @@ describe('companion client', () => {
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
-    }));
+    })));
     const client = createCompanionClient(fetcher);
 
     await client.checkHealth('http://127.0.0.1:47317');
@@ -29,7 +29,7 @@ describe('companion client', () => {
   });
 
   it('sends signed probe requests with an abort signal', async () => {
-    const fetcher = vi.fn(async () => new Response(JSON.stringify({
+    const fetcher = vi.fn(() => Promise.resolve(new Response(JSON.stringify({
       ok: true,
       id: 'probe-1',
       targetHost: 'example.com',
@@ -39,7 +39,7 @@ describe('companion client', () => {
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
-    }));
+    })));
     const client = createCompanionClient(fetcher);
 
     await client.runProbe('http://127.0.0.1:47317', 'secret', {

@@ -21,7 +21,7 @@ function createFakeCompanionStore(): CompanionStore {
   return {
     subscribe: state.subscribe,
     configure: vi.fn(),
-    checkHealth: vi.fn(async () => {
+    checkHealth: vi.fn(() => {
       state.update((current) => ({
         ...current,
         status: 'connected',
@@ -34,9 +34,9 @@ function createFakeCompanionStore(): CompanionStore {
           sqliteHistory: true,
         },
       }));
-      return true;
+      return Promise.resolve(true);
     }),
-    runProbe: vi.fn(async () => {
+    runProbe: vi.fn(() => {
       const probe = {
         ok: true,
         id: 'probe-1',
@@ -46,9 +46,9 @@ function createFakeCompanionStore(): CompanionStore {
         results: { dns: { ok: true } },
       };
       state.update((current) => ({ ...current, status: 'connected', lastProbe: probe }));
-      return probe;
+      return Promise.resolve(probe);
     }),
-    loadHistory: vi.fn(async () => []),
+    loadHistory: vi.fn(() => Promise.resolve([])),
     clearSecret: vi.fn(),
   };
 }

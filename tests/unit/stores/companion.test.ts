@@ -69,7 +69,7 @@ describe('companionStore', () => {
 
   it('clears authenticated companion state when the token is forgotten', async () => {
     const client = {
-      checkHealth: vi.fn(async () => ({
+      checkHealth: vi.fn(() => Promise.resolve({
         ok: true,
         version: '0.1.0',
         protocolVersion: 1,
@@ -81,7 +81,7 @@ describe('companionStore', () => {
           sqliteHistory: true,
         },
       })),
-      runProbe: vi.fn(async () => ({
+      runProbe: vi.fn(() => Promise.resolve({
         ok: true,
         id: 'probe-1',
         targetHost: 'example.com',
@@ -89,7 +89,7 @@ describe('companionStore', () => {
         summary: 'DNS completed.',
         results: { dns: { ok: true } },
       })),
-      listHistory: vi.fn(async () => ({ ok: true, history: [] })),
+      listHistory: vi.fn(() => Promise.resolve({ ok: true, history: [] })),
     };
     const store = createCompanionStore(client);
 

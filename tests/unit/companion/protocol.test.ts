@@ -37,7 +37,7 @@ describe('companion protocol', () => {
       secret: 'pairing-secret',
       now: () => 1765300000000,
       nonceFactory: () => 'nonce-1',
-      signer: async (secret, message) => `${secret}:${message.length}`,
+      signer: (secret, message) => Promise.resolve(`${secret}:${message.length}`),
     });
 
     expect(headers).toEqual({

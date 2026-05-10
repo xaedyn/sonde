@@ -46,4 +46,7 @@ enabled = true
     "node_modules/**",
     "dist/**",
     "docs/**",
+    # DeepSource's browser-oriented JavaScript analyzer parses this Node ESM
+    # companion as script code even though Node runs it as a module.
+    "companion/local-agent.mjs",
   ]
