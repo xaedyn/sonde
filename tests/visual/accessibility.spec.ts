@@ -62,6 +62,13 @@ async function injectSampleSpecs(page: Page, specs: readonly SampleSeedSpec[]): 
   }, specs);
 }
 
+async function bumpMeasurementRound(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    const { measurementStore } = await import('/src/lib/stores/measurements.ts');
+    measurementStore.incrementRound();
+  });
+}
+
 async function seedVisibleSamples(page: Page): Promise<void> {
   const ids = await visibleEndpointIds(page);
   await injectSampleSpecs(page, ids.map((endpointId, index) => ({
@@ -70,6 +77,25 @@ async function seedVisibleSamples(page: Page): Promise<void> {
     latencyMs: 45 + index * 24,
     jitterMs: 4,
   })));
+}
+
+async function seedThresholdCrossingSamples(page: Page): Promise<void> {
+  const ids = await visibleEndpointIds(page);
+  await injectSampleSpecs(page, ids.map((endpointId, index) => ({
+    endpointId,
+    count: 4,
+    latencyMs: 40 + index * 5,
+    jitterMs: 2,
+  })));
+  await bumpMeasurementRound(page);
+  await page.waitForTimeout(100);
+  await injectSampleSpecs(page, ids.map((endpointId, index) => ({
+    endpointId,
+    count: 24,
+    latencyMs: 160 + index * 20,
+    jitterMs: 3,
+  })));
+  await bumpMeasurementRound(page);
 }
 
 test.describe('Accessibility', () => {
@@ -93,6 +119,22 @@ test.describe('Accessibility', () => {
 
     await page.getByRole('button', { name: /^Investigate/ }).click();
     await page.waitForSelector('section[aria-label="Investigate"]');
+    await expectNoAxeViolations(page);
+  });
+
+  test('no axe violations when recent threshold events are visible', async ({ page }) => {
+    test.skip((page.viewportSize()?.width ?? 0) < 700, 'Event feed contrast is covered in the desktop Status layout.');
+    await page.goto('/');
+    await page.waitForSelector('#chronoscope-root');
+    await seedThresholdCrossingSamples(page);
+
+    await expect(page.locator('.feed-row').first()).toBeVisible();
+    const opacities = await page.locator('.feed-row').evaluateAll((rows) => (
+      rows.map((row) => Number(getComputedStyle(row).opacity))
+    ));
+    for (const opacity of opacities) {
+      expect(opacity).toBeGreaterThanOrEqual(0.95);
+    }
     await expectNoAxeViolations(page);
   });
 
