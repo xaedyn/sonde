@@ -148,7 +148,7 @@
     <label
       class="toggle-label"
       aria-label="{endpoint.enabled ? 'Disable' : 'Enable'} this endpoint"
-      title={isLastEnabled ? 'At least one endpoint must be enabled' : ''}
+      title={isRunning ? 'Stop test to edit endpoints' : isLastEnabled ? 'At least one endpoint must be enabled' : ''}
     >
       <input
         type="checkbox"
@@ -164,6 +164,7 @@
         type="button"
         class="remove-btn"
         aria-label="Remove endpoint {endpoint.label}"
+        title={isRunning ? 'Stop test to edit endpoints' : 'Remove endpoint'}
         disabled={isRunning}
         onclick={handleRemove}
       >

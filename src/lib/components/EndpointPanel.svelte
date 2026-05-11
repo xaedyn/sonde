@@ -8,6 +8,7 @@
   import EndpointRow from './EndpointRow.svelte';
 
   let isRunning = $derived($measurementStore.lifecycle === 'running' || $measurementStore.lifecycle === 'starting');
+  let isAtEndpointLimit = $derived($endpointStore.length >= MAX_ENDPOINTS);
 
   function handleRemove(id: string): void {
     endpointStore.removeEndpoint(id);
@@ -18,6 +19,7 @@
   }
 
   function addEndpoint(): void {
+    if (isRunning || isAtEndpointLimit) return;
     endpointStore.addEndpoint('https://');
   }
 </script>
@@ -67,21 +69,29 @@
     <button
       type="button"
       class="add-btn"
-      disabled={$endpointStore.length >= MAX_ENDPOINTS || isRunning}
-      aria-disabled={$endpointStore.length >= MAX_ENDPOINTS || isRunning}
-      title={$endpointStore.length >= MAX_ENDPOINTS
+      disabled={isAtEndpointLimit || isRunning}
+      aria-disabled={isAtEndpointLimit || isRunning}
+      aria-describedby={isRunning ? 'endpoint-edit-lock-note' : undefined}
+      title={isAtEndpointLimit
         ? `Maximum ${MAX_ENDPOINTS} endpoints reached`
         : isRunning
-          ? 'Cannot add endpoints while running'
+          ? 'Stop test to edit endpoints'
           : 'Add endpoint'}
       onclick={addEndpoint}
     >
       + Add endpoint
     </button>
 
-    <p class="browser-note" aria-live="polite">
-      Requests are sent from your browser
-    </p>
+    <div class="footer-notes">
+      {#if isRunning}
+        <p id="endpoint-edit-lock-note" class="edit-lock-note" aria-live="polite">
+          Stop test to edit endpoints.
+        </p>
+      {/if}
+      <p class="browser-note" aria-live="polite">
+        Requests are sent from your browser
+      </p>
+    </div>
   </div>
 </div>
 
@@ -155,6 +165,21 @@
   }
 
   /* ── Browser note ────────────────────────────────────────────────────────── */
+  .footer-notes {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    align-items: flex-end;
+    min-width: 0;
+  }
+
+  .edit-lock-note {
+    font-size: 11px;
+    font-family: var(--sans);
+    color: var(--accent-pink);
+    text-align: right;
+  }
+
   .browser-note {
     font-size: 11px;
     font-family: var(--mono);

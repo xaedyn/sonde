@@ -36,3 +36,24 @@ describe('EndpointPanel — G6 add endpoint call signature', () => {
     expect(newEp?.label).not.toBe('');
   });
 });
+
+describe('EndpointPanel — running edit lock', () => {
+  it('explains why endpoint edits are locked while running', () => {
+    measurementStore.setLifecycle('running');
+    const { getByRole, getByText } = render(EndpointPanel);
+
+    const addButton = getByRole('button', { name: /add endpoint/i });
+    expect(addButton.hasAttribute('disabled')).toBe(true);
+    expect(addButton.getAttribute('title')).toBe('Stop test to edit endpoints');
+    expect(getByText('Stop test to edit endpoints.')).toBeTruthy();
+  });
+
+  it('does not add endpoints while running', async () => {
+    measurementStore.setLifecycle('running');
+    const { getByRole } = render(EndpointPanel);
+
+    await fireEvent.click(getByRole('button', { name: /add endpoint/i }));
+
+    expect(get(endpointStore)).toHaveLength(0);
+  });
+});

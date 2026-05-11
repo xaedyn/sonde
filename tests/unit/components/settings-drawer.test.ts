@@ -5,10 +5,12 @@ import { get } from 'svelte/store';
 import SettingsDrawer from '../../../src/lib/components/SettingsDrawer.svelte';
 import { settingsStore } from '../../../src/lib/stores/settings';
 import { uiStore } from '../../../src/lib/stores/ui';
+import { measurementStore } from '../../../src/lib/stores/measurements';
 import { MAX_CAP } from '../../../src/lib/limits';
 
 beforeEach(() => {
   settingsStore.reset();
+  measurementStore.reset();
   uiStore.reset();
   // Ensure drawer is open BEFORE rendering so dialog content is in the initial DOM.
   // uiStore initial state has showSettings: false; toggleSettings() flips to true.
@@ -81,5 +83,28 @@ describe('SettingsDrawer — AC3: cap input constraints', () => {
     expect(capHints.some(h => h.includes('0 = unlimited'))).toBe(false);
     // Hint should reference MAX_CAP
     expect(capHints.some(h => h.includes(String(MAX_CAP)))).toBe(true);
+  });
+});
+
+describe('SettingsDrawer — running lock and helper copy', () => {
+  it('explains locked controls while a test is running', () => {
+    measurementStore.setLifecycle('running');
+    const { getByText } = render(SettingsDrawer, { props: {} });
+
+    expect(getByText('Stop test to edit locked settings.')).toBeTruthy();
+    expect(getByText('Stop test to edit')).toBeTruthy();
+    expect(getByText('Stop test to use reset, history, and clear actions.')).toBeTruthy();
+  });
+
+  it('explains timing, CORS, and region behavior in plain language', () => {
+    const { getByText } = render(SettingsDrawer, { props: {} });
+
+    expect(getByText('Per-request ceiling before a target is marked timed out.')).toBeTruthy();
+    expect(getByText('Initial fast rounds before monitor cadence begins. Set 0 to skip burst.')).toBeTruthy();
+    expect(getByText('Delay between monitor rounds after the burst. Set 0 for continuous rounds.')).toBeTruthy();
+    expect(getByText('Maximum rounds per run; Chronoscope stops automatically at the cap.')).toBeTruthy();
+    expect(getByText('Use by default for public URLs; browsers may expose total timing only.')).toBeTruthy();
+    expect(getByText('Use when the server allows your origin and sends Timing-Allow-Origin for phase timing.')).toBeTruthy();
+    expect(getByText('Used for regional reset defaults; changing it does not rewrite current endpoints.')).toBeTruthy();
   });
 });

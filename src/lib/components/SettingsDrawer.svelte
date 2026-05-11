@@ -273,6 +273,12 @@
     </div>
 
     <div class="drawer-body">
+      {#if isRunning}
+        <p class="running-lock-banner" aria-live="polite">
+          Stop test to edit locked settings.
+        </p>
+      {/if}
+
       <!-- Timing fields -->
       <div class="field">
         <label class="field-label" for="setting-timeout">
@@ -280,6 +286,7 @@
           <span class="field-hint">ms, 200–15000</span>
         </label>
         <input id="setting-timeout" type="number" class="field-input" min="200" max="15000" step="100" bind:value={timeout} onchange={applyTimeout} />
+        <p class="field-help">Per-request ceiling before a target is marked timed out.</p>
       </div>
 
       <div class="field">
@@ -288,6 +295,7 @@
           <span class="field-hint">0–500, 0 = skip burst</span>
         </label>
         <input id="setting-burst-rounds" type="number" class="field-input" min="0" max="500" step="10" bind:value={burstRounds} onchange={applyBurstRounds} />
+        <p class="field-help">Initial fast rounds before monitor cadence begins. Set 0 to skip burst.</p>
       </div>
 
       <div class="field">
@@ -296,6 +304,7 @@
           <span class="field-hint">ms, 0–60000</span>
         </label>
         <input id="setting-monitor-delay" type="number" class="field-input" min="0" max="60000" step="100" bind:value={monitorDelay} onchange={applyMonitorDelay} />
+        <p class="field-help">Delay between monitor rounds after the burst. Set 0 for continuous rounds.</p>
       </div>
 
       <div class="field">
@@ -304,6 +313,7 @@
           <span class="field-hint">1–{MAX_CAP} rounds</span>
         </label>
         <input id="setting-cap" type="number" class="field-input" min="1" max={MAX_CAP} step="1" bind:value={cap} onchange={applyCap} />
+        <p class="field-help">Maximum rounds per run; Chronoscope stops automatically at the cap.</p>
       </div>
 
       <!-- CORS mode -->
@@ -312,19 +322,19 @@
           <legend class="field-label">
             CORS mode
             {#if isRunning}
-              <span class="running-note" aria-live="polite">Requires stop</span>
+              <span class="running-note" aria-live="polite">Stop test to edit</span>
             {/if}
           </legend>
           <div class="cors-options">
             <label class="radio-label" class:radio-disabled={isRunning}>
               <input type="radio" name="cors-mode" value="no-cors" checked={corsMode === 'no-cors'} disabled={isRunning} onchange={() => applyCorsMode('no-cors')} />
               <span class="radio-text">no-cors</span>
-              <span class="radio-hint">Opaque — limited timing</span>
+              <span class="radio-hint">Use by default for public URLs; browsers may expose total timing only.</span>
             </label>
             <label class="radio-label" class:radio-disabled={isRunning}>
               <input type="radio" name="cors-mode" value="cors" checked={corsMode === 'cors'} disabled={isRunning} onchange={() => applyCorsMode('cors')} />
               <span class="radio-text">cors</span>
-              <span class="radio-hint">Full — needs server headers</span>
+              <span class="radio-hint">Use when the server allows your origin and sends Timing-Allow-Origin for phase timing.</span>
             </label>
           </div>
         </fieldset>
@@ -345,6 +355,7 @@
             <option value={region}>{REGION_DISPLAY_NAMES[region]}</option>
           {/each}
         </select>
+        <p class="field-help">Used for regional reset defaults; changing it does not rewrite current endpoints.</p>
       </div>
 
       <CompanionPanel />
@@ -357,10 +368,13 @@
         <div class="danger-header">
           <span class="danger-label">Danger zone</span>
         </div>
+        {#if isRunning}
+          <p class="danger-note" aria-live="polite">Stop test to use reset, history, and clear actions.</p>
+        {/if}
 
         <!-- Reset to regional defaults -->
         {#if !showResetRegionalConfirm}
-          <button type="button" class="btn-danger" disabled={isRunning} aria-disabled={isRunning} onclick={requestResetRegional}>
+          <button type="button" class="btn-danger" disabled={isRunning} aria-disabled={isRunning} title={isRunning ? 'Stop test to use reset actions' : 'Reset current endpoints to regional defaults'} onclick={requestResetRegional}>
             Reset to regional defaults
           </button>
         {:else}
@@ -375,7 +389,7 @@
 
         <!-- Reset to defaults -->
         {#if !showResetConfirm}
-          <button type="button" class="btn-danger" disabled={isRunning} aria-disabled={isRunning} onclick={requestReset}>
+          <button type="button" class="btn-danger" disabled={isRunning} aria-disabled={isRunning} title={isRunning ? 'Stop test to use reset actions' : 'Reset settings and endpoints to defaults'} onclick={requestReset}>
             Reset to defaults
           </button>
         {:else}
@@ -390,7 +404,7 @@
 
         <!-- Clear local history -->
         {#if !showClearHistoryConfirm}
-          <button type="button" class="btn-danger" disabled={isRunning || historyCount === 0} aria-disabled={isRunning || historyCount === 0} onclick={requestClearHistory}>
+          <button type="button" class="btn-danger" disabled={isRunning || historyCount === 0} aria-disabled={isRunning || historyCount === 0} title={isRunning ? 'Stop test to clear history' : historyCount === 0 ? 'No local history to clear' : 'Clear saved local history'} onclick={requestClearHistory}>
             Clear local history
           </button>
         {:else}
@@ -405,7 +419,7 @@
 
         <!-- Clear results -->
         {#if !showClearConfirm}
-          <button type="button" class="btn-danger" disabled={isRunning} aria-disabled={isRunning} onclick={requestClear}>
+          <button type="button" class="btn-danger" disabled={isRunning} aria-disabled={isRunning} title={isRunning ? 'Stop test to clear results' : 'Clear all current results'} onclick={requestClear}>
             Clear all results
           </button>
         {:else}
@@ -609,6 +623,17 @@
     z-index: 2;
   }
 
+  .running-lock-banner {
+    padding: var(--spacing-sm) var(--spacing-md);
+    border: 1px solid var(--pink12);
+    border-radius: var(--btn-radius);
+    background: var(--pink06);
+    color: var(--accent-pink);
+    font-family: var(--sans);
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
   /* ── Fields ──────────────────────────────────────────────────────────────── */
   .field {
     display: flex;
@@ -654,6 +679,16 @@
     letter-spacing: 0.08em;
   }
 
+  .danger-note {
+    margin: 0;
+    color: var(--accent-pink);
+    font-family: var(--sans);
+    font-size: 12px;
+    line-height: 1.4;
+    position: relative;
+    z-index: 1;
+  }
+
   .field-label {
     display: flex;
     align-items: center;
@@ -673,6 +708,14 @@
     color: var(--t3);
     text-transform: none;
     letter-spacing: 0.02em;
+  }
+
+  .field-help {
+    margin: 0;
+    color: var(--t3);
+    font-family: var(--sans);
+    font-size: 11px;
+    line-height: 1.35;
   }
 
   .field-input {
