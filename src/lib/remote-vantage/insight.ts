@@ -67,7 +67,7 @@ export function buildRemoteVantageInsight(input: RemoteVantageInsightInput): Rem
       detail: result.status === null
         ? `The remote probe failed after ${fmtMs(result.durationMs)}.`
         : `The remote probe got HTTP ${result.status} in ${fmtMs(result.durationMs)}.`,
-      action: 'Compare from your browser and another network; if both fail, the origin, CDN, or DNS path is the likely source.',
+      action: 'Compare from your browser and another network; repeated failures become outside-vantage evidence to share with the service owner.',
       edgeLabel: edge,
       result,
     };
@@ -77,7 +77,7 @@ export function buildRemoteVantageInsight(input: RemoteVantageInsightInput): Rem
     return {
       status: 'local-path',
       headline: `Cloudflare reaches ${label} normally`,
-      detail: `${edge} reached it in ${fmtMs(result.durationMs)} while your browser p50 is ${fmtMs(browserP50 ?? 0)}, pointing toward your browser path, ISP, VPN, WiFi, or local network.`,
+      detail: `${edge} reached it in ${fmtMs(result.durationMs)} while your browser-visible path has p50 ${fmtMs(browserP50 ?? 0)}.`,
       action: 'Use the local companion agent or another network to narrow the local path.',
       edgeLabel: edge,
       result,
@@ -88,7 +88,7 @@ export function buildRemoteVantageInsight(input: RemoteVantageInsightInput): Rem
     return {
       status: 'remote-confirms',
       headline: `${label} is also slow from Cloudflare`,
-      detail: `${edge} took ${fmtMs(result.durationMs)} and your browser p50 is ${fmtMs(browserP50 ?? 0)}, so the endpoint, CDN, or a broad upstream path is implicated.`,
+      detail: `${edge} took ${fmtMs(result.durationMs)} and your browser p50 is ${fmtMs(browserP50 ?? 0)}; both vantage points observed elevated latency.`,
       action: 'Share the report with the service owner; it now contains outside-vantage evidence.',
       edgeLabel: edge,
       result,
@@ -100,7 +100,7 @@ export function buildRemoteVantageInsight(input: RemoteVantageInsightInput): Rem
       status: 'remote-slow-only',
       headline: `${label} is slow from ${edge}, but not your browser`,
       detail: `${edge} took ${fmtMs(result.durationMs)}${browserP50 !== null ? ` while your browser p50 is ${fmtMs(browserP50)}` : ''}, suggesting the outside edge path or origin may be inconsistent right now.`,
-      action: 'Run the check again or compare another outside vantage before blaming the local network.',
+      action: 'Run the check again or compare another outside vantage before drawing a local-path conclusion.',
       edgeLabel: edge,
       result,
     };

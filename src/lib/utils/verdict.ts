@@ -121,8 +121,8 @@ function topPhaseWithCount(
  * Decision order (first matching branch wins):
  *   1. No rows at all → "Calibrating…" (good tone)
  *   2. Everyone fine AND no loss AND no jitter → "All links within tolerance."
- *   3. ≥2 endpoints share a dominant phase → "{phase} slow on N endpoints — likely upstream."
- *   4. Exactly 1 endpoint over threshold → "{label} degraded alone — endpoint-specific."
+ *   3. ≥2 endpoints share a dominant phase → shared browser-visible symptom.
+ *   4. Exactly 1 endpoint over threshold → endpoint to inspect in this comparison.
  *   5. Avg loss > 1% → "Packet loss elevated to N.N%."
  *   6. Avg jitter > 25ms → "Jitter elevated — σ N.Nms."
  *   7. Fallback → "N endpoints above threshold."
@@ -147,13 +147,12 @@ export function computeCausalVerdict(
   const phaseCounts = countByPhase(rows, threshold);
   const topPhase = topPhaseWithCount(phaseCounts);
 
-  // ≥2 endpoints sharing a slow phase → likely shared cause (network/local infra),
-  // not a per-site issue. Phrase this from the user's perspective rather than
-  // citing the technical phase ("DNS", "TCP") which doesn't help non-engineers act.
+  // ≥2 endpoints sharing a slow phase → shared browser-visible symptom.
+  // Keep this phrased as evidence, not root-cause proof.
   if (overCount >= 2 && topPhase !== null && topPhase.count >= 2) {
     return {
       tone: 'warn',
-      headline: `${topPhase.count} sites slow at the same time — likely your network.`,
+      headline: `${topPhase.count} sites slow in the same browser-visible window.`,
       phase: topPhase.phase,
     };
   }
@@ -162,7 +161,7 @@ export function computeCausalVerdict(
     const bad = overRows[0];
     return {
       tone: 'warn',
-      headline: `Only ${bad.ep.label} looks slow — likely that site, not you.`,
+      headline: `Only ${bad.ep.label} is slow in this browser-visible comparison.`,
       worstEpId: bad.ep.id,
     };
   }

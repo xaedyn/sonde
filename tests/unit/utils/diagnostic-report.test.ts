@@ -134,8 +134,12 @@ describe('buildDiagnosticReport', () => {
     expect(report.corsMode).toBe('no-cors');
     expect(report.diagnosis.kind).toBe('isolated-endpoint');
     expect(report.endpointRows.find((row) => row.endpointId === 'api')?.implicated).toBe(true);
+    expect(report.endpointRows.find((row) => row.endpointId === 'api')?.statusLabel).toBe('inspect');
     expect(report.copySummary).toContain('API');
     expect(report.copySummary).toContain('threshold 120 ms');
+    expect(report.copySummary).not.toMatch(/likely (affected|source|site|network|your network)/i);
+    expect(report.copySummary).not.toContain(report.diagnosis.verdict.headline);
+    expect(report.copySummary).toContain(report.diagnosis.primaryAnswer.text);
   });
 
   it('falls back to local defaults for legacy contexts without threshold metadata', () => {

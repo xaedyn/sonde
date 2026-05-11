@@ -106,6 +106,9 @@ describe('buildDiagnosticNarrative', () => {
     expect(narrative.kind).toBe('collecting');
     expect(narrative.confidence).toBe('low');
     expect(narrative.verdict.headline).toBe('Measuring…');
+    expect(narrative.primaryAnswer.text).toContain('Collecting browser-visible samples');
+    expect(narrative.primaryAnswer.kind).toBe('measured');
+    expect(narrative.primaryValidation.id).toBe('collect-more-samples');
     expect(narrative.nextSteps[0]).toContain('12 successful samples');
   });
 
@@ -127,9 +130,12 @@ describe('buildDiagnosticNarrative', () => {
     expect(narrative.severity).toBe('healthy');
     expect(narrative.confidence).toBe('high');
     expect(narrative.explanation).toContain('inside the current thresholds');
+    expect(narrative.snapshotEligibility.eligible).toBe(true);
+    expect(narrative.primaryValidation.id).toBe('share-snapshot');
+    expect(narrative.safeSummary).toContain('browser-visible');
   });
 
-  it('explains isolated endpoint slowness with the likely endpoint and next step', () => {
+  it('explains isolated endpoint slowness with evidence-labeled endpoint and next validation step', () => {
     const rows = [
       row('api', { p50: 240, sampleCount: 18 }, 'API'),
       row('google', { p50: 45, sampleCount: 18 }, 'Google'),
@@ -150,7 +156,11 @@ describe('buildDiagnosticNarrative', () => {
     expect(narrative.kind).toBe('isolated-endpoint');
     expect(narrative.confidence).toBe('medium');
     expect(narrative.explanation).toContain('API is above 120 ms');
-    expect(narrative.evidence.some((item) => item.label === 'Likely source' && item.value === 'API')).toBe(true);
+    expect(narrative.primaryAnswer.text).toContain('API is above 120 ms');
+    expect(narrative.primaryAnswer.kind).toBe('inferred');
+    expect(narrative.primaryValidation.id).toBe('explain-browser-visibility');
+    expect(narrative.evidence.some((item) => item.label === 'Endpoint to inspect' && item.value === 'API')).toBe(true);
+    expect(narrative.safeSummary).not.toMatch(/likely (source|site|network|your network)/i);
     expect(narrative.nextSteps.join(' ')).toContain('Open Investigate');
   });
 
@@ -169,6 +179,26 @@ describe('buildDiagnosticNarrative', () => {
     expect(narrative.timingVisibility.level).toBe('total-only');
     expect(narrative.limitations[0]?.headline).toBe('Total latency only');
     expect(narrative.limitations[0]?.action).toContain('Timing-Allow-Origin');
+    expect(narrative.primaryValidation.id).toBe('explain-browser-visibility');
+    expect(narrative.confidenceReason).toContain('12');
+  });
+
+  it('estimates successful samples from loss when raw samples are unavailable', () => {
+    const narrative = buildDiagnosticNarrative({
+      rows: [
+        row('google', { sampleCount: 30, lossPercent: 80 }),
+        row('cloudflare', { sampleCount: 30, lossPercent: 80 }),
+      ],
+      threshold: 120,
+      corsMode: 'no-cors',
+      samplesByEndpoint: {},
+      monitoredEndpointCount: 2,
+    });
+
+    expect(narrative.confidence).toBe('low');
+    expect(narrative.primaryValidation.id).toBe('collect-more-samples');
+    expect(narrative.primaryValidation.reason).toContain('6 samples');
+    expect(narrative.snapshotEligibility.eligible).toBe(false);
   });
 
   it('names browser sandbox limits for shared-network calls', () => {
@@ -199,6 +229,9 @@ describe('buildDiagnosticNarrative', () => {
     expect(narrative.kind).toBe('shared-network');
     expect(narrative.limitations.some((limit) => limit.id === 'browser-sandbox')).toBe(true);
     expect(narrative.limitations.find((limit) => limit.id === 'browser-sandbox')?.detail).toContain('traceroute');
+    expect(narrative.primaryAnswer.text).toContain('Multiple endpoints are slow');
+    expect(narrative.primaryAnswer.text).not.toMatch(/\b(?:likely|ISP|VPN|Wi[- ]?Fi)\b/i);
+    expect(narrative.primaryValidation.reason).toContain('browser');
     expect(narrative.nextSteps.join(' ')).toContain('Timing-Allow-Origin');
   });
 });

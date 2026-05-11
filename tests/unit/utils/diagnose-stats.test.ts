@@ -258,8 +258,9 @@ describe('buildCorrelation', () => {
     const result = buildCorrelation(focusedLong, others);
     expect(result.verdict.focusedSpikeRounds).toEqual([8]);
     expect(result.verdict.otherSpikesPerFocusedSpike).toEqual([0]);
-    expect(result.verdict.headline).toContain('isolated to Edge');
-    expect(result.verdict.headline).toContain('that site');
+    expect(result.verdict.headline).toContain('limited to Edge');
+    expect(result.verdict.headline).toContain('browser-visible comparison');
+    expect(result.verdict.headline).not.toMatch(/likely that site/i);
   });
 
   it('verdict says network-wide when most others spiked alongside focused', () => {
@@ -268,7 +269,8 @@ describe('buildCorrelation', () => {
     const result = buildCorrelation(focusedLong, others);
     expect(result.verdict.focusedSpikeRounds).toEqual([8]);
     expect(result.verdict.otherSpikesPerFocusedSpike[0]).toBeGreaterThanOrEqual(1);
-    expect(result.verdict.headline).toContain('network');
+    expect(result.verdict.headline).toContain('shared browser-visible');
+    expect(result.verdict.headline).not.toMatch(/likely your network/i);
   });
 
   it('verdict acknowledges no spikes', () => {

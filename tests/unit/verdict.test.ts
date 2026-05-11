@@ -88,7 +88,7 @@ describe('computeCausalVerdict — shared upstream phase', () => {
     ];
     const v = computeCausalVerdict(rows, THRESHOLD);
     expect(v.tone).toBe('warn');
-    expect(v.headline).toBe('2 sites slow at the same time — likely your network.');
+    expect(v.headline).toBe('2 sites slow in the same browser-visible window.');
     // phase still propagates so consumers (color cues, accents) stay deterministic
     expect(v.phase).toBe('dns');
   });
@@ -102,7 +102,7 @@ describe('computeCausalVerdict — shared upstream phase', () => {
       makeRow({ id: 'c', label: 'c' }, { p50: 90,  tier2Averages: tier2Dominating('ttfb') }),
     ];
     const v = computeCausalVerdict(rows, THRESHOLD);
-    expect(v.headline).toBe('3 sites slow at the same time — likely your network.');
+    expect(v.headline).toBe('3 sites slow in the same browser-visible window.');
     expect(v.phase).toBe('ttfb');
   });
 
@@ -113,7 +113,7 @@ describe('computeCausalVerdict — shared upstream phase', () => {
     ];
     const v = computeCausalVerdict(rows, THRESHOLD);
     // Should fall through to "endpoint-specific" branch (overCount === 1).
-    expect(v.headline).toBe('Only a looks slow — likely that site, not you.');
+    expect(v.headline).toBe('Only a is slow in this browser-visible comparison.');
     expect(v.worstEpId).toBe(rows[0].ep.id);
   });
 });
@@ -166,7 +166,7 @@ describe('computeCausalVerdict — endpoint-specific', () => {
       makeRow({ id: 'c', label: 'api' },         { p50: 40 }),
     ];
     const v = computeCausalVerdict(rows, THRESHOLD);
-    expect(v.headline).toBe('Only auth-service looks slow — likely that site, not you.');
+    expect(v.headline).toBe('Only auth-service is slow in this browser-visible comparison.');
     expect(v.worstEpId).toBe(rows[0].ep.id);
   });
 });
@@ -188,7 +188,7 @@ describe('computeCausalVerdict — packet loss', () => {
       makeRow({ id: 'b', label: 'b' }, { p50: 30,  lossPercent: 0 }),
     ];
     const v = computeCausalVerdict(rows, THRESHOLD);
-    expect(v.headline).toContain('looks slow');
+    expect(v.headline).toContain('browser-visible comparison');
   });
 });
 
@@ -257,7 +257,7 @@ describe('computeCausalVerdict — fallback', () => {
       makeRow({ id: 'a', label: 'a' }, { p50: 200, tier2Averages: undefined }),
     ];
     const v = computeCausalVerdict(rows, THRESHOLD);
-    expect(v.headline).toBe('Only a looks slow — likely that site, not you.');
+    expect(v.headline).toBe('Only a is slow in this browser-visible comparison.');
     expect(v.worstEpId).toBe(rows[0].ep.id);
   });
 });

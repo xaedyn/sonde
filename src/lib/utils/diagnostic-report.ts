@@ -29,6 +29,7 @@ export interface ReportEndpointRow {
   readonly lossPercent: number;
   readonly lastLatency: number | null;
   readonly status: 'ok' | 'slow' | 'loss' | 'unready' | 'disabled';
+  readonly statusLabel: string;
   readonly implicated: boolean;
 }
 
@@ -86,6 +87,22 @@ function statusFor(input: {
   return 'ok';
 }
 
+function statusLabelFor(status: ReportEndpointRow['status'], implicated: boolean): string {
+  if (implicated) return 'inspect';
+  switch (status) {
+    case 'ok':
+      return 'ok';
+    case 'slow':
+      return 'above threshold';
+    case 'loss':
+      return 'failed requests';
+    case 'unready':
+      return 'collecting';
+    case 'disabled':
+      return 'disabled';
+  }
+}
+
 function sumSamples(samplesByEndpoint: Readonly<Record<string, readonly MeasurementSample[]>>): number {
   let total = 0;
   for (const samples of Object.values(samplesByEndpoint)) total += samples.length;
@@ -114,6 +131,7 @@ function buildEndpointRows(input: {
     const stats = input.stats[endpoint.id];
     const samples = sampleArrayFor(input.measurements, endpoint.id);
     const status = statusFor({ endpoint, stats, threshold: input.threshold, samples });
+    const implicated = input.diagnosis.verdict.worstEpId === endpoint.id;
 
     return {
       endpointId: endpoint.id,
@@ -130,7 +148,8 @@ function buildEndpointRows(input: {
       lossPercent: stats?.lossPercent ?? 0,
       lastLatency: input.measurements.endpoints[endpoint.id]?.lastLatency ?? null,
       status,
-      implicated: input.diagnosis.verdict.worstEpId === endpoint.id,
+      statusLabel: statusLabelFor(status, implicated),
+      implicated,
     };
   });
 }
@@ -138,19 +157,19 @@ function buildEndpointRows(input: {
 function buildCopySummary(report: Omit<DiagnosticReport, 'copySummary'>): string {
   const slowRows = report.endpointRows.filter((row) => row.status === 'slow' || row.implicated);
   const slowLine = slowRows.length > 0
-    ? `Likely affected: ${slowRows.map((row) => `${row.label} (${fmtMs(row.p50)} p50)`).join(', ')}.`
+    ? `Endpoints to inspect: ${slowRows.map((row) => `${row.label} (${fmtMs(row.p50)} p50)`).join(', ')}.`
     : 'No endpoint is currently above the report threshold.';
   const visibility = report.diagnosis.timingVisibility;
   const limitation = report.diagnosis.limitations[0];
-  const nextStep = report.diagnosis.nextSteps[0] ?? 'Run another comparison from the affected network.';
+  const nextStep = `${report.diagnosis.primaryValidation.label}: ${report.diagnosis.primaryValidation.reason}`;
 
   return [
-    `Chronoscope diagnostic report: ${report.diagnosis.verdict.headline} (${report.diagnosis.confidenceLabel}).`,
-    report.diagnosis.explanation,
+    `Chronoscope diagnostic report: ${report.diagnosis.primaryAnswer.text} (${report.diagnosis.confidenceLabel}).`,
+    report.diagnosis.safeSummary,
     slowLine,
     `Evidence: ${report.keptSampleCount} samples kept across ${report.endpointRows.length} endpoints; threshold ${fmtMs(report.threshold)}; browser visibility: ${visibility.headline}.`,
     limitation ? `Caveat: ${limitation.detail}` : '',
-    `Next step: ${nextStep}`,
+    `Next validation: ${nextStep}`,
   ].filter(Boolean).join('\n');
 }
 

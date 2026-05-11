@@ -66,7 +66,8 @@ describe('buildRemoteVantageInsight', () => {
 
     expect(insight.status).toBe('local-path');
     expect(insight.headline).toContain('Cloudflare reaches API normally');
-    expect(insight.detail).toContain('browser path');
+    expect(insight.detail).toContain('browser-visible path');
+    expect(insight.detail).not.toMatch(/ISP|VPN|WiFi|local network/i);
   });
 
   it('calls out shared outside trouble when both local and remote vantage are slow', () => {
@@ -79,6 +80,7 @@ describe('buildRemoteVantageInsight', () => {
 
     expect(insight.status).toBe('remote-confirms');
     expect(insight.headline).toContain('also slow from Cloudflare');
+    expect(insight.detail).not.toMatch(/implicated|likely/i);
   });
 
   it('does not call the outside vantage healthy when only the remote side is slow', () => {
@@ -91,6 +93,7 @@ describe('buildRemoteVantageInsight', () => {
 
     expect(insight.status).toBe('remote-slow-only');
     expect(insight.detail).toContain('outside edge path');
+    expect(insight.action).not.toMatch(/blaming|likely/i);
   });
 
   it('returns a setup state before a remote probe exists', () => {
@@ -103,5 +106,18 @@ describe('buildRemoteVantageInsight', () => {
 
     expect(insight.status).toBe('unavailable');
     expect(insight.action).toContain('Run a remote check');
+  });
+
+  it('keeps remote errors framed as outside-vantage evidence, not root cause', () => {
+    const insight = buildRemoteVantageInsight({
+      endpoint,
+      stats: slowStats,
+      threshold: 120,
+      probe: remote({ ok: false, status: null, verdict: 'unreachable', durationMs: 5000 }),
+    });
+
+    expect(insight.status).toBe('remote-error');
+    expect(insight.action).not.toMatch(/likely source/i);
+    expect(insight.action).toContain('outside-vantage evidence');
   });
 });

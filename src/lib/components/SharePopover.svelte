@@ -232,7 +232,7 @@
         <div class="action-info">
           <span class="action-label">Support report</span>
           <span class="action-desc">
-            {hasResults ? 'Hosted read-only report with samples, verdict, and browser visibility' : 'Run a test first to create a support report'}
+            {hasResults ? 'Hosted read-only report with samples, evidence, and browser visibility' : 'Run a test first to create a support report'}
           </span>
         </div>
         <button
@@ -253,6 +253,26 @@
         </button>
       </div>
 
+      <!-- Snapshot link -->
+      <div class="share-action">
+        <div class="action-info">
+          <span class="action-label">Snapshot link</span>
+          <span class="action-desc">
+            {hasResults ? "Share this run's measured results in a compact URL" : 'Run a test first to share measured results'}
+          </span>
+        </div>
+        <button
+          type="button"
+          class="btn-copy"
+          class:copied={copiedResults}
+          disabled={!hasResults}
+          aria-disabled={!hasResults}
+          onclick={handleCopyResults}
+        >
+          {copiedResults ? 'Copied!' : 'Copy Snapshot Link'}
+        </button>
+      </div>
+
       <!-- Config link -->
       <div class="share-action">
         <div class="action-info">
@@ -266,26 +286,6 @@
           onclick={handleCopyConfig}
         >
           {copiedConfig ? 'Copied!' : 'Copy Config Link'}
-        </button>
-      </div>
-
-      <!-- Results link -->
-      <div class="share-action">
-        <div class="action-info">
-          <span class="action-label">Compact results URL</span>
-          <span class="action-desc">
-            {hasResults ? 'Fallback link packed into the URL hash' : 'Run a test first to share results'}
-          </span>
-        </div>
-        <button
-          type="button"
-          class="btn-copy"
-          class:copied={copiedResults}
-          disabled={!hasResults}
-          aria-disabled={!hasResults}
-          onclick={handleCopyResults}
-        >
-          {copiedResults ? 'Copied!' : 'Copy URL Link'}
         </button>
       </div>
     </div>

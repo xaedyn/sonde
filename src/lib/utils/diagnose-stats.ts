@@ -218,8 +218,7 @@ function buildCells(
  * `windowRounds` rounds across the union of all inputs.
  *
  * Returns the grid + a one-line verdict explaining whether the focused
- * endpoint's spikes correlate with others (network-wide) or are isolated
- * (endpoint-specific).
+ * endpoint's spikes correlate with others in the browser-visible window.
  */
 export function buildCorrelation(
   focused: CorrelationInput,
@@ -257,7 +256,7 @@ export function buildCorrelation(
 
   // Verdict: for each spike on the focused row, count how many *known* (non-null)
   // comparators also spiked. Treating a null cell as "did not spike" silently
-  // misclassifies network-wide events: when comparators time out alongside the
+  // misclassifies shared-window events: when comparators time out alongside the
   // focused endpoint, their cells are null and the verdict drifts toward
   // "isolated" — the opposite of the truth.
   const focusedSpikeRounds: number[] = [];
@@ -369,16 +368,17 @@ function correlationHeadline(input: HeadlineInput): string {
   }
 
   if (conclusiveSpikes === 0) {
-    // All spike rounds had comparator gaps — we can't make a network/site call.
+    // All spike rounds had comparator gaps, so the comparison cannot support
+    // shared or isolated language.
     return `Spikes detected on ${focusedLabel}, but comparator data is sparse — try running for longer to compare.`;
   }
 
   const sharedPct = shared / conclusiveSpikes;
   if (sharedPct >= 0.6) {
-    return 'Spikes happen across multiple sites at once — likely your network or local infrastructure.';
+    return 'Spikes are shared browser-visible events across multiple sites in this window.';
   }
   if (sharedPct <= 0.2) {
-    return `Spikes are isolated to ${focusedLabel} — likely that site or its origin, not your connection.`;
+    return `Spikes are limited to ${focusedLabel} in this browser-visible comparison.`;
   }
   return `Spikes are mixed — sometimes shared with other sites, sometimes ${focusedLabel}-specific.`;
 }

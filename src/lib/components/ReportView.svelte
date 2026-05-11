@@ -134,7 +134,7 @@
   <header class="report-hero">
     <div class="report-kicker">Shared diagnostic report</div>
     <div class="report-title-row">
-      <h1>{report.diagnosis.verdict.headline}</h1>
+      <h1>{report.diagnosis.primaryAnswer.text}</h1>
       <span
         class="confidence"
         class:low={report.diagnosis.confidence === 'low'}
@@ -143,7 +143,7 @@
         title={report.diagnosis.confidenceReason}
       >{report.diagnosis.confidenceLabel}</span>
     </div>
-    <p class="report-lede">{report.diagnosis.explanation}</p>
+    <p class="report-lede">{report.diagnosis.safeSummary}</p>
 
     <div class="report-actions" aria-label="Report actions">
       <button type="button" class="action action-primary" onclick={handleInteractive}>
@@ -286,7 +286,7 @@
             </span>
           </span>
           <span role="cell" class="status-pill" class:ok={row.status === 'ok'} class:slow={row.status === 'slow'} class:loss={row.status === 'loss'} class:muted={row.status === 'unready' || row.status === 'disabled'}>
-            {row.implicated ? 'likely source' : row.status}
+            {row.statusLabel}
           </span>
           <span role="cell">{formatReportMetric(row.p50)}</span>
           <span role="cell">{formatReportMetric(row.p95)}</span>

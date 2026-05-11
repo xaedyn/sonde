@@ -34,8 +34,13 @@
     onStart,
   }: Props = $props();
   const verdict = $derived(diagnosis.verdict);
+  const primaryHeadline = $derived(diagnosis.primaryAnswer.text);
+  const primaryAction = $derived(diagnosis.primaryValidation);
   const primaryLimitation = $derived(diagnosis.limitations[0] ?? null);
-  const primaryNextStep = $derived(diagnosis.nextSteps[0] ?? null);
+  const primaryNextStep = $derived(primaryAction?.reason ?? diagnosis.nextSteps[0] ?? null);
+  const drillActionLabel = $derived(primaryAction?.endpointId === drillEndpoint?.id
+    ? (primaryAction.id === 'run-remote-check' ? 'Open Investigate' : primaryAction.label)
+    : 'Investigate');
   const baselineChip = $derived.by(() => {
     if (baselineInsight === null || diagnosis.kind === 'collecting') return null;
     if (baselineInsight.status === 'collecting') return null;
@@ -84,7 +89,7 @@
 >
   <div class="verdict-main">
     <span class="verdict-dot" aria-hidden="true"></span>
-    <h2 class="verdict-headline">{verdict.headline}</h2>
+    <h2 class="verdict-headline">{primaryHeadline}</h2>
     <span
       class="verdict-confidence"
       class:low={diagnosis.confidence === 'low'}
@@ -102,7 +107,7 @@
     {/if}
   </div>
   {#if diagnosis.kind !== 'collecting'}
-    <p class="verdict-explanation">{diagnosis.explanation}</p>
+    <p class="verdict-explanation">{diagnosis.confidenceReason}</p>
   {:else if suppressionMessage}
     <p class="verdict-explanation verdict-suppression">{suppressionMessage}</p>
   {/if}
@@ -142,9 +147,9 @@
       type="button"
       class="verdict-drill"
       onclick={() => onDrill(drillEndpoint.id)}
-      aria-label="Investigate {drillEndpoint.label}, route to investigation view"
+      aria-label="{drillActionLabel} {drillEndpoint.label}, route to investigation view"
     >
-      <span class="verdict-drill-text">Investigate</span>
+      <span class="verdict-drill-text">{drillActionLabel}</span>
       <span class="verdict-drill-ep" style:color={drillEndpoint.color}>{drillEndpoint.label}</span>
       <span class="verdict-drill-arrow" aria-hidden="true">→</span>
     </button>

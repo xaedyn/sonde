@@ -125,4 +125,17 @@ describe('SharePopover hosted support reports', () => {
     expect(button.hasAttribute('disabled')).toBe(true);
     expect(get(uiStore).showShare).toBe(true);
   });
+
+  it('orders share actions as support report, snapshot link, then configuration link', () => {
+    seedResults();
+
+    const { container, getByRole, getByText, queryByText } = render(SharePopover);
+    const text = container.textContent ?? '';
+
+    expect(text.indexOf('Support report')).toBeLessThan(text.indexOf('Snapshot link'));
+    expect(text.indexOf('Snapshot link')).toBeLessThan(text.indexOf('Configuration link'));
+    expect(getByRole('button', { name: /copy snapshot link/i })).toBeTruthy();
+    expect(getByText(/measured results/i)).toBeTruthy();
+    expect(queryByText(/compact results url/i)).toBeNull();
+  });
 });

@@ -172,7 +172,7 @@ function buildVerdict(input: BuildHistorySessionSummaryInput): HistorySessionSum
   });
 
   return {
-    headline: diagnosis.verdict.headline,
+    headline: diagnosis.primaryAnswer.text,
     kind: diagnosis.kind,
     confidence: diagnosis.confidence,
   };
@@ -217,4 +217,3 @@ export function buildHistorySessionSummary(
     endpoints: endpointSummaries,
   };
 }
-

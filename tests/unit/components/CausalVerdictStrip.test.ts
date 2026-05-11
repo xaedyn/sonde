@@ -4,7 +4,7 @@ import CausalVerdictStrip from '../../../src/lib/components/CausalVerdictStrip.s
 import type { DiagnosticNarrative } from '../../../src/lib/utils/diagnostic-narrative';
 import type { Endpoint } from '../../../src/lib/types';
 
-const collectingDiagnosis: DiagnosticNarrative = {
+const collectingDiagnosis = {
   verdict: { tone: 'good', headline: 'Measuring...' },
   kind: 'collecting',
   severity: 'watch',
@@ -12,6 +12,34 @@ const collectingDiagnosis: DiagnosticNarrative = {
   confidenceLabel: 'low confidence',
   confidenceReason: 'Waiting for endpoints to collect enough successful samples.',
   explanation: 'Chronoscope is collecting enough samples before it makes a network or endpoint call.',
+  safeSummary: 'Collecting browser-visible samples before making a diagnostic call.',
+  primaryAnswer: {
+    id: 'collecting',
+    kind: 'measured',
+    strength: 'low',
+    text: 'Collecting browser-visible samples before making a diagnostic call.',
+    evidenceIds: [],
+    requiredEvidence: ['sample-ready'],
+  },
+  primaryValidation: {
+    id: 'collect-more-samples',
+    label: 'Collect more samples',
+    reason: 'The thinnest enabled endpoint needs at least 12 successful samples before this answer becomes actionable.',
+    claim: {
+      id: 'collecting',
+      kind: 'measured',
+      strength: 'low',
+      text: 'Collecting browser-visible samples before making a diagnostic call.',
+      evidenceIds: [],
+      requiredEvidence: ['sample-ready'],
+    },
+  },
+  claims: [],
+  snapshotEligibility: {
+    eligible: false,
+    reason: 'Still collecting enough samples.',
+    facts: [],
+  },
   evidence: [],
   limitations: [],
   nextSteps: [],
@@ -22,9 +50,9 @@ const collectingDiagnosis: DiagnosticNarrative = {
     okSampleCount: 0,
     phaseSampleCount: 0,
   },
-};
+} as unknown as DiagnosticNarrative;
 
-const degradedDiagnosis: DiagnosticNarrative = {
+const degradedDiagnosis = {
   ...collectingDiagnosis,
   verdict: {
     tone: 'warn',
@@ -34,7 +62,30 @@ const degradedDiagnosis: DiagnosticNarrative = {
   kind: 'isolated-endpoint',
   severity: 'degraded',
   explanation: 'API is above the threshold while the comparison endpoints are not.',
-};
+  safeSummary: 'API is above threshold while comparison endpoints are not in browser-visible data.',
+  primaryAnswer: {
+    id: 'isolated-endpoint',
+    kind: 'inferred',
+    strength: 'medium',
+    text: 'API is above threshold while comparison endpoints are not in browser-visible data.',
+    evidenceIds: ['endpoint-to-inspect'],
+    requiredEvidence: ['sample-actionable', 'total-timing'],
+  },
+  primaryValidation: {
+    id: 'open-investigate',
+    label: 'Open Investigate',
+    reason: 'Inspect API against the same rounds and compare from another vantage point before assigning cause.',
+    endpointId: 'api',
+    claim: {
+      id: 'isolated-endpoint',
+      kind: 'inferred',
+      strength: 'medium',
+      text: 'API is above threshold while comparison endpoints are not in browser-visible data.',
+      evidenceIds: ['endpoint-to-inspect'],
+      requiredEvidence: ['sample-actionable', 'total-timing'],
+    },
+  },
+} as unknown as DiagnosticNarrative;
 
 const drillEndpoint: Endpoint = {
   id: 'api',
@@ -152,5 +203,16 @@ describe('CausalVerdictStrip start CTA', () => {
     await fireEvent.click(getByRole('button', { name: /investigate api/i }));
 
     expect(onDrill).toHaveBeenCalledWith('api');
+  });
+
+  it('renders the evidence-gated primary answer instead of the legacy verdict headline', () => {
+    const { getByRole, queryByText, getByText } = renderStrip({
+      diagnosis: degradedDiagnosis,
+      drillEndpoint,
+    });
+
+    expect(getByRole('heading', { name: /API is above threshold/i })).toBeTruthy();
+    expect(queryByText(/likely that site/i)).toBeNull();
+    expect(getByText(/Inspect API against the same rounds/i)).toBeTruthy();
   });
 });

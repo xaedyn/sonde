@@ -121,6 +121,20 @@ describe('history session summaries', () => {
     });
   });
 
+  it('stores the evidence-gated summary rather than a legacy causal headline', () => {
+    const summary = buildHistorySessionSummary({
+      id: 'hist-slow',
+      now: 1_765_000_000_000,
+      endpoints: [endpoint()],
+      measurements: measurementState(),
+      stats: { api: stats({ p50: 240, p95: 300 }) },
+      settings,
+    });
+
+    expect(summary?.verdict.headline).toContain('API is above 120 ms');
+    expect(summary?.verdict.headline).not.toMatch(/likely (that site|your network|source)/i);
+  });
+
   it('returns null when a session has no retained samples', () => {
     const summary = buildHistorySessionSummary({
       endpoints: [endpoint()],
