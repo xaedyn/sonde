@@ -5,6 +5,7 @@ import DiagnoseView from '../../../src/lib/components/DiagnoseView.svelte';
 import { endpointStore } from '../../../src/lib/stores/endpoints';
 import { measurementStore } from '../../../src/lib/stores/measurements';
 import { remoteVantageStore } from '../../../src/lib/stores/remote-vantage';
+import { settingsStore } from '../../../src/lib/stores/settings';
 import { resetStatisticsCache } from '../../../src/lib/stores/statistics';
 import { uiStore } from '../../../src/lib/stores/ui';
 import type { Endpoint, MeasurementSample, MeasurementState } from '../../../src/lib/types';
@@ -25,6 +26,24 @@ function samples(latency: number): MeasurementSample[] {
     latency,
     status: 'ok' as const,
     timestamp: index + 1,
+  }));
+}
+
+function opaqueFallbackSamples(latency: number): MeasurementSample[] {
+  return Array.from({ length: 12 }, (_, index) => ({
+    round: index + 1,
+    latency,
+    status: 'ok' as const,
+    timestamp: index + 1,
+    timingFallback: true,
+    tier2: {
+      total: latency,
+      dnsLookup: 0,
+      tcpConnect: 0,
+      tlsHandshake: 0,
+      ttfb: 0,
+      contentTransfer: 0,
+    },
   }));
 }
 
@@ -55,6 +74,33 @@ function seedReadySamples(latencies: Record<string, number>): void {
   } satisfies MeasurementState);
 }
 
+function seedSamplesByEndpoint(samplesByEndpoint: Record<string, MeasurementSample[]>): void {
+  const endpoints: Parameters<typeof measurementStore.loadSnapshot>[0]['endpoints'] = {};
+  for (const [endpointId, endpointSamples] of Object.entries(samplesByEndpoint)) {
+    const last = endpointSamples.at(-1);
+    endpoints[endpointId] = {
+      endpointId,
+      tierLevel: 1,
+      lastLatency: last?.latency ?? null,
+      lastStatus: last?.status ?? null,
+      lastErrorMessage: last?.errorMessage ?? null,
+      samples: endpointSamples,
+    };
+  }
+
+  measurementStore.loadSnapshot({
+    lifecycle: 'completed',
+    epoch: 1,
+    roundCounter: 12,
+    startedAt: null,
+    stoppedAt: null,
+    freezeEvents: [],
+    errorCount: 0,
+    timeoutCount: 0,
+    endpoints,
+  } satisfies MeasurementState);
+}
+
 describe('DiagnoseView investigation focus', () => {
   beforeEach(() => {
     cleanup();
@@ -62,6 +108,7 @@ describe('DiagnoseView investigation focus', () => {
     measurementStore.reset();
     resetStatisticsCache();
     remoteVantageStore.reset();
+    settingsStore.reset();
     uiStore.reset();
   });
 
@@ -114,5 +161,24 @@ describe('DiagnoseView investigation focus', () => {
 
     expect(getByText(/choosing the best endpoint to investigate/i)).toBeTruthy();
     expect(queryByText(/pick an endpoint from the left rail/i)).toBeNull();
+  });
+
+  it('labels opaque no-cors fallback samples as total-only instead of errors', async () => {
+    endpointStore.setEndpoints([endpoint('api', 'API')]);
+    seedSamplesByEndpoint({ api: opaqueFallbackSamples(80) });
+    settingsStore.update(current => ({ ...current, corsMode: 'no-cors' }));
+    uiStore.setActiveView('diagnose');
+    uiStore.setFocusedEndpoint('api');
+
+    const { getAllByText, getByText, queryByText } = render(DiagnoseView);
+
+    await waitFor(() => {
+      expect(get(uiStore).focusedEndpointId).toBe('api');
+    });
+
+    expect(queryByText('ERROR')).toBeNull();
+    expect(getByText(/phase timing unavailable/i)).toBeTruthy();
+    expect(getAllByText(/total only/i).length).toBeGreaterThan(0);
+    expect(getAllByText('80 ms').length).toBeGreaterThan(0);
   });
 });

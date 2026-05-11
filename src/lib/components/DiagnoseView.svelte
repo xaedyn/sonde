@@ -74,6 +74,7 @@
   const phaseTotal = $derived(
     phases === null ? 0 : phases.dns + phases.tcp + phases.tls + phases.ttfb + phases.transfer,
   );
+  const hasVisiblePhases = $derived(phases !== null && phaseTotal > 0);
   const hypothesis = $derived(phases === null ? null : phaseHypothesis(phases));
 
   // ── Segments with computed widths for the hero bar ───────────────────────
@@ -188,18 +189,21 @@
     return `${distroStats.n} focused samples with ${comparatorCount} comparison endpoints.`;
   });
 
-  interface SampleRow { round: number; total: number; segs: { phase: Tier2Phase; pctWidth: number; color: string; }[]; status: 'ok' | 'timeout' | 'error' | 'no-tier2'; }
+  interface SampleRow { round: number; total: number; segs: { phase: Tier2Phase; pctWidth: number; color: string; }[]; status: 'ok' | 'timeout' | 'error' | 'phase-unavailable'; }
   const sampleRows: readonly SampleRow[] = $derived.by(() => {
     return recentSamples.map((s) => {
       if (s.status !== 'ok') {
         return { round: s.round, total: s.latency ?? 0, segs: [], status: s.status };
       }
       const t2 = s.tier2;
-      if (!t2) {
-        return { round: s.round, total: s.latency, segs: [], status: 'no-tier2' as const };
+      if (!t2 || s.timingFallback) {
+        return { round: s.round, total: s.latency, segs: [], status: 'phase-unavailable' as const };
       }
       const total = t2.dnsLookup + t2.tcpConnect + t2.tlsHandshake + t2.ttfb + t2.contentTransfer;
-      const segs = total <= 0 ? [] : PHASE_ORDER.map((phase) => {
+      if (total <= 0) {
+        return { round: s.round, total: s.latency, segs: [], status: 'phase-unavailable' as const };
+      }
+      const segs = PHASE_ORDER.map((phase) => {
         const ms = phase === 'dns' ? t2.dnsLookup
                  : phase === 'tcp' ? t2.tcpConnect
                  : phase === 'tls' ? t2.tlsHandshake
@@ -226,7 +230,7 @@
 
   // ── Accessibility summary for the hero bar ────────────────────────────────
   const heroAria = $derived(
-    phases === null
+    phases === null || !hasVisiblePhases
       ? 'Request waterfall — no tier-2 data available.'
       : `Request waterfall for ${focusedEndpoint?.label ?? 'focused endpoint'} at ${mode.toUpperCase()}: ${segments.map((s) => `${PHASE_LABELS[s.phase]} ${Math.round(s.ms)} ms`).join(', ')}. Total ${Math.round(phaseTotal)} ms.`
   );
@@ -466,32 +470,42 @@
             onclick={() => handleSelectMode('p95')}
           >P95</button>
         </div>
-        <div class="diagnose-waterfall" role="img" aria-label={heroAria}>
-          <div class="diagnose-bar">
-            {#each segments as seg (seg.phase)}
-              <div
-                class="diagnose-bar-seg"
-                class:dominant={seg.dominant}
-                style:width="{seg.pctWidth}%"
-                style:background={seg.color}
-              >
-                {#if seg.pctWidth >= 8}
-                  <span class="diagnose-bar-label" style:color={tokens.color.tier2.labelText}>
-                    {seg.short} · {fmt(seg.ms)}<span class="diagnose-bar-ms">ms</span>
-                  </span>
-                {/if}
-              </div>
-            {/each}
+        {#if hasVisiblePhases}
+          <div class="diagnose-waterfall" role="img" aria-label={heroAria}>
+            <div class="diagnose-bar">
+              {#each segments as seg (seg.phase)}
+                <div
+                  class="diagnose-bar-seg"
+                  class:dominant={seg.dominant}
+                  style:width="{seg.pctWidth}%"
+                  style:background={seg.color}
+                >
+                  {#if seg.pctWidth >= 8}
+                    <span class="diagnose-bar-label" style:color={tokens.color.tier2.labelText}>
+                      {seg.short} · {fmt(seg.ms)}<span class="diagnose-bar-ms">ms</span>
+                    </span>
+                  {/if}
+                </div>
+              {/each}
+            </div>
+            <div class="diagnose-bar-scale">
+              {#each segments as seg (seg.phase)}
+                <span class="diagnose-bar-tick" style:flex="{seg.pctWidth}">
+                  <span class="diagnose-bar-tick-label">{seg.short}</span>
+                </span>
+              {/each}
+            </div>
           </div>
-          <div class="diagnose-bar-scale">
-            {#each segments as seg (seg.phase)}
-              <span class="diagnose-bar-tick" style:flex="{seg.pctWidth}">
-                <span class="diagnose-bar-tick-label">{seg.short}</span>
-              </span>
-            {/each}
+        {:else}
+          <div class="phase-unavailable-card" role="note" aria-label="Phase timing unavailable">
+            <p class="phase-unavailable-title">Phase timing unavailable</p>
+            <p class="phase-unavailable-detail">{timingVisibility.detail}</p>
+            {#if timingVisibility.action}
+              <p class="phase-unavailable-action">{timingVisibility.action}</p>
+            {/if}
           </div>
-        </div>
-        {#if hypothesis}
+        {/if}
+        {#if hypothesis && hasVisiblePhases}
           <ul class="diagnose-evidence">
             {#each segments as seg (seg.phase)}
               <li class="diagnose-evidence-row" class:dominant={seg.dominant}>
@@ -530,8 +544,8 @@
                       {#each row.segs as seg (seg.phase)}
                         <span class="diagnose-sample-seg" style:width="{seg.pctWidth}%" style:background={seg.color} aria-hidden="true"></span>
                       {/each}
-                    {:else if row.status === 'no-tier2'}
-                      <span class="diagnose-sample-neutral" aria-label="No tier-2 breakdown available"></span>
+                    {:else if row.status === 'phase-unavailable'}
+                      <span class="diagnose-sample-neutral diagnose-sample-total-only" aria-label="Phase timing unavailable">TOTAL ONLY</span>
                     {:else if row.status === 'timeout'}
                       <span class="diagnose-sample-timeout" aria-label="Timeout">TIMEOUT</span>
                     {:else}
@@ -954,6 +968,34 @@
     padding: 1px 4px;
     border-radius: 3px;
   }
+  .phase-unavailable-card {
+    border: 1px solid rgba(103, 232, 249, 0.16);
+    border-radius: 10px;
+    background: rgba(103, 232, 249, 0.055);
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .phase-unavailable-title {
+    margin: 0;
+    color: var(--t1);
+    font-family: var(--sans);
+    font-size: var(--ts-base);
+    font-weight: 500;
+  }
+  .phase-unavailable-detail,
+  .phase-unavailable-action {
+    margin: 0;
+    color: var(--t2);
+    font-family: var(--mono);
+    font-size: var(--ts-xs);
+    line-height: 1.55;
+    letter-spacing: 0.01em;
+  }
+  .phase-unavailable-action {
+    color: var(--accent-cyan);
+  }
   .diagnose-title {
     margin: 0;
     font-size: var(--ts-2xl);
@@ -1196,6 +1238,15 @@
     display: block;
     width: 100%; height: 100%;
     background: var(--t5, rgba(255, 255, 255, 0.07));
+  }
+  .diagnose-sample-total-only {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--t2);
+    font-family: var(--mono);
+    font-size: var(--ts-xs);
+    letter-spacing: var(--tr-label);
   }
   .diagnose-sample-timeout {
     display: flex;
