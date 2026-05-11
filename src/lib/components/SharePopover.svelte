@@ -18,9 +18,14 @@
   import { tokens } from '$lib/tokens';
   import type { SharePayload } from '$lib/types';
 
+  const MAX_HOSTED_REPORT_CHARS = 100_000;
+
   let popoverEl: HTMLDivElement;
+  let copiedReport = $state(false);
   let copiedConfig = $state(false);
   let copiedResults = $state(false);
+  let reportBusy = $state(false);
+  let reportNotice = $state<string | null>(null);
   let fallbackUrl: string | null = $state(null);
   let fallbackInputEl: HTMLInputElement | undefined = $state();
 
@@ -30,27 +35,53 @@
   );
 
   let configPayload = $derived(buildConfigPayload());
+  let builtHostedReport = $derived(hasResults ? buildResultsPayload(MAX_HOSTED_REPORT_CHARS) : null);
   let builtResults = $derived(hasResults ? buildResultsPayload() : null);
+  let hostedReportPayload = $derived(builtHostedReport?.payload ?? null);
   let resultsPayload = $derived(builtResults?.payload ?? null);
+  let hostedReportTruncated = $derived(builtHostedReport?.truncated ?? false);
   let resultsTruncated = $derived(builtResults?.truncated ?? false);
 
   function buildConfigPayload(): SharePayload {
     return buildConfigSharePayload(get(endpointStore), get(settingsStore));
   }
 
-  function buildResultsPayload() {
+  function buildResultsPayload(maxChars = MAX_SHARE_URL_CHARS) {
     return buildResultsSharePayload(
       get(endpointStore),
       get(settingsStore),
       get(measurementStore),
-      MAX_SHARE_URL_CHARS,
+      maxChars,
       Date.now(),
       undefined,
       get(remoteVantageStore).lastProbe,
     );
   }
 
+  async function handleCreateReport(): Promise<void> {
+    if (!hostedReportPayload || reportBusy) return;
+
+    reportBusy = true;
+    reportNotice = null;
+    try {
+      const hostedUrl = await remoteVantageStore.createHostedReport(hostedReportPayload);
+      const fallbackShareUrl = resultsPayload ? buildShareURL(resultsPayload) : buildShareURL(hostedReportPayload);
+      await copyToClipboard(hostedUrl ?? fallbackShareUrl);
+
+      if (hostedUrl === null) {
+        reportNotice = 'Hosted report was unavailable, so Chronoscope copied a compact results URL instead.';
+      } else if (hostedReportTruncated) {
+        reportNotice = 'Report was trimmed to fit hosted report limits. Newest rounds are kept.';
+      }
+      copiedReport = true;
+      setTimeout(() => { copiedReport = false; }, 2000);
+    } finally {
+      reportBusy = false;
+    }
+  }
+
   async function handleCopyConfig(): Promise<void> {
+    reportNotice = null;
     const url = buildShareURL(configPayload);
     await copyToClipboard(url);
     copiedConfig = true;
@@ -59,6 +90,7 @@
 
   async function handleCopyResults(): Promise<void> {
     if (!resultsPayload) return;
+    reportNotice = null;
     const url = buildShareURL(resultsPayload);
     await copyToClipboard(url);
     copiedResults = true;
@@ -179,15 +211,48 @@
       </button>
     </div>
 
+    <!-- Report status -->
+    {#if reportNotice}
+      <div class="notice" role="status">
+        {reportNotice}
+      </div>
+    {/if}
+
     <!-- Truncation warning -->
     {#if resultsTruncated}
-      <div class="warning" role="alert">
-        Results were trimmed to fit URL limits. Newest rounds are kept.
+      <div class="warning" role="note">
+        Compact URL results are trimmed to fit browser URL limits. Newest rounds are kept.
       </div>
     {/if}
 
     <!-- Buttons -->
     <div class="share-actions">
+      <!-- Hosted support report -->
+      <div class="share-action share-action-primary">
+        <div class="action-info">
+          <span class="action-label">Support report</span>
+          <span class="action-desc">
+            {hasResults ? 'Hosted read-only report with samples, verdict, and browser visibility' : 'Run a test first to create a support report'}
+          </span>
+        </div>
+        <button
+          type="button"
+          class="btn-copy btn-primary"
+          class:copied={copiedReport}
+          disabled={!hasResults || reportBusy}
+          aria-disabled={!hasResults || reportBusy}
+          onclick={handleCreateReport}
+        >
+          {#if reportBusy}
+            Creating…
+          {:else if copiedReport}
+            Copied Report Link
+          {:else}
+            Create Support Report
+          {/if}
+        </button>
+      </div>
+
       <!-- Config link -->
       <div class="share-action">
         <div class="action-info">
@@ -207,9 +272,9 @@
       <!-- Results link -->
       <div class="share-action">
         <div class="action-info">
-          <span class="action-label">Results link</span>
+          <span class="action-label">Compact results URL</span>
           <span class="action-desc">
-            {hasResults ? 'Shares samples so the diagnostic answer opens with the link' : 'Run a test first to share results'}
+            {hasResults ? 'Fallback link packed into the URL hash' : 'Run a test first to share results'}
           </span>
         </div>
         <button
@@ -220,7 +285,7 @@
           aria-disabled={!hasResults}
           onclick={handleCopyResults}
         >
-          {copiedResults ? 'Copied!' : 'Copy Results Link'}
+          {copiedResults ? 'Copied!' : 'Copy URL Link'}
         </button>
       </div>
     </div>
@@ -348,17 +413,27 @@
     box-shadow: 0 0 12px rgba(103,232,249,.2);
   }
 
-  /* ── Warning ───────────────────────────────────────────────────────────── */
+  /* ── Notices ───────────────────────────────────────────────────────────── */
+  .notice,
   .warning {
     padding: var(--spacing-xs) var(--spacing-sm);
-    background: rgba(255,140,0,.08);
-    border: 1px solid rgba(255,140,0,.25);
     border-radius: var(--btn-radius);
     font-family: var(--sans);
     font-size: 12px;
-    color: var(--t2);
     position: relative;
     z-index: 2;
+  }
+
+  .notice {
+    background: rgba(103,232,249,.08);
+    border: 1px solid rgba(103,232,249,.25);
+    color: var(--t2);
+  }
+
+  .warning {
+    background: rgba(255,140,0,.08);
+    border: 1px solid rgba(255,140,0,.25);
+    color: var(--t2);
   }
 
   /* ── Actions ───────────────────────────────────────────────────────────── */
@@ -399,6 +474,11 @@
     box-shadow: 0 2px 16px rgba(0,0,0,.15);
   }
 
+  .share-action-primary {
+    border-color: rgba(103,232,249,.22);
+    background: rgba(103,232,249,.055);
+  }
+
   .action-info {
     display: flex;
     flex-direction: column;
@@ -419,9 +499,7 @@
     font-family: var(--sans);
     font-size: 11px;
     color: var(--t3);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    line-height: 1.35;
   }
 
   .btn-copy {
@@ -460,6 +538,13 @@
     background: var(--accent-green);
     border-color: var(--accent-green);
     color: rgba(12,10,20,.9);
+  }
+
+  .btn-primary {
+    background: rgba(103,232,249,.14);
+    border-color: rgba(103,232,249,.34);
+    color: var(--t1);
+    box-shadow: 0 0 14px rgba(103,232,249,.08);
   }
 
   /* ── Clipboard fallback ─────────────────────────────────────────────────── */
