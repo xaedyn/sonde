@@ -348,4 +348,19 @@
     .racing-track { height: 18px; }
     .racing-rows { gap: 1px; }
   }
+
+  @media (max-width: 767px) and (max-height: 860px) {
+    .racing { padding: 5px 8px; }
+    .racing-header { margin-bottom: 2px; }
+    .racing-title { font-size: var(--ts-md); }
+    .racing-axis { display: none; }
+    .racing-row {
+      min-height: 24px;
+      padding: 2px 5px;
+      gap: 6px;
+      grid-template-columns: 96px minmax(0, 1fr) max-content;
+    }
+    .racing-track { height: 16px; }
+    .racing-stats { gap: 4px; }
+  }
 </style>

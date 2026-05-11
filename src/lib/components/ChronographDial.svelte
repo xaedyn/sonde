@@ -779,4 +779,18 @@
   @media (max-width: 375px) {
     .dial { max-width: min(300px, 86vw); }
   }
+  @media (max-width: 767px) and (max-height: 860px) {
+    .dial-wrap { padding: 4px 0; }
+    .dial { max-width: min(300px, 82vw); }
+  }
+  @media (max-width: 375px) and (max-height: 860px) {
+    .dial { max-width: min(280px, 80vw); }
+  }
+  @media (max-width: 767px) and (max-height: 760px) {
+    .dial-wrap { padding: 2px 0; }
+    .dial { max-width: min(270px, 78vw); }
+  }
+  @media (max-width: 375px) and (max-height: 760px) {
+    .dial { max-width: min(260px, 76vw); }
+  }
 </style>
