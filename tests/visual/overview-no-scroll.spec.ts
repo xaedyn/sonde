@@ -14,6 +14,8 @@ const VIEWPORTS = [
   { name: 'desktop-floor', width: 1366, height: 768 },
   { name: 'mobile-floor',  width: 360,  height: 780 },
   { name: 'mobile-390',    width: 390,  height: 844 },
+  { name: 'mobile-short',  width: 390,  height: 700 },
+  { name: 'iphone-se',     width: 375,  height: 667 },
   { name: 'desktop-1920',  width: 1920, height: 1080 },
   { name: 'desktop-2560',  width: 2560, height: 1440 },
 ] as const;
@@ -159,57 +161,52 @@ test.describe('Status — no scroll on first visit', () => {
     ).toEqual([]);
   });
 
-  test('status evidence remains reachable on short mobile viewports', async ({ page }) => {
+  test('status evidence stays visible without scrolling on short mobile viewports', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto('/');
     await page.waitForSelector('#chronoscope-root');
     await page.waitForTimeout(400);
 
+    const state = await scrollState(page);
+    expect(
+      state.docScrollH,
+      `document scrollHeight (${state.docScrollH}) > clientHeight (${state.docClientH})`,
+    ).toBeLessThanOrEqual(state.docClientH);
+    expect(
+      state.overflowingScrollers,
+      `internal scrollers with hidden content: ${JSON.stringify(state.overflowingScrollers, null, 2)}`,
+    ).toEqual([]);
+
     const reachability = await page.evaluate(() => {
       const overview = document.querySelector<HTMLElement>('.overview');
-      const shellMain = document.querySelector<HTMLElement>('main#main-content');
       const subtabStrip = document.querySelector<HTMLElement>('.overview-subtab-strip');
       const panel = document.querySelector<HTMLElement>('#overview-panel-racing');
       const docEl = document.documentElement;
-      if (!overview || !shellMain || !subtabStrip || !panel) {
+      if (!overview || !subtabStrip || !panel) {
         return {
           hasNodes: false,
-          hasScrollPath: false,
-          stripVisibleAfterScroll: false,
-          panelVisibleAfterScroll: false,
+          stripFullyVisible: false,
+          panelFullyVisible: false,
           horizontalOverflow: true,
         };
       }
 
-      const hasScrollablePath = (el: HTMLElement): boolean => {
-        const cs = getComputedStyle(el);
-        return (cs.overflowY === 'auto' || cs.overflowY === 'scroll') && el.scrollHeight > el.clientHeight;
-      };
-      const hasScrollPath = hasScrollablePath(overview) || hasScrollablePath(shellMain);
-      const scroller = hasScrollablePath(overview) ? overview : hasScrollablePath(shellMain) ? shellMain : null;
-      if (scroller) scroller.scrollTop = scroller.scrollHeight;
-
       const viewportH = window.innerHeight;
       const stripRect = subtabStrip.getBoundingClientRect();
       const panelRect = panel.getBoundingClientRect();
-      const visible = (rect: DOMRect): boolean => rect.top < viewportH && rect.bottom > 0;
+      const fullyVisible = (rect: DOMRect): boolean => rect.top >= 0 && rect.bottom <= viewportH;
 
       return {
         hasNodes: true,
-        hasScrollPath,
-        stripVisibleAfterScroll: visible(stripRect),
-        panelVisibleAfterScroll: visible(panelRect),
+        stripFullyVisible: fullyVisible(stripRect),
+        panelFullyVisible: fullyVisible(panelRect),
         horizontalOverflow: docEl.scrollWidth > docEl.clientWidth,
       };
     });
 
     expect(reachability.hasNodes).toBe(true);
     expect(reachability.horizontalOverflow, 'document should not overflow horizontally').toBe(false);
-    expect(
-      reachability.hasScrollPath,
-      'short mobile Status must expose a real vertical scroll path instead of clipping hidden evidence',
-    ).toBe(true);
-    expect(reachability.stripVisibleAfterScroll, 'Status subtab strip should be reachable after scrolling').toBe(true);
-    expect(reachability.panelVisibleAfterScroll, 'Status evidence panel should be reachable after scrolling').toBe(true);
+    expect(reachability.stripFullyVisible, 'Status subtab strip should fit in the first viewport').toBe(true);
+    expect(reachability.panelFullyVisible, 'Status evidence panel should fit in the first viewport').toBe(true);
   });
 });

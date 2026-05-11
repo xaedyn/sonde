@@ -450,4 +450,38 @@
       padding: 6px 10px;
     }
   }
+
+  @media (max-height: 900px) and (min-width: 768px) {
+    .verdict.hero {
+      padding: 12px 18px;
+      gap: 10px 18px;
+    }
+    .verdict.hero .verdict-extra {
+      display: none;
+    }
+    .verdict.hero .verdict-metrics {
+      padding-top: 8px;
+    }
+  }
+
+  @media (max-width: 767px) and (max-height: 860px) {
+    .verdict.hero {
+      padding: 8px 10px;
+      gap: 6px;
+    }
+    .verdict.hero .verdict-headline {
+      font-size: var(--ts-lg);
+    }
+    .verdict.hero .verdict-explanation,
+    .verdict.hero .verdict-context {
+      display: none;
+    }
+    .verdict-metrics {
+      gap: 8px 12px;
+      padding-top: 4px;
+    }
+    .verdict-metric-num {
+      font-size: var(--ts-md);
+    }
+  }
 </style>

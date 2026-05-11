@@ -335,7 +335,11 @@
           {p99Across}
         />
       </div>
-      <div class="overview-right" data-subtab={$uiStore.overviewSubtab}>
+      <div
+        class="overview-right"
+        data-has-events={events.length > 0 ? 'true' : 'false'}
+        data-subtab={$uiStore.overviewSubtab}
+      >
         <div class="overview-subtab-strip">
           <OverviewSubtabStrip
             selected={$uiStore.overviewSubtab}
@@ -379,6 +383,7 @@
 <style>
   .overview {
     flex: 1;
+    height: 100%;
     display: flex;
     flex-direction: column;
     padding: 12px 24px 16px;
@@ -393,7 +398,9 @@
     display: flex;
     flex-direction: column;
     gap: 14px;
+    height: 100%;
     min-height: 0;
+    overflow: hidden;
   }
 
   /* Verdict-first Status: answer on top, live dial as the left instrument,
@@ -403,11 +410,13 @@
      centered 1440 box. */
   .overview-grid {
     width: 100%;
+    flex: 1 1 auto;
     display: grid;
     grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
     gap: 20px;
     align-items: start;
     min-height: 0;
+    overflow: hidden;
   }
   /* container-type lets the dial size against this column's actual width via
      `cqi`, so it grows with the column on wide viewports without having to
@@ -443,11 +452,25 @@
     .overview {
       padding: 8px 12px;
       overflow-x: hidden;
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
+      overflow-y: hidden;
     }
     .status-shell { gap: 10px; }
-    .overview-grid { grid-template-columns: 1fr; gap: 10px; }
+    .overview-grid { grid-template-columns: 1fr; gap: 10px; align-content: start; }
     .overview-left, .overview-right { gap: 8px; }
+  }
+
+  @media (max-height: 900px) and (min-width: 768px) {
+    .overview { padding-block: 10px; }
+    .status-shell { gap: 10px; }
+    .overview-grid { gap: 16px; align-items: center; }
+    .overview-right[data-has-events="false"] .card-slot--events { display: none; }
+  }
+
+  @media (max-width: 767px) and (max-height: 860px) {
+    .overview { padding-block: 6px; }
+    .status-shell,
+    .overview-grid,
+    .overview-left,
+    .overview-right { gap: 6px; }
   }
 </style>
