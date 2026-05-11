@@ -137,9 +137,8 @@
 
   .feed-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
   .feed-row {
-    /* Rank-based fade: row 0 full opacity, each older row a notch dimmer.
-       Matches v2 prototype .v2-feed-row. */
-    opacity: calc(1 - var(--rank, 0) * 0.14);
+    /* Keep rows fully opaque; recency is carried by size/weight so text stays AA. */
+    opacity: 1;
     transition: background 140ms ease, opacity 400ms ease;
     border-radius: 6px;
     /* Base type size inherited by every column. .latest bumps this one notch. */
@@ -188,7 +187,7 @@
     text-overflow: ellipsis;
   }
   .feed-action {
-    color: var(--t3);
+    color: var(--t2);
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
     overflow: hidden;
