@@ -909,8 +909,11 @@
     -webkit-appearance: none;
     cursor: pointer;
     padding-right: 28px;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='rgba(255,255,255,0.3)' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-image:
+      linear-gradient(45deg, transparent 50%, rgba(255,255,255,.42) 50%),
+      linear-gradient(135deg, rgba(255,255,255,.42) 50%, transparent 50%);
     background-repeat: no-repeat;
-    background-position: right 8px center;
+    background-size: 6px 6px, 6px 6px;
+    background-position: right 14px center, right 8px center;
   }
 </style>
