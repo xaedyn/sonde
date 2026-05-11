@@ -94,6 +94,27 @@ export function networkQuality(
   return Math.round(total / ready.length);
 }
 
+export type DiagnosticScoreSeverity = 'healthy' | 'watch' | 'degraded';
+
+/**
+ * Align the Overview dial's status score with the diagnostic narrative.
+ *
+ * `networkQuality()` is an average across ready endpoints, so two fast sites
+ * can otherwise outvote one clearly slow site and make the dial say "healthy"
+ * while the diagnostic answer says "this needs attention." The diagnostic
+ * narrative is the user-facing source of truth: sparse/watch states withhold
+ * the score, and degraded states cannot display in the healthy bucket.
+ */
+export function diagnosticAlignedScore(
+  score: number | null,
+  severity: DiagnosticScoreSeverity,
+): number | null {
+  if (score === null) return null;
+  if (severity === 'watch') return null;
+  if (severity === 'degraded') return Math.min(score, 79);
+  return score;
+}
+
 export type OverviewVerdict = 'unknown' | 'healthy' | 'degraded' | 'unhealthy';
 
 interface VerdictStyle {
@@ -124,4 +145,3 @@ export const VERDICT_STYLES: Record<OverviewVerdict, VerdictStyle> = {
   degraded:  { color: 'var(--accent-amber)', glow: 'var(--accent-amber-glow)', label: 'Degraded',         kicker: 'DEGRADED' },
   unhealthy: { color: 'var(--accent-pink)',  glow: 'var(--accent-pink-glow)',  label: 'Unhealthy',        kicker: 'CRITICAL' },
 };
-

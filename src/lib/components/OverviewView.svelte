@@ -14,6 +14,7 @@
   import { uiStore } from '$lib/stores/ui';
   import { networkQualityStore, monitoredEndpointsStore } from '$lib/stores/derived';
   import { buildDiagnosticNarrative, type DiagnosticNarrative } from '$lib/utils/diagnostic-narrative';
+  import { diagnosticAlignedScore } from '$lib/utils/classify';
   import { buildHistoryBaselineInsight, type HistoryBaselineInsight } from '$lib/utils/history-baseline';
   import type { VerdictRow } from '$lib/utils/verdict';
   import { tokens } from '$lib/tokens';
@@ -42,7 +43,7 @@
   const measurements = $derived($measurementStore);
   const history = $derived($historyStore);
   const threshold = $derived(settings.healthThreshold);
-  const score = $derived($networkQualityStore);
+  const rawScore = $derived($networkQualityStore);
   const paused = $derived(
     measurements.lifecycle === 'stopped' || measurements.lifecycle === 'completed',
   );
@@ -111,22 +112,9 @@
     return out;
   });
 
-  // Score history ring buffer — one entry per round, max 60 entries. Driven
-  // by roundCounter changes; append on every round. Svelte 5 $state arrays
-  // are proxied, so push/shift notify subscribers directly — no re-assignment
-  // needed.
   const HISTORY_MAX = 60;
   let scoreHistory = $state<number[]>([]);
   let lastSeenRound = -1;
-  $effect(() => {
-    const round = measurements.roundCounter;
-    if (round === lastSeenRound) return;
-    lastSeenRound = round;
-    // Only append when we have a valid score for this round.
-    if (score === null) return;
-    scoreHistory.push(score);
-    while (scoreHistory.length > HISTORY_MAX) scoreHistory.shift();
-  });
 
   // Event ring buffer — threshold crossings + p95 shifts. Per-endpoint
   // prev-state map tracks the comparison baseline across ticks.
@@ -237,6 +225,19 @@
     samplesByEndpoint,
     monitoredEndpointCount: monitored.length,
   }));
+  const score = $derived(diagnosticAlignedScore(rawScore, diagnosticNarrative.severity));
+  // Score history ring buffer — one entry per round, max 60 entries. Driven by
+  // roundCounter changes and aligned to the diagnostic narrative so the trace
+  // never trends "healthy" while the answer says the run needs attention.
+  $effect(() => {
+    const round = measurements.roundCounter;
+    if (round === lastSeenRound) return;
+    lastSeenRound = round;
+    // Only append when we have a valid score for this round.
+    if (score === null) return;
+    scoreHistory.push(score);
+    while (scoreHistory.length > HISTORY_MAX) scoreHistory.shift();
+  });
   const historyBaselineInsight: HistoryBaselineInsight = $derived(buildHistoryBaselineInsight({
     endpoints: monitored,
     stats,

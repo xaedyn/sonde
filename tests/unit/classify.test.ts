@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   classify,
+  diagnosticAlignedScore,
   networkQuality,
   overviewVerdict,
   HEALTH_STYLES,
@@ -91,6 +92,29 @@ describe('networkQuality()', () => {
     const healthy  = makeStats({ endpointId: 'a', p50: 10, p95: 30 });
     const pending  = makeStats({ endpointId: 'b', ready: false });
     expect(networkQuality([healthy, pending], 120)).toBe(100);
+  });
+});
+
+describe('diagnosticAlignedScore()', () => {
+  it('caps an averaged healthy-looking score when the diagnostic narrative found a degraded condition', () => {
+    expect(diagnosticAlignedScore(87, 'degraded')).toBe(79);
+  });
+
+  it('does not inflate an already unhealthy score while aligning a degraded diagnosis', () => {
+    expect(diagnosticAlignedScore(20, 'degraded')).toBe(20);
+  });
+
+  it('preserves scores for healthy diagnostics', () => {
+    expect(diagnosticAlignedScore(87, 'healthy')).toBe(87);
+  });
+
+  it('withholds the dial score while the diagnostic narrative is still in watch mode', () => {
+    expect(diagnosticAlignedScore(100, 'watch')).toBeNull();
+  });
+
+  it('preserves null when the aggregate score is not ready', () => {
+    expect(diagnosticAlignedScore(null, 'healthy')).toBeNull();
+    expect(diagnosticAlignedScore(null, 'degraded')).toBeNull();
   });
 });
 

@@ -183,8 +183,8 @@
 
   // ── 60s quality trace (Dial v2) ────────────────────────────────────────────
   // Sparkline inside the face, below the score + verdict. Score 100 at top,
-  // 0 at bottom. Hidden when history is too short — calibrating label shows
-  // instead. Geometry matches view-overview-v2.jsx QualityTraceMini: 160 px
+  // 0 at bottom. Hidden when history is too short; the score and verdict strip
+  // still carry the current state. Geometry matches view-overview-v2.jsx QualityTraceMini: 160 px
   // wide, 22 px tall, centered at cy+74.
   const TRACE_X = CX - 80;
   const TRACE_Y = CY + 63;
@@ -378,7 +378,9 @@
 
   // ── Accessibility label ────────────────────────────────────────────────────
   const ariaLabel = $derived.by(() => {
-    const scorePart = score == null ? 'no data' : `${score} percent healthy`;
+    const scorePart = score == null
+      ? 'no status score yet'
+      : `${verdictStyle.label}, status score ${score} out of 100`;
     const medianPart = liveMedian == null ? 'unknown median' : `median ${Math.round(liveMedian)} milliseconds`;
     const countPart = `${endpointCount} endpoint${endpointCount === 1 ? '' : 's'} monitored`;
     const bandPart = bandLabel === null
@@ -518,8 +520,9 @@
       {/if}
 
       <!-- 8. Center readouts — health score with an explicit label. The old
-           QUALITY kicker was ambiguous; HEALTH SCORE distinguishes the 0-100
-           number from latency milliseconds while the LIVE line carries ms.
+           QUALITY kicker was ambiguous; STATUS SCORE distinguishes the 0-100
+           number from latency milliseconds while avoiding a "percent healthy"
+           claim that can contradict the diagnostic narrative.
            the cy+22 verdict collided with the hand needle. Verdict text is
            now carried as a tspan in the merged strip at cy+108 (see step 8b
            below, which is painted AFTER the hand). -->
@@ -530,7 +533,7 @@
             fill="var(--t3)"
             letter-spacing="0.16em"
             aria-hidden="true"
-      >HEALTH SCORE</text>
+      >STATUS SCORE</text>
       <text x={CX} y={CY - 6} text-anchor="middle" font-size="100" font-weight="200"
             fill="var(--t1)" font-family={tokens.typography.sans.fontFamily}
             style="letter-spacing: 0; font-variant-numeric: tabular-nums;">{scoreDisplay}</text>
@@ -549,14 +552,6 @@
             opacity="0.9"
           />
         </g>
-      {:else if scoreHistory && scoreHistory.length > 0}
-        <text
-          x={CX} y={TRACE_Y + TRACE_H / 2 + 4}
-          text-anchor="middle" font-size="9"
-          font-family={tokens.typography.mono.fontFamily}
-          fill="var(--t4)" letter-spacing="0.18em"
-          aria-hidden="true"
-        >CALIBRATING</text>
       {/if}
 
       <!-- (The merged verdict + LIVE + band strip that used to live here has

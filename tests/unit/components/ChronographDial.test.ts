@@ -258,6 +258,15 @@ describe('ChronographDial — overlap polish · verdict+LIVE merged strip', () =
     expect(tspans).toHaveLength(2); // verdict + live-median only
   });
 
+  it('does not show CALIBRATING once a score is available, even before the trace has enough points', () => {
+    const { container } = render(ChronographDial, {
+      props: { ...baseProps, score: 79, scoreHistory: [79] },
+    });
+    const allText = Array.from(container.querySelectorAll('text'));
+    const calibratingText = allText.find(t => t.textContent?.trim() === 'CALIBRATING');
+    expect(calibratingText).toBeUndefined();
+  });
+
   it('merged strip is painted AFTER the hand group (so it sits on top)', () => {
     // DOM order inside the SVG matters for painting: later = on top.
     const { container } = render(ChronographDial, { props: withBand });
