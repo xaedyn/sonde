@@ -96,6 +96,76 @@ test.describe('Accessibility', () => {
     await expectNoAxeViolations(page);
   });
 
+  test('remote vantage evidence labels meet text contrast', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForSelector('#chronoscope-root');
+    await seedVisibleSamples(page);
+
+    await page.getByRole('button', { name: /^Investigate/ }).click();
+    await page.waitForSelector('.remote-evidence dt');
+
+    const ratios = await page.locator('.remote-evidence dt').evaluateAll((elements) => {
+      type Rgba = [number, number, number, number];
+
+      function parseComputedRgba(value: string): Rgba {
+        if (value === 'transparent') return [0, 0, 0, 0];
+        const match = value.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([0-9.]+))?/);
+        if (!match) throw new Error(`Unsupported color value: ${value}`);
+        return [Number(match[1]), Number(match[2]), Number(match[3]), match[4] === undefined ? 1 : Number(match[4])];
+      }
+
+      function composite(top: Rgba, bottom: Rgba): Rgba {
+        const alpha = top[3] + bottom[3] * (1 - top[3]);
+        if (alpha === 0) return [0, 0, 0, 0];
+        return [
+          (top[0] * top[3] + bottom[0] * bottom[3] * (1 - top[3])) / alpha,
+          (top[1] * top[3] + bottom[1] * bottom[3] * (1 - top[3])) / alpha,
+          (top[2] * top[3] + bottom[2] * bottom[3] * (1 - top[3])) / alpha,
+          alpha,
+        ];
+      }
+
+      function luminance(rgb: readonly number[]): number {
+        const [r, g, b] = rgb.map((channel) => {
+          const value = channel / 255;
+          return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+        });
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      }
+
+      return elements.map((element) => {
+        const style = getComputedStyle(element);
+        const ancestors: Element[] = [];
+        let backgroundElement: Element | null = element;
+        while (backgroundElement) {
+          ancestors.unshift(backgroundElement);
+          backgroundElement = backgroundElement.parentElement;
+        }
+
+        let effectiveBackground: Rgba = [0, 0, 0, 1];
+        for (const ancestor of ancestors) {
+          effectiveBackground = composite(parseComputedRgba(getComputedStyle(ancestor).backgroundColor), effectiveBackground);
+        }
+        const effectiveForeground = composite(parseComputedRgba(style.color), effectiveBackground);
+        const foreground = luminance(effectiveForeground);
+        const backgroundLum = luminance(effectiveBackground);
+        const lighter = Math.max(foreground, backgroundLum);
+        const darker = Math.min(foreground, backgroundLum);
+        return {
+          text: element.textContent?.trim(),
+          color: style.color,
+          background: getComputedStyle(element).backgroundColor,
+          effectiveBackground,
+          ratio: (lighter + 0.05) / (darker + 0.05),
+        };
+      });
+    });
+
+    for (const ratio of ratios) {
+      expect(ratio.ratio, `${ratio.text} contrast: ${JSON.stringify(ratio)}`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
   test('skip link is keyboard-accessible', async ({ page }) => {
     await page.goto('/');
     await page.keyboard.press('Tab');

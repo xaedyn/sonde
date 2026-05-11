@@ -819,7 +819,7 @@
   }
   .remote-evidence dt {
     margin: 0 0 3px;
-    color: var(--t4);
+    color: var(--t2);
     font-family: var(--mono);
     font-size: var(--ts-xs);
     letter-spacing: var(--tr-kicker);
