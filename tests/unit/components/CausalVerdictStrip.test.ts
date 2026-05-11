@@ -10,26 +10,26 @@ const collectingDiagnosis = {
   severity: 'watch',
   confidence: 'low',
   confidenceLabel: 'low confidence',
-  confidenceReason: 'Waiting for endpoints to collect enough successful samples.',
-  explanation: 'Chronoscope is collecting enough samples before it makes a network or endpoint call.',
-  safeSummary: 'Collecting browser-visible samples before making a diagnostic call.',
+  confidenceReason: 'Waiting for the first successful checks.',
+  explanation: 'Collecting enough data to call this test.',
+  safeSummary: 'This browser test: Collecting enough data to call this test. (low confidence; Waiting for the first successful checks.)',
   primaryAnswer: {
     id: 'collecting',
     kind: 'measured',
     strength: 'low',
-    text: 'Collecting browser-visible samples before making a diagnostic call.',
+    text: 'Collecting enough data to call this test.',
     evidenceIds: [],
     requiredEvidence: ['sample-ready'],
   },
   primaryValidation: {
     id: 'collect-more-samples',
     label: 'Collect more samples',
-    reason: 'The thinnest enabled endpoint needs at least 12 successful samples before this answer becomes actionable.',
+    reason: 'The least-sampled site has 0 successful checks; 12 makes this actionable.',
     claim: {
       id: 'collecting',
       kind: 'measured',
       strength: 'low',
-      text: 'Collecting browser-visible samples before making a diagnostic call.',
+      text: 'Collecting enough data to call this test.',
       evidenceIds: [],
       requiredEvidence: ['sample-ready'],
     },
@@ -45,7 +45,7 @@ const collectingDiagnosis = {
   nextSteps: [],
   timingVisibility: {
     level: 'none',
-    headline: 'No successful browser timing yet',
+    headline: 'No successful checks yet',
     detail: 'Waiting for browser timing.',
     okSampleCount: 0,
     phaseSampleCount: 0,
@@ -61,26 +61,26 @@ const degradedDiagnosis = {
   },
   kind: 'isolated-endpoint',
   severity: 'degraded',
-  explanation: 'API is above the threshold while the comparison endpoints are not.',
-  safeSummary: 'API is above threshold while comparison endpoints are not in browser-visible data.',
+  explanation: 'API is slower than the others in this test.',
+  safeSummary: 'This browser test: API is slower than the others in this test. (medium confidence; Based on 18+ successful checks across 3 sites.)',
   primaryAnswer: {
     id: 'isolated-endpoint',
     kind: 'inferred',
     strength: 'medium',
-    text: 'API is above threshold while comparison endpoints are not in browser-visible data.',
+    text: 'API is slower than the others in this test.',
     evidenceIds: ['endpoint-to-inspect'],
     requiredEvidence: ['sample-actionable', 'total-timing'],
   },
   primaryValidation: {
     id: 'open-investigate',
     label: 'Open Investigate',
-    reason: 'Inspect API against the same rounds and compare from another vantage point before assigning cause.',
+    reason: 'Compare this test from outside your network before assigning cause.',
     endpointId: 'api',
     claim: {
       id: 'isolated-endpoint',
       kind: 'inferred',
       strength: 'medium',
-      text: 'API is above threshold while comparison endpoints are not in browser-visible data.',
+      text: 'API is slower than the others in this test.',
       evidenceIds: ['endpoint-to-inspect'],
       requiredEvidence: ['sample-actionable', 'total-timing'],
     },
@@ -211,8 +211,8 @@ describe('CausalVerdictStrip start CTA', () => {
       drillEndpoint,
     });
 
-    expect(getByRole('heading', { name: /API is above threshold/i })).toBeTruthy();
+    expect(getByRole('heading', { name: /API is slower than the others/i })).toBeTruthy();
     expect(queryByText(/likely that site/i)).toBeNull();
-    expect(getByText(/Inspect API against the same rounds/i)).toBeTruthy();
+    expect(getByText(/Compare this test from outside your network/i)).toBeTruthy();
   });
 });

@@ -158,9 +158,9 @@ export function describeTimingVisibility(
   if (okSampleCount === 0) {
     return {
       level: 'none',
-      headline: 'No successful browser timing yet',
-      detail: 'Chronoscope needs at least one successful fetch before it can explain what the browser can see.',
-      action: 'Run for a few more rounds or check whether the endpoint is reachable from this browser.',
+      headline: 'No successful checks yet',
+      detail: 'Chronoscope needs at least one successful browser check before it can explain what timing details are visible.',
+      action: 'Run for a few more rounds or check whether the site is reachable from this browser.',
       okSampleCount,
       phaseSampleCount,
     };
@@ -168,14 +168,14 @@ export function describeTimingVisibility(
 
   if (phaseSampleCount === 0) {
     const noCorsDetail =
-      'Current no-cors mode can compare total browser fetch latency broadly, but it usually hides DNS, TCP, TLS, server, and transfer timing.';
+      'Chronoscope can compare total load time, but the browser usually hides DNS, TCP, TLS, server, and transfer timing in no-cors mode.';
     const corsDetail =
-      'The browser received total fetch timing, but this endpoint did not expose phase timing through Resource Timing.';
+      'Chronoscope can compare total load time, but this site has not exposed DNS, TCP, TLS, server, or transfer timing through Resource Timing.';
     return {
       level: 'total-only',
-      headline: 'Total latency only',
+      headline: 'Some timing details are hidden by the browser',
       detail: corsMode === 'no-cors' ? noCorsDetail : corsDetail,
-      action: 'For endpoints you control, send Timing-Allow-Origin for this origin; use CORS mode only when the endpoint allows browser CORS.',
+      action: 'For sites you control, send Timing-Allow-Origin when you need those details; use CORS mode only when the site allows browser CORS.',
       okSampleCount,
       phaseSampleCount,
     };
@@ -184,9 +184,9 @@ export function describeTimingVisibility(
   if (phaseSampleCount < okSampleCount) {
     return {
       level: 'mixed',
-      headline: 'Some phase timing is visible',
-      detail: `${phaseSampleCount} of ${okSampleCount} successful ${plural(okSampleCount, 'sample')} exposed DNS/TCP/TLS/server timing. Warm reused connections can still report zero for DNS, TCP, or TLS.`,
-      action: 'Use endpoints that consistently send Timing-Allow-Origin when you need phase-level evidence.',
+      headline: 'Some timing details are hidden by the browser',
+      detail: `${phaseSampleCount} of ${okSampleCount} successful ${plural(okSampleCount, 'check')} exposed detailed timing. Browsers may hide DNS, TCP, TLS, server, or transfer timing on the rest.`,
+      action: 'For sites you control, send Timing-Allow-Origin when you need those details.',
       okSampleCount,
       phaseSampleCount,
     };
@@ -194,8 +194,8 @@ export function describeTimingVisibility(
 
   return {
     level: 'phase',
-    headline: 'Phase timing visible',
-    detail: 'The browser is exposing Resource Timing detail for successful samples. Warm reused connections may still show zero for DNS, TCP, or TLS.',
+    headline: 'Detailed timing visible',
+    detail: 'The browser is exposing DNS, TCP, TLS, server, and transfer timing for successful checks. Reused connections may still show zero for DNS, TCP, or TLS.',
     okSampleCount,
     phaseSampleCount,
   };
@@ -263,26 +263,22 @@ function confidenceFor(input: {
 }
 
 function confidenceReason(
-  confidence: DiagnosticConfidence,
   rows: readonly VerdictRow[],
   monitoredEndpointCount: number,
   readiness: ReturnType<typeof sampleReadiness>,
 ): string {
-  if (rows.length === 0) return 'Waiting for endpoints to collect enough successful samples.';
+  if (rows.length === 0) return 'Waiting for the first successful checks.';
   const minSamples = readiness.minSamples;
   if (rows.length < monitoredEndpointCount) {
-    return `${rows.length} of ${monitoredEndpointCount} enabled ${plural(monitoredEndpointCount, 'endpoint')} have enough samples for this answer.`;
+    return `Based on ready data from ${rows.length} of ${monitoredEndpointCount} ${plural(monitoredEndpointCount, 'site')} so far.`;
   }
   if (minSamples < MIN_READY_SAMPLES) {
-    return `Only ${minSamples} successful ${plural(minSamples, 'sample')} on the thinnest enabled endpoint.`;
+    return `Only ${minSamples} successful ${plural(minSamples, 'check')} on the least-sampled site so far.`;
   }
   if (minSamples < MIN_ACTIONABLE_SAMPLES) {
-    return `The thinnest enabled endpoint has ${minSamples} samples; ${MIN_ACTIONABLE_SAMPLES} makes the answer actionable.`;
+    return `Based on ${minSamples} successful ${plural(minSamples, 'check')} on the least-sampled site; ${MIN_ACTIONABLE_SAMPLES} makes this actionable.`;
   }
-  if (confidence === 'high') {
-    return `${rows.length} enabled ${plural(rows.length, 'endpoint')} are mature; the thinnest has ${minSamples} samples.`;
-  }
-  return `${rows.length} enabled ${plural(rows.length, 'endpoint')} are ready with at least ${minSamples} samples.`;
+  return `Based on ${minSamples}+ successful checks across ${rows.length} ${plural(rows.length, 'site')}.`;
 }
 
 function explanationFor(
@@ -292,27 +288,26 @@ function explanationFor(
   verdict: Verdict,
 ): string {
   const overRows = rows.filter((row) => row.stats.p50 > threshold);
-  const avgLoss = mean(rows.map((row) => row.stats.lossPercent));
-  const avgJitter = mean(rows.map((row) => row.stats.stddev));
 
   switch (kind) {
     case 'collecting':
-      return 'Collecting browser-visible samples before making a diagnostic call.';
+      return 'Collecting enough data to call this test.';
     case 'healthy':
-      return 'Median latency, jitter, and failed requests are inside the current thresholds across ready endpoints.';
+      return 'This test looks healthy.';
     case 'isolated-endpoint': {
       const bad = rows.find((row) => row.ep.id === verdict.worstEpId) ?? overRows[0];
-      const label = bad?.ep.label ?? 'one endpoint';
-      return `${label} is above ${fmtMs(threshold)} while the comparison endpoints are not in browser-visible data.`;
+      const label = bad?.ep.label ?? 'One site';
+      if (rows.length < 2) return `${label} is slower than your threshold.`;
+      return `${label} is slower than the others in this test.`;
     }
     case 'shared-network':
-      return 'Multiple endpoints are slow in the same browser-visible measurement window. That is shared symptom evidence, not hop-by-hop root-cause proof.';
+      return 'Several sites are slow in the same test window.';
     case 'packet-loss':
-      return `Failed requests are elevated at ${fmtPct(avgLoss)}, even if median latency is still near normal.`;
+      return 'Some requests are failing.';
     case 'jitter':
-      return `Latency variance is elevated at ${fmtMs(avgJitter)}, so the connection is unstable even when the median looks acceptable.`;
+      return 'Latency is jumping around.';
     case 'multiple-slow':
-      return `${overRows.length} endpoints are above ${fmtMs(threshold)}, but the browser evidence does not isolate one shared phase yet.`;
+      return 'Several sites are slower than your threshold.';
   }
 }
 
@@ -387,21 +382,21 @@ function evidenceFor(input: {
   const evidence: DiagnosticEvidence[] = [
     {
       id: 'ready-endpoints',
-      label: 'Ready endpoints',
+      label: 'Ready sites',
       value: `${rows.length}/${monitoredEndpointCount}`,
-      detail: rows.length === 0 ? 'waiting for samples' : 'ready for this answer',
+      detail: rows.length === 0 ? 'waiting for successful checks' : 'enough checks for this answer',
     },
     {
       id: 'slow-endpoints',
-      label: 'Slow endpoints',
+      label: 'Slow sites',
       value: String(overRows.length),
-      detail: `p50 above ${fmtMs(threshold)}`,
+      detail: `median above ${fmtMs(threshold)}`,
     },
     {
       id: 'timing-visibility',
       label: 'Timing visibility',
       value: timingVisibility.headline,
-      detail: `${timingVisibility.phaseSampleCount}/${timingVisibility.okSampleCount} successful samples with phase timing`,
+      detail: `${timingVisibility.phaseSampleCount}/${timingVisibility.okSampleCount} successful checks with detailed timing`,
     },
   ];
 
@@ -410,9 +405,9 @@ function evidenceFor(input: {
     if (row) {
       evidence.push({
         id: 'endpoint-to-inspect',
-        label: 'Endpoint to inspect',
+        label: 'Site to inspect',
         value: row.ep.label,
-        detail: `p50 ${fmtMs(row.stats.p50)}`,
+        detail: `median ${fmtMs(row.stats.p50)}`,
       });
     }
   }
@@ -422,7 +417,7 @@ function evidenceFor(input: {
       id: 'shared-signal',
       label: 'Shared signal',
       value: PHASE_LABELS[verdict.phase],
-      detail: 'dominant on multiple slow endpoints',
+      detail: 'dominant on multiple slow sites',
     });
   }
 
@@ -469,28 +464,28 @@ function limitationsFor(
 function nextStepsFor(kind: DiagnosticKind, verdict: Verdict, rows: readonly VerdictRow[]): readonly string[] {
   switch (kind) {
     case 'collecting':
-      return ['Let the run continue until each enabled endpoint has at least 12 successful samples.'];
+      return ['Let the test continue until each site has at least 12 successful checks.'];
     case 'healthy':
-      return ['Share a snapshot of these measured results, or keep it running if you are chasing an intermittent issue.'];
+      return ['Share a snapshot of these measured results, or keep it running if the issue comes and goes.'];
     case 'isolated-endpoint': {
       const row = rows.find((candidate) => candidate.ep.id === verdict.worstEpId);
-      const label = row?.ep.label ?? 'the slow endpoint';
+      const label = row?.ep.label ?? 'the slow site';
       return [
-        `Open Investigate for ${label} and check whether spikes line up with other endpoints.`,
-        'Compare the same endpoint from another network or outside vantage before assigning cause.',
+        `Open Investigate for ${label} to compare it with the same moments on other sites.`,
+        'Try the same site from another network before assigning cause.',
       ];
     }
     case 'shared-network':
       return [
-        'Compare from another network or run the local agent to narrow the shared browser-visible symptom.',
-        'For endpoints you control, send Timing-Allow-Origin so Chronoscope can separate DNS, TCP, TLS, server, and transfer time.',
+        'Compare from another network or run the local agent to narrow where the slowdown appears.',
+        'For sites you control, send Timing-Allow-Origin so Chronoscope can separate DNS, TCP, TLS, server, and transfer time.',
       ];
     case 'packet-loss':
       return ['Run longer to confirm the failure rate, then compare on another network or wired connection.'];
     case 'jitter':
-      return ['Compare wired or another network, or run the local agent, to narrow the unstable browser-visible path.'];
+      return ['Compare wired or another network, or run the local agent, to narrow where latency is jumping around.'];
     case 'multiple-slow':
-      return ['Run longer and open Investigate on the worst endpoint to see whether the slow rounds correlate across sites.'];
+      return ['Run longer and open Investigate on the slowest site to see whether the slow moments line up.'];
   }
 }
 
@@ -546,7 +541,7 @@ function snapshotEligibilityFor(input: {
   if (!readiness.allEnabledMature || confidence !== 'high') {
     return {
       eligible: false,
-      reason: `Wait until every enabled endpoint has at least ${MIN_MATURE_SAMPLES} samples.`,
+      reason: `Wait until every site has at least ${MIN_MATURE_SAMPLES} successful checks.`,
       facts: [],
     };
   }
@@ -554,7 +549,7 @@ function snapshotEligibilityFor(input: {
   if (avgLoss > LOSS_WARN_PERCENT) {
     return {
       eligible: false,
-      reason: 'Failed requests are elevated, so this run is better shared as a support report.',
+      reason: 'Some requests are failing, so this run is better shared as a support report.',
       facts: [],
     };
   }
@@ -562,13 +557,13 @@ function snapshotEligibilityFor(input: {
   if (avgJitter >= JITTER_WARN_MS) {
     return {
       eligible: false,
-      reason: 'Latency variance is elevated, so this run is better shared as a support report.',
+      reason: 'Latency is jumping around, so this run is better shared as a support report.',
       facts: [],
     };
   }
   return {
     eligible: true,
-    reason: 'Mature browser-visible measurements are clean enough for a snapshot link.',
+    reason: 'This run has enough clean checks for a snapshot link.',
     facts: evidence.filter((item) => (
       item.id === 'ready-endpoints' || item.id === 'slow-endpoints' || item.id === 'timing-visibility'
     )),
@@ -593,8 +588,8 @@ function primaryValidationFor(input: {
   if (!readiness.allEnabledActionable) {
     const missingEndpoints = Math.max(monitoredEndpointCount - rows.length, 0);
     const reason = missingEndpoints > 0
-      ? `${rows.length} of ${monitoredEndpointCount} enabled endpoints are ready; wait for the rest before acting on the answer.`
-      : `The thinnest enabled endpoint has ${minSamples} samples; ${MIN_ACTIONABLE_SAMPLES} successful samples makes the answer actionable.`;
+      ? `${rows.length} of ${monitoredEndpointCount} ${plural(monitoredEndpointCount, 'site')} have enough checks so far. Wait for the rest before acting on this answer.`
+      : `The least-sampled site has ${minSamples} successful ${plural(minSamples, 'check')}; ${MIN_ACTIONABLE_SAMPLES} makes this actionable.`;
     return {
       id: 'collect-more-samples',
       label: 'Collect more samples',
@@ -620,7 +615,7 @@ function primaryValidationFor(input: {
     return {
       id: 'explain-browser-visibility',
       label: 'Review browser visibility',
-      reason: `${timingVisibility.headline}: the browser can compare total fetch time, but hidden phases limit root-cause claims.`,
+      reason: 'Chronoscope can compare total load time, but not every DNS, TCP, TLS, or server timing detail is visible.',
       claim,
       ...(verdict.worstEpId ? { endpointId: verdict.worstEpId } : {}),
     };
@@ -632,7 +627,7 @@ function primaryValidationFor(input: {
     return {
       id: 'run-remote-check',
       label: 'Run remote check',
-      reason: 'Compare this browser-visible result against an outside vantage before assigning cause.',
+      reason: 'Compare this test from outside your network before assigning cause.',
       claim,
       endpointId: verdict.worstEpId,
     };
@@ -644,7 +639,7 @@ function primaryValidationFor(input: {
     return {
       id: 'compare-network',
       label: 'Compare another network',
-      reason: 'The browser evidence shows the symptom; another network or the local agent can narrow where it appears.',
+      reason: 'This browser test shows the symptom; another network or the local agent can narrow where it appears.',
       claim,
     };
   }
@@ -658,7 +653,7 @@ function primaryValidationFor(input: {
 }
 
 function safeSummaryFor(claim: DiagnosticClaim, confidenceReasonText: string): string {
-  return `browser-visible answer: ${claim.text} (${claim.strength} confidence; ${confidenceReasonText})`;
+  return `This browser test: ${claim.text} (${claim.strength} confidence; ${confidenceReasonText})`;
 }
 
 export function buildDiagnosticNarrative(input: DiagnosticInput): DiagnosticNarrative {
@@ -677,7 +672,7 @@ export function buildDiagnosticNarrative(input: DiagnosticInput): DiagnosticNarr
     timingVisibility,
     readiness,
   });
-  const confidenceReasonText = confidenceReason(confidence, input.rows, input.monitoredEndpointCount, readiness);
+  const confidenceReasonText = confidenceReason(input.rows, input.monitoredEndpointCount, readiness);
   const primaryAnswer = primaryAnswerFor({
     kind,
     confidence,

@@ -69,8 +69,8 @@ describe('describeTimingVisibility', () => {
   it('reports total-only timing when no successful sample exposes Resource Timing phases', () => {
     const visibility = describeTimingVisibility(samples(3), 'no-cors');
     expect(visibility.level).toBe('total-only');
-    expect(visibility.headline).toBe('Total latency only');
-    expect(visibility.detail).toContain('no-cors');
+    expect(visibility.headline).toBe('Some timing details are hidden by the browser');
+    expect(visibility.detail).toContain('browser usually hides DNS');
     expect(visibility.action).toContain('Timing-Allow-Origin');
   });
 
@@ -88,7 +88,7 @@ describe('describeTimingVisibility', () => {
       ok(3, 54, { tier2 }),
     ], 'cors');
     expect(visibility.level).toBe('mixed');
-    expect(visibility.headline).toContain('Some phase timing');
+    expect(visibility.headline).toBe('Some timing details are hidden by the browser');
     expect(visibility.detail).toContain('2 of 3');
   });
 });
@@ -106,10 +106,10 @@ describe('buildDiagnosticNarrative', () => {
     expect(narrative.kind).toBe('collecting');
     expect(narrative.confidence).toBe('low');
     expect(narrative.verdict.headline).toBe('Measuring…');
-    expect(narrative.primaryAnswer.text).toContain('Collecting browser-visible samples');
+    expect(narrative.primaryAnswer.text).toBe('Collecting enough data to call this test.');
     expect(narrative.primaryAnswer.kind).toBe('measured');
     expect(narrative.primaryValidation.id).toBe('collect-more-samples');
-    expect(narrative.nextSteps[0]).toContain('12 successful samples');
+    expect(narrative.nextSteps[0]).toContain('12 successful checks');
   });
 
   it('marks healthy multi-endpoint evidence as high confidence when samples are mature', () => {
@@ -129,10 +129,11 @@ describe('buildDiagnosticNarrative', () => {
     expect(narrative.kind).toBe('healthy');
     expect(narrative.severity).toBe('healthy');
     expect(narrative.confidence).toBe('high');
-    expect(narrative.explanation).toContain('inside the current thresholds');
+    expect(narrative.explanation).toBe('This test looks healthy.');
+    expect(narrative.confidenceReason).toBe('Based on 35+ successful checks across 3 sites.');
     expect(narrative.snapshotEligibility.eligible).toBe(true);
     expect(narrative.primaryValidation.id).toBe('share-snapshot');
-    expect(narrative.safeSummary).toContain('browser-visible');
+    expect(narrative.safeSummary).toContain('This browser test: This test looks healthy.');
   });
 
   it('explains isolated endpoint slowness with evidence-labeled endpoint and next validation step', () => {
@@ -155,11 +156,11 @@ describe('buildDiagnosticNarrative', () => {
 
     expect(narrative.kind).toBe('isolated-endpoint');
     expect(narrative.confidence).toBe('medium');
-    expect(narrative.explanation).toContain('API is above 120 ms');
-    expect(narrative.primaryAnswer.text).toContain('API is above 120 ms');
+    expect(narrative.explanation).toBe('API is slower than the others in this test.');
+    expect(narrative.primaryAnswer.text).toBe('API is slower than the others in this test.');
     expect(narrative.primaryAnswer.kind).toBe('inferred');
     expect(narrative.primaryValidation.id).toBe('explain-browser-visibility');
-    expect(narrative.evidence.some((item) => item.label === 'Endpoint to inspect' && item.value === 'API')).toBe(true);
+    expect(narrative.evidence.some((item) => item.label === 'Site to inspect' && item.value === 'API')).toBe(true);
     expect(narrative.safeSummary).not.toMatch(/likely (source|site|network|your network)/i);
     expect(narrative.nextSteps.join(' ')).toContain('Open Investigate');
   });
@@ -177,10 +178,12 @@ describe('buildDiagnosticNarrative', () => {
     });
 
     expect(narrative.timingVisibility.level).toBe('total-only');
-    expect(narrative.limitations[0]?.headline).toBe('Total latency only');
+    expect(narrative.limitations[0]?.headline).toBe('Some timing details are hidden by the browser');
+    expect(narrative.limitations[0]?.detail).toContain('browser usually hides DNS');
     expect(narrative.limitations[0]?.action).toContain('Timing-Allow-Origin');
     expect(narrative.primaryValidation.id).toBe('explain-browser-visibility');
-    expect(narrative.confidenceReason).toContain('12');
+    expect(narrative.primaryValidation.reason).toBe('Chronoscope can compare total load time, but not every DNS, TCP, TLS, or server timing detail is visible.');
+    expect(narrative.confidenceReason).toBe('Based on 12+ successful checks across 2 sites.');
   });
 
   it('estimates successful samples from loss when raw samples are unavailable', () => {
@@ -197,7 +200,7 @@ describe('buildDiagnosticNarrative', () => {
 
     expect(narrative.confidence).toBe('low');
     expect(narrative.primaryValidation.id).toBe('collect-more-samples');
-    expect(narrative.primaryValidation.reason).toContain('6 samples');
+    expect(narrative.primaryValidation.reason).toContain('6 successful checks');
     expect(narrative.snapshotEligibility.eligible).toBe(false);
   });
 
@@ -229,9 +232,68 @@ describe('buildDiagnosticNarrative', () => {
     expect(narrative.kind).toBe('shared-network');
     expect(narrative.limitations.some((limit) => limit.id === 'browser-sandbox')).toBe(true);
     expect(narrative.limitations.find((limit) => limit.id === 'browser-sandbox')?.detail).toContain('traceroute');
-    expect(narrative.primaryAnswer.text).toContain('Multiple endpoints are slow');
+    expect(narrative.primaryAnswer.text).toBe('Several sites are slow in the same test window.');
     expect(narrative.primaryAnswer.text).not.toMatch(/\b(?:likely|ISP|VPN|Wi[- ]?Fi)\b/i);
     expect(narrative.primaryValidation.reason).toContain('browser');
     expect(narrative.nextSteps.join(' ')).toContain('Timing-Allow-Origin');
+  });
+
+  it('uses plain verdicts for failed requests, jitter, and unresolved slow sites', () => {
+    const packetLoss = buildDiagnosticNarrative({
+      rows: [
+        row('google', { lossPercent: 2, sampleCount: 18 }),
+        row('cloudflare', { lossPercent: 2, sampleCount: 18 }),
+      ],
+      threshold: 120,
+      corsMode: 'no-cors',
+      samplesByEndpoint: {
+        google: samples(18, 50),
+        cloudflare: samples(18, 55),
+      },
+      monitoredEndpointCount: 2,
+    });
+    expect(packetLoss.kind).toBe('packet-loss');
+    expect(packetLoss.primaryAnswer.text).toBe('Some requests are failing.');
+
+    const jitter = buildDiagnosticNarrative({
+      rows: [
+        row('google', { stddev: 35, sampleCount: 18 }),
+        row('cloudflare', { stddev: 30, sampleCount: 18 }),
+      ],
+      threshold: 120,
+      corsMode: 'no-cors',
+      samplesByEndpoint: {
+        google: samples(18, 50),
+        cloudflare: samples(18, 55),
+      },
+      monitoredEndpointCount: 2,
+    });
+    expect(jitter.kind).toBe('jitter');
+    expect(jitter.primaryAnswer.text).toBe('Latency is jumping around.');
+
+    const multipleSlow = buildDiagnosticNarrative({
+      rows: [
+        row('google', { p50: 180, sampleCount: 18 }),
+        row('cloudflare', { p50: 170, sampleCount: 18 }),
+        row('aws', { p50: 50, sampleCount: 18 }),
+      ],
+      threshold: 120,
+      corsMode: 'no-cors',
+      samplesByEndpoint: {
+        google: samples(18, 180),
+        cloudflare: samples(18, 170),
+        aws: samples(18, 50),
+      },
+      monitoredEndpointCount: 3,
+    });
+    expect(multipleSlow.kind).toBe('multiple-slow');
+    expect(multipleSlow.primaryAnswer.text).toBe('Several sites are slower than your threshold.');
+    expect(
+      [
+        packetLoss.primaryAnswer.text,
+        jitter.primaryAnswer.text,
+        multipleSlow.primaryAnswer.text,
+      ].join(' '),
+    ).not.toMatch(/elevated|browser-visible|root-cause|likely/i);
   });
 });

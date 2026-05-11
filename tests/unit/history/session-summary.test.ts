@@ -131,7 +131,7 @@ describe('history session summaries', () => {
       settings,
     });
 
-    expect(summary?.verdict.headline).toContain('API is above 120 ms');
+    expect(summary?.verdict.headline).toContain('API is slower than your threshold');
     expect(summary?.verdict.headline).not.toMatch(/likely (that site|your network|source)/i);
   });
 
