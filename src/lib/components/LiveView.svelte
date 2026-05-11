@@ -150,6 +150,7 @@
           height={scopeHeight}
           focusedEndpointId={null}
           {p99Across}
+          detailScale={true}
           onDrill={handleDrill}
         />
       {/each}
@@ -163,6 +164,7 @@
       height={scopeHeight}
       focusedEndpointId={soloEndpoint ? null : focusedId}
       {p99Across}
+      detailScale={true}
       onDrill={handleDrill}
     />
   {/if}

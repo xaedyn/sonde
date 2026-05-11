@@ -21,10 +21,12 @@
     focusedEndpointId: string | null;
     /** p99 across all monitored endpoints — drives adaptive y-axis ceiling. */
     p99Across: number;
+    /** Tightens the display scale when traffic is healthy while preserving high-latency headroom. */
+    detailScale?: boolean;
     onDrill?: (endpointId: string) => void;
   }
 
-  let { endpoints, samplesByEndpoint, threshold, currentRound, height, focusedEndpointId, p99Across, onDrill }: Props = $props();
+  let { endpoints, samplesByEndpoint, threshold, currentRound, height, focusedEndpointId, p99Across, detailScale = false, onDrill }: Props = $props();
 
   // ── Geometry ────────────────────────────────────────────────────────────
   const VB_W = 1440;
@@ -54,8 +56,19 @@
   // ── Adaptive y-axis scale ───────────────────────────────────────────────
   // Recomputes only when p99Across or threshold changes — never per-rAF.
   const scale = $derived.by(() => latencyScale({ p99Across, threshold }));
-  const maxMs = $derived(scale.maxMs);
-  const ticks = $derived(scale.ticks);
+  const maxMs = $derived.by(() => {
+    if (!detailScale) return scale.maxMs;
+    const p99 = Number.isFinite(p99Across) && p99Across > 0 ? p99Across : 0;
+    const thresholdHint = Number.isFinite(threshold) && threshold > 0 ? threshold * 0.75 : 90;
+    const detailMax = Math.max(90, Math.ceil(Math.max(p99 * 1.8, thresholdHint) / 30) * 30);
+    return Math.min(scale.maxMs, detailMax);
+  });
+  const ticks = $derived.by(() => {
+    const visible = scale.ticks.filter((t) => t <= maxMs);
+    if (visible.length === 0) return [0, maxMs];
+    if (visible[visible.length - 1] !== maxMs) return [...visible, maxMs];
+    return visible;
+  });
   // tickStep drives grid-line density. When step <= 60 (tight scale), use
   // step/2 for minor lines but floor at 30ms to avoid paint overload.
   const tickStep = $derived(ticks.length > 1 ? ticks[1] - ticks[0] : 30);
@@ -81,6 +94,9 @@
   });
 
   const thresholdY = $derived(yOf(threshold));
+  const thresholdLabelY = $derived(Math.max(plotY0 + 12, thresholdY - 4));
+  const normalBandY = $derived(yOf(Math.min(threshold, maxMs)));
+  const normalBandHeight = $derived(plotY1 - normalBandY);
 
   // X axis ticks — every 10 rounds within the visible window; major every 30.
   interface XTick { round: number; x: number; major: boolean; }
@@ -279,6 +295,13 @@
   >
     <!-- Horizontal grid (latency buckets) -->
     <g aria-hidden="true">
+      <rect
+        x={plotX0}
+        y={normalBandY}
+        width={plotX1 - plotX0}
+        height={normalBandHeight}
+        fill="rgba(134, 239, 172, 0.025)"
+      />
       {#each hGrid as line (line.ms)}
         <line
           x1={plotX0} y1={line.y} x2={plotX1} y2={line.y}
@@ -325,7 +348,7 @@
       aria-hidden="true"
     />
     <text
-      x={plotX1 - 4} y={thresholdY - 4}
+      x={plotX1 - 4} y={thresholdLabelY}
       text-anchor="end" font-size="9" font-family={tokens.typography.mono.fontFamily}
       fill="var(--svg-threshold)" letter-spacing="0.1em"
       aria-hidden="true"

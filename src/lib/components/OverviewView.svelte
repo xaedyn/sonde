@@ -46,6 +46,18 @@
   const paused = $derived(
     measurements.lifecycle === 'stopped' || measurements.lifecycle === 'completed',
   );
+  const runContextLine = $derived.by(() => {
+    const count = monitored.length;
+    const plural = count === 1 ? 'endpoint' : 'endpoints';
+    if (count === 0) return 'No endpoints are enabled.';
+    if (measurements.lifecycle === 'running' || measurements.lifecycle === 'starting') {
+      return `Measuring ${count} enabled ${plural} from this browser.`;
+    }
+    if (measurements.lifecycle === 'completed' || measurements.lifecycle === 'stopped') {
+      return `Last run measured ${count} enabled ${plural} from this browser.`;
+    }
+    return `Ready to measure ${count} enabled ${plural} from this browser.`;
+  });
 
   const lastLatencies = $derived.by(() => {
     const out: Record<string, number | null> = {};
@@ -303,6 +315,7 @@
       {drillEndpoint}
       baselineInsight={historyBaselineInsight}
       autoStartSuppressionReason={$uiStore.autoStartSuppressionReason}
+      contextLine={runContextLine}
       onDrill={handleEnrichedDrill}
       onStart={onStart}
       variant="hero"

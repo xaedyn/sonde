@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { fmt, fmtParts, fmtPct, fmtCount, fmtAxisMs, axisEdgeLabel, binLabel } from '../../src/lib/utils/format';
+import { fmt, fmtParts, fmtPct, fmtCount, compactUrlLabel, fmtAxisMs, axisEdgeLabel, binLabel } from '../../src/lib/utils/format';
 import type { HistogramBin } from '../../src/lib/utils/diagnose-stats';
 
 describe('fmt()', () => {
@@ -77,6 +77,17 @@ describe('fmtCount()', () => {
     expect(fmtCount(42)).toBe('42');
     expect(fmtCount(1234)).toBe('1,234');
     expect(fmtCount(1000000)).toBe('1,000,000');
+  });
+});
+
+describe('compactUrlLabel()', () => {
+  it('renders hosts without protocol noise', () => {
+    expect(compactUrlLabel('https://www.google.com/generate_204')).toBe('google.com/generate_204');
+    expect(compactUrlLabel('https://edge.microsoft.com/')).toBe('edge.microsoft.com');
+  });
+
+  it('returns invalid input unchanged', () => {
+    expect(compactUrlLabel('not a url')).toBe('not a url');
   });
 });
 

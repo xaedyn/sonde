@@ -517,15 +517,23 @@
         >{last.ms}</text>
       {/if}
 
-      <!-- 8. Center readouts — score only. The QUALITY kicker (cy-72) and the
-           standalone verdict kicker (cy+22) were removed in the 2026-04-22
-           overlap polish: QUALITY was redundant with the score + verdict, and
+      <!-- 8. Center readouts — health score with an explicit label. The old
+           QUALITY kicker was ambiguous; HEALTH SCORE distinguishes the 0-100
+           number from latency milliseconds while the LIVE line carries ms.
            the cy+22 verdict collided with the hand needle. Verdict text is
            now carried as a tspan in the merged strip at cy+108 (see step 8b
            below, which is painted AFTER the hand). -->
+      <text
+            x={CX} y={CY - 88}
+            text-anchor="middle" font-size="9.5"
+            font-family={tokens.typography.mono.fontFamily}
+            fill="var(--t3)"
+            letter-spacing="0.16em"
+            aria-hidden="true"
+      >HEALTH SCORE</text>
       <text x={CX} y={CY - 6} text-anchor="middle" font-size="100" font-weight="200"
             fill="var(--t1)" font-family={tokens.typography.sans.fontFamily}
-            style="letter-spacing: -0.05em; font-variant-numeric: tabular-nums;">{scoreDisplay}</text>
+            style="letter-spacing: 0; font-variant-numeric: tabular-nums;">{scoreDisplay}</text>
 
       <!-- 8a (v2). 60s quality trace inside the face. Decorative — the numeric
            score + verdict kicker carry the primary meaning for SR users. -->

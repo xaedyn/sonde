@@ -14,6 +14,7 @@
     drillEndpoint: Endpoint | null;
     baselineInsight?: HistoryBaselineInsight | null;
     autoStartSuppressionReason?: AutoStartSuppressionReason | null;
+    contextLine?: string | null;
     variant?: 'normal' | 'hero';
     onDrill: (epId: string) => void;
     onStart?: () => void;
@@ -27,6 +28,7 @@
     drillEndpoint,
     baselineInsight = null,
     autoStartSuppressionReason = null,
+    contextLine = null,
     variant = 'normal',
     onDrill,
     onStart,
@@ -103,6 +105,10 @@
     <p class="verdict-explanation">{diagnosis.explanation}</p>
   {:else if suppressionMessage}
     <p class="verdict-explanation verdict-suppression">{suppressionMessage}</p>
+  {/if}
+
+  {#if contextLine}
+    <p class="verdict-context">{contextLine}</p>
   {/if}
 
   {#if showMetrics}
@@ -296,6 +302,14 @@
     font-size: var(--ts-sm);
     line-height: 1.35;
   }
+  .verdict-context {
+    grid-column: 1 / -1;
+    margin: -6px 0 0 18px;
+    color: var(--t4);
+    font-family: var(--mono);
+    font-size: var(--ts-xs);
+    letter-spacing: var(--tr-label);
+  }
 
   .verdict-metrics {
     grid-column: 1;
@@ -421,6 +435,7 @@
       font-size: var(--ts-xs);
       line-height: 1.25;
     }
+    .verdict-context { margin-left: 0; }
     .verdict-metrics { flex-wrap: wrap; gap: 10px 14px; padding-top: 6px; }
     .verdict-metric-num { font-size: var(--ts-lg); }
     .verdict-extra { display: none; }

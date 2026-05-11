@@ -26,14 +26,16 @@ const renderRailWith = (endpoints: readonly { id: string; url: string; label: st
 };
 
 describe('EndpointRail — G6 URL subtitle dedup truth table', () => {
-  // Case A: label !== url (known brand) — two lines expected.
-  it('should render URL subtitle when label differs from url (e.g. Google)', () => {
+  // Case A: label !== url (known brand) — two lines expected, with the
+  // visible subtitle compacted and the full URL preserved in title/aria.
+  it('should render compact URL subtitle when label differs from url (e.g. Google)', () => {
     const { container } = renderRailWith([
       { id: 'ep1', url: 'https://www.google.com', label: 'Google', enabled: true, color: '#fff' },
     ]);
     const urlSpan = container.querySelector('.rail-row-url');
     expect(urlSpan).not.toBeNull();
-    expect(urlSpan?.textContent).toBe('https://www.google.com');
+    expect(urlSpan?.textContent).toBe('google.com');
+    expect(urlSpan?.getAttribute('title')).toBe('https://www.google.com');
   });
 
   // Case B: label === url (user-added or post-4.4.2 default) — URL line hidden.
@@ -41,32 +43,37 @@ describe('EndpointRail — G6 URL subtitle dedup truth table', () => {
     const { container } = renderRailWith([
       { id: 'ep1', url: 'https://foo.com', label: 'https://foo.com', enabled: true, color: '#fff' },
     ]);
+    const labelSpan = container.querySelector('.rail-row-label');
     const urlSpan = container.querySelector('.rail-row-url');
+    expect(labelSpan?.textContent?.trim()).toBe('foo.com');
+    expect(labelSpan?.getAttribute('title')).toBe('https://foo.com');
     expect(urlSpan).toBeNull();
   });
 
-  // Case C: blank label — URL rendered in label slot, subtitle hidden.
+  // Case C: blank label — compact URL rendered in label slot, subtitle hidden.
   // Symmetric with aria-label's trim() === '' fallback — row collapses to one line.
-  it('should render URL in label slot and hide subtitle when label is blank', () => {
+  it('should render compact URL in label slot and hide subtitle when label is blank', () => {
     const { container } = renderRailWith([
       { id: 'ep1', url: 'https://foo.com', label: '', enabled: true, color: '#fff' },
     ]);
     const labelSpan = container.querySelector('.rail-row-label');
     const urlSpan = container.querySelector('.rail-row-url');
-    expect(labelSpan?.textContent).toBe('https://foo.com');
+    expect(labelSpan?.textContent?.trim()).toBe('foo.com');
+    expect(labelSpan?.getAttribute('title')).toBe('https://foo.com');
     expect(urlSpan).toBeNull();
   });
 
   // Case C': whitespace-only label — same treatment as blank. Locks the
   // trim() === '' branch so a future refactor can't quietly regress to
   // rendering an empty-looking top line above the URL.
-  it('should render URL in label slot and hide subtitle when label is whitespace-only', () => {
+  it('should render compact URL in label slot and hide subtitle when label is whitespace-only', () => {
     const { container } = renderRailWith([
       { id: 'ep1', url: 'https://foo.com', label: '   ', enabled: true, color: '#fff' },
     ]);
     const labelSpan = container.querySelector('.rail-row-label');
     const urlSpan = container.querySelector('.rail-row-url');
-    expect(labelSpan?.textContent).toBe('https://foo.com');
+    expect(labelSpan?.textContent?.trim()).toBe('foo.com');
+    expect(labelSpan?.getAttribute('title')).toBe('https://foo.com');
     expect(urlSpan).toBeNull();
   });
 
@@ -95,13 +102,14 @@ describe('EndpointRail — hostname-derived labels (post-construction behavior)'
     expect(labelSpan?.textContent).not.toContain('https://');
   });
 
-  it('URL subtitle rendered when hostname-derived label differs from url', () => {
+  it('compact URL subtitle rendered when hostname-derived label differs from url', () => {
     const { container } = renderRailWith([
       { id: 'ep1', url: 'https://api.example.com/v1/health', label: 'api.example.com', enabled: true, color: '#fff' },
     ]);
     const urlSpan = container.querySelector('.rail-row-url');
     expect(urlSpan).not.toBeNull();
-    expect(urlSpan?.textContent).toBe('https://api.example.com/v1/health');
+    expect(urlSpan?.textContent).toBe('api.example.com/v1/health');
+    expect(urlSpan?.getAttribute('title')).toBe('https://api.example.com/v1/health');
   });
 
   it('aria-label contains hostname-derived label as primary identifier', () => {
@@ -114,14 +122,14 @@ describe('EndpointRail — hostname-derived labels (post-construction behavior)'
     expect(aria).toContain('https://api.example.com/v1/health');
   });
 
-  it('brand-labeled endpoint shows brand in primary, URL in subtitle', () => {
+  it('brand-labeled endpoint shows brand in primary, compact URL in subtitle', () => {
     const { container } = renderRailWith([
       { id: 'ep1', url: 'https://www.google.com', label: 'Google', enabled: true, color: '#fff' },
     ]);
     const labelSpan = container.querySelector('.rail-row-label');
     const urlSpan = container.querySelector('.rail-row-url');
     expect(labelSpan?.textContent).toBe('Google');
-    expect(urlSpan?.textContent).toBe('https://www.google.com');
+    expect(urlSpan?.textContent).toBe('google.com');
   });
 });
 

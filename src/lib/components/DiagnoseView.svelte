@@ -15,7 +15,7 @@
   import { describeTimingVisibility, type DiagnosticConfidence } from '$lib/utils/diagnostic-narrative';
   import { phaseHypothesis, PHASE_LABELS, type PhaseBreakdown, type Tier2Phase } from '$lib/utils/verdict';
   import { buildHistogram, buildCorrelation } from '$lib/utils/diagnose-stats';
-  import { fmt, axisEdgeLabel, binLabel } from '$lib/utils/format';
+  import { fmt, compactUrlLabel, axisEdgeLabel, binLabel } from '$lib/utils/format';
   import { selectInvestigationEndpointId } from '$lib/utils/status-intent';
   import { tokens } from '$lib/tokens';
   import type { MeasurementSample } from '$lib/types';
@@ -30,6 +30,7 @@
   const focusedEndpoint = $derived(
     focusedId === null ? null : monitored.find((ep) => ep.id === focusedId) ?? null,
   );
+  const focusedEndpointUrlLabel = $derived(focusedEndpoint ? compactUrlLabel(focusedEndpoint.url) : '');
 
   $effect(() => {
     if ($uiStore.activeView !== 'diagnose') return;
@@ -239,7 +240,11 @@
         {#if focusedEndpoint}
           <span class="diagnose-title-pip" style:background={focusedEndpoint.color || tokens.color.endpoint[0]} aria-hidden="true"></span>
           <span class="diagnose-title-name">{focusedEndpoint.label}</span>
-          <span class="diagnose-title-url">{focusedEndpoint.url}</span>
+          <span
+            class="diagnose-title-url"
+            title={focusedEndpoint.url}
+            aria-label={focusedEndpoint.url}
+          >{focusedEndpointUrlLabel}</span>
         {:else}
           <span class="diagnose-title-placeholder">—</span>
         {/if}
@@ -267,6 +272,36 @@
       <p class="diagnose-empty-title">Choosing the best endpoint to investigate...</p>
     </div>
   {:else}
+    <section class="diagnose-answer" aria-label="Diagnostic answer">
+      <div class="diagnose-section-kicker">Diagnostic answer</div>
+      <div class="diagnose-answer-top">
+        <span
+          class="diagnose-confidence"
+          class:low={diagnoseConfidence === 'low'}
+          class:medium={diagnoseConfidence === 'medium'}
+          class:high={diagnoseConfidence === 'high'}
+          title={diagnoseConfidenceReason}
+        >{diagnoseConfidence} confidence</span>
+        <p class="diagnose-answer-headline">
+          {correlation?.verdict.headline ?? 'Collecting comparison data for this endpoint.'}
+        </p>
+      </div>
+      <dl class="diagnose-answer-evidence">
+        <div>
+          <dt>Samples</dt>
+          <dd>{distroStats?.n ?? 0}</dd>
+        </div>
+        <div>
+          <dt>Comparators</dt>
+          <dd>{Math.max(0, monitored.length - 1)}</dd>
+        </div>
+        <div>
+          <dt>Visibility</dt>
+          <dd>{timingVisibility.headline}</dd>
+        </div>
+      </dl>
+    </section>
+
     <!-- Distribution histogram — answers "what's this endpoint's typical latency,
          and how much does it vary?" -->
     <section class="diagnose-distro" aria-label="Latency distribution">
@@ -318,36 +353,6 @@
       {:else}
         <p class="distro-empty">Need at least 2 samples with different latencies before a distribution chart is meaningful. Run for a few more rounds.</p>
       {/if}
-    </section>
-
-    <section class="diagnose-answer" aria-label="Diagnostic answer">
-      <div class="diagnose-section-kicker">Diagnostic answer</div>
-      <div class="diagnose-answer-top">
-        <span
-          class="diagnose-confidence"
-          class:low={diagnoseConfidence === 'low'}
-          class:medium={diagnoseConfidence === 'medium'}
-          class:high={diagnoseConfidence === 'high'}
-          title={diagnoseConfidenceReason}
-        >{diagnoseConfidence} confidence</span>
-        <p class="diagnose-answer-headline">
-          {correlation?.verdict.headline ?? 'Collecting comparison data for this endpoint.'}
-        </p>
-      </div>
-      <dl class="diagnose-answer-evidence">
-        <div>
-          <dt>Samples</dt>
-          <dd>{distroStats?.n ?? 0}</dd>
-        </div>
-        <div>
-          <dt>Comparators</dt>
-          <dd>{Math.max(0, monitored.length - 1)}</dd>
-        </div>
-        <div>
-          <dt>Visibility</dt>
-          <dd>{timingVisibility.headline}</dd>
-        </div>
-      </dl>
     </section>
 
     <section class="diagnose-visibility" aria-label="Browser visibility">

@@ -91,6 +91,22 @@ export function formatElapsed(ms: number): string {
   return `${minutes}:${ss}`;
 }
 
+/**
+ * Render a URL as a compact human label while preserving enough path context
+ * to distinguish probes on the same host. The full URL stays available in
+ * aria labels and titles where components need it.
+ */
+export function compactUrlLabel(url: string): string {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.host.replace(/^www\./, '');
+    const path = parsed.pathname === '/' ? '' : parsed.pathname.replace(/\/$/, '');
+    return path ? `${host}${path}` : host;
+  } catch {
+    return url;
+  }
+}
+
 // ── Histogram axis and tooltip helpers ────────────────────────────────────────
 // These helpers are colocated in format.ts (not in DiagnoseView.svelte) so they
 // are unit-testable without mounting a component. No store imports, no DOM.

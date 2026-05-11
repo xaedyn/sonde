@@ -83,7 +83,7 @@
           <path d="M8 2.5V10M8 2.5L5.5 5M8 2.5L10.5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </button>
-      <button type="button" class="run-btn start" aria-label="Run your own test" onclick={handleRunOwn}>
+      <button type="button" class="run-btn start run-own" aria-label="Run your own test" onclick={handleRunOwn}>
         Run Your Own Test
       </button>
     {:else}
@@ -276,17 +276,32 @@
     .run-dot, .icon-btn, .run-btn { animation: none !important; transition: none !important; }
   }
 
-  /* Mobile narrow: hide brand-sub, label, and tick under 768px so the dot
-     and action cluster stay visible without horizontal overflow.            */
   @media (max-width: 767px) {
-    .brand-sub, .run-label, .run-tick { display: none; }
+    .brand-sub, .run-tick { display: none; }
+    .brand-name { font-size: var(--ts-sm); }
+    .run-label { font-size: var(--ts-xs); }
     .topbar { gap: 8px; padding: 0 12px; }
     .actions { gap: 6px; }
+    .icon-btn { min-width: 40px; padding: 0 10px; }
+    .actions .run-btn:not(.run-own) {
+      justify-content: center;
+      min-width: 40px;
+      width: 40px;
+      padding: 0;
+    }
+    .actions .run-btn:not(.run-own) span:not(.run-btn-icon) { display: none; }
   }
 
   @media (max-width: 420px) {
-    .brand-meta, .topbar-divider { display: none; }
-    .brand { gap: 0; }
+    .run-label { display: none; }
+    .topbar-divider { display: none; }
+    .brand { gap: 6px; }
+    .brand-mark { width: 22px; height: 22px; }
     .run-btn { padding: 0 10px; }
+  }
+
+  @media (max-width: 374px) {
+    .brand-meta, .run-label { display: none; }
+    .brand { gap: 0; }
   }
 </style>
