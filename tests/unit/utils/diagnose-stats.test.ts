@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { buildHistogram, buildCorrelation } from '../../../src/lib/utils/diagnose-stats';
+import {
+  buildDistributionEmptyMessage,
+  buildHistogram,
+  buildCorrelation,
+} from '../../../src/lib/utils/diagnose-stats';
 import type { MeasurementSample } from '../../../src/lib/types';
 
 // Test factories matched to the actual MeasurementSample shape:
@@ -205,6 +209,28 @@ describe('buildHistogram() — 1-2-5 log-bin schema', () => {
     expect(result.total).toBe(51);
   });
 
+});
+
+describe('buildDistributionEmptyMessage()', () => {
+  it('uses compact clustered copy when many checks have no meaningful spread and are above threshold', () => {
+    const samples = Array.from({ length: 35 }, (_, i) => okSample(i + 1, 240));
+    expect(buildDistributionEmptyMessage(samples, 120)).toBe(
+      '35 checks clustered near 240 ms, above your 120 ms threshold. No spread to chart.',
+    );
+  });
+
+  it('uses compact clustered copy without threshold language when the cluster is within threshold', () => {
+    const samples = Array.from({ length: 12 }, (_, i) => okSample(i + 1, 45));
+    expect(buildDistributionEmptyMessage(samples, 120)).toBe(
+      '12 checks clustered near 45 ms. No spread to chart.',
+    );
+  });
+
+  it('keeps sparse-data copy short and accurate', () => {
+    expect(buildDistributionEmptyMessage([okSample(1, 45)], 120)).toBe(
+      'Need at least 2 successful checks to chart spread.',
+    );
+  });
 });
 
 describe('buildCorrelation', () => {

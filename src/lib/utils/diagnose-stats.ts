@@ -32,6 +32,24 @@ export interface Histogram {
   readonly total: number;
 }
 
+function successfulLatencies(samples: readonly MeasurementSample[]): number[] {
+  const oks: number[] = [];
+  for (const s of samples) {
+    if (s.status === 'ok' && Number.isFinite(s.latency) && s.latency >= 0) {
+      oks.push(s.latency);
+    }
+  }
+  return oks;
+}
+
+function plural(count: number, singular: string, pluralForm = `${singular}s`): string {
+  return count === 1 ? singular : pluralForm;
+}
+
+function fmtMs(ms: number): string {
+  return `${Math.round(ms)} ms`;
+}
+
 // Fixed 1-2-5 log-spaced bin edges. There are 11 bins total:
 //   bin 0:  (-∞, 2)       fromMs=0, toMs=2         "<2 ms"
 //   bin 1:  [2, 5)        fromMs=2, toMs=5          "2–5 ms"
@@ -68,12 +86,7 @@ const ALL_BINS: ReadonlyArray<{ readonly fromMs: number; readonly toMs: number }
  * is true, so the naive `typeof s.latency === 'number'` guard is insufficient.
  */
 export function buildHistogram(samples: readonly MeasurementSample[]): Histogram {
-  const oks: number[] = [];
-  for (const s of samples) {
-    if (s.status === 'ok' && Number.isFinite(s.latency) && s.latency >= 0) {
-      oks.push(s.latency);
-    }
-  }
+  const oks = successfulLatencies(samples);
 
   if (oks.length < 2) return { bins: [], maxCount: 0, total: oks.length };
 
@@ -125,6 +138,25 @@ export function buildHistogram(samples: readonly MeasurementSample[]): Histogram
   for (const b of bins) if (b.count > maxCount) maxCount = b.count;
 
   return { bins, maxCount, total: oks.length };
+}
+
+export function buildDistributionEmptyMessage(
+  samples: readonly MeasurementSample[],
+  thresholdMs: number | null = null,
+): string {
+  const oks = successfulLatencies(samples);
+  if (oks.length === 0) return 'Waiting for successful checks.';
+  if (oks.length < 2) return 'Need at least 2 successful checks to chart spread.';
+
+  const center = median(oks);
+  const countLabel = `${oks.length} ${plural(oks.length, 'check')}`;
+  const threshold = typeof thresholdMs === 'number' && Number.isFinite(thresholdMs)
+    ? thresholdMs
+    : null;
+  const thresholdText = threshold !== null && center > threshold
+    ? `, above your ${fmtMs(threshold)} threshold`
+    : '';
+  return `${countLabel} clustered near ${fmtMs(center)}${thresholdText}. No spread to chart.`;
 }
 
 // ── Cross-endpoint correlation ───────────────────────────────────────────────

@@ -14,7 +14,7 @@
   import { buildRemoteVantageInsight } from '$lib/remote-vantage/insight';
   import { describeTimingVisibility, type DiagnosticConfidence } from '$lib/utils/diagnostic-narrative';
   import { phaseHypothesis, PHASE_LABELS, type PhaseBreakdown, type Tier2Phase } from '$lib/utils/verdict';
-  import { buildHistogram, buildCorrelation } from '$lib/utils/diagnose-stats';
+  import { buildDistributionEmptyMessage, buildHistogram, buildCorrelation } from '$lib/utils/diagnose-stats';
   import { fmt, compactUrlLabel, axisEdgeLabel, binLabel } from '$lib/utils/format';
   import { selectInvestigationEndpointId } from '$lib/utils/status-intent';
   import { tokens } from '$lib/tokens';
@@ -132,6 +132,10 @@
     return m.samples.toArray().slice(-50);
   });
   const histogram = $derived(buildHistogram(focusedAllSamples));
+  const distributionEmptyMessage = $derived(buildDistributionEmptyMessage(
+    focusedAllSamples,
+    settings.healthThreshold,
+  ));
 
   // p50 / p95 / spread — recompute locally so the histogram and the readout
   // share a single source of truth (focusedStats may use a different window).
@@ -356,7 +360,7 @@
           {/if}
         </div>
       {:else}
-        <p class="distro-empty">Need at least 2 samples with different latencies before a distribution chart is meaningful. Run for a few more rounds.</p>
+        <p class="distro-empty">{distributionEmptyMessage}</p>
       {/if}
     </section>
 
