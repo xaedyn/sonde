@@ -61,6 +61,7 @@
       {@const focused = focusedId === ep.id}
       {@const epColor = ep.color || tokens.color.endpoint[0]}
       {@const compactUrl = compactUrlLabel(ep.url)}
+      {@const showUrlAsPrimary = ep.label.trim() === '' || ep.label === ep.url}
       <button
         type="button"
         class="rail-row"
@@ -80,13 +81,15 @@
           style:box-shadow="0 0 8px {style.glow}"
           aria-hidden="true"
         ></span>
-        <span class="rail-row-body" class:single-line={ep.label.trim() === '' || ep.label === ep.url}>
+        <span class="rail-row-body" class:single-line={showUrlAsPrimary}>
           <!-- Whitespace-only or blank labels render the URL in the label slot
                so the visible top line is never empty. The URL subtitle is then
                hidden (no duplicate). Keeps the one-line/two-line logic symmetric
                with the aria-label dedup on line 70. -->
-          <span class="rail-row-label">{ep.label.trim() === '' ? ep.url : ep.label}</span>
-          {#if ep.label.trim() !== '' && ep.label !== ep.url}
+          <span class="rail-row-label" title={showUrlAsPrimary ? ep.url : undefined}>
+            {showUrlAsPrimary ? compactUrl : ep.label}
+          </span>
+          {#if !showUrlAsPrimary}
             <span class="rail-row-url" title={ep.url}>{compactUrl}</span>
           {/if}
         </span>

@@ -240,7 +240,11 @@
         {#if focusedEndpoint}
           <span class="diagnose-title-pip" style:background={focusedEndpoint.color || tokens.color.endpoint[0]} aria-hidden="true"></span>
           <span class="diagnose-title-name">{focusedEndpoint.label}</span>
-          <span class="diagnose-title-url" title={focusedEndpoint.url}>{focusedEndpointUrlLabel}</span>
+          <span
+            class="diagnose-title-url"
+            title={focusedEndpoint.url}
+            aria-label={focusedEndpoint.url}
+          >{focusedEndpointUrlLabel}</span>
         {:else}
           <span class="diagnose-title-placeholder">—</span>
         {/if}

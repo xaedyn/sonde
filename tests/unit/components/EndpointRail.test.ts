@@ -43,32 +43,37 @@ describe('EndpointRail — G6 URL subtitle dedup truth table', () => {
     const { container } = renderRailWith([
       { id: 'ep1', url: 'https://foo.com', label: 'https://foo.com', enabled: true, color: '#fff' },
     ]);
+    const labelSpan = container.querySelector('.rail-row-label');
     const urlSpan = container.querySelector('.rail-row-url');
+    expect(labelSpan?.textContent?.trim()).toBe('foo.com');
+    expect(labelSpan?.getAttribute('title')).toBe('https://foo.com');
     expect(urlSpan).toBeNull();
   });
 
-  // Case C: blank label — URL rendered in label slot, subtitle hidden.
+  // Case C: blank label — compact URL rendered in label slot, subtitle hidden.
   // Symmetric with aria-label's trim() === '' fallback — row collapses to one line.
-  it('should render URL in label slot and hide subtitle when label is blank', () => {
+  it('should render compact URL in label slot and hide subtitle when label is blank', () => {
     const { container } = renderRailWith([
       { id: 'ep1', url: 'https://foo.com', label: '', enabled: true, color: '#fff' },
     ]);
     const labelSpan = container.querySelector('.rail-row-label');
     const urlSpan = container.querySelector('.rail-row-url');
-    expect(labelSpan?.textContent).toBe('https://foo.com');
+    expect(labelSpan?.textContent?.trim()).toBe('foo.com');
+    expect(labelSpan?.getAttribute('title')).toBe('https://foo.com');
     expect(urlSpan).toBeNull();
   });
 
   // Case C': whitespace-only label — same treatment as blank. Locks the
   // trim() === '' branch so a future refactor can't quietly regress to
   // rendering an empty-looking top line above the URL.
-  it('should render URL in label slot and hide subtitle when label is whitespace-only', () => {
+  it('should render compact URL in label slot and hide subtitle when label is whitespace-only', () => {
     const { container } = renderRailWith([
       { id: 'ep1', url: 'https://foo.com', label: '   ', enabled: true, color: '#fff' },
     ]);
     const labelSpan = container.querySelector('.rail-row-label');
     const urlSpan = container.querySelector('.rail-row-url');
-    expect(labelSpan?.textContent).toBe('https://foo.com');
+    expect(labelSpan?.textContent?.trim()).toBe('foo.com');
+    expect(labelSpan?.getAttribute('title')).toBe('https://foo.com');
     expect(urlSpan).toBeNull();
   });
 
