@@ -171,6 +171,7 @@
       },
       others,
       16,
+      { slowThresholdMs: settings.healthThreshold },
     );
   });
 

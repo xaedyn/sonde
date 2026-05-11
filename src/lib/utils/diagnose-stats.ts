@@ -160,6 +160,10 @@ export interface CorrelationInput {
   readonly samples: readonly MeasurementSample[];
 }
 
+export interface CorrelationOptions {
+  readonly slowThresholdMs?: number | null;
+}
+
 /**
  * Spike threshold: a sample is a spike when it exceeds 1.5× the endpoint's
  * own median over the window. We use median-relative rather than absolute
@@ -167,6 +171,8 @@ export interface CorrelationInput {
  * the same footing.
  */
 const SPIKE_FACTOR = 1.5;
+const SLOWER_THAN_COMPARATORS_FACTOR = 1.5;
+const SLOWER_THAN_COMPARATORS_DELTA_MS = 50;
 
 /**
  * Minimum OK sample count before spike detection produces meaningful results.
@@ -224,6 +230,7 @@ export function buildCorrelation(
   focused: CorrelationInput,
   others: readonly CorrelationInput[],
   windowRounds = 16,
+  options: CorrelationOptions = {},
 ): { rows: readonly CorrelationRow[]; verdict: CorrelationVerdict } {
   // Determine the round window: the highest `windowRounds` round values across
   // all endpoints, oldest-first.
@@ -284,16 +291,34 @@ export function buildCorrelation(
   // OK samples in its history but zero known cells in the current window.
   // Gating "steady" on this count prevents the verdict from claiming health
   // for a window where focused produced no data at all.
-  const focusedKnownInWindow = focusedRow.cells.filter(c => c.latencyMs !== null).length;
+  const focusedWindowLatencies = focusedRow.cells
+    .map(c => c.latencyMs)
+    .filter((latency): latency is number => latency !== null);
+  const focusedKnownInWindow = focusedWindowLatencies.length;
+  const focusedWindowMedian = median(focusedWindowLatencies);
+  const otherWindowMedians = otherRows
+    .map(row => median(
+      row.cells
+        .map(c => c.latencyMs)
+        .filter((latency): latency is number => latency !== null),
+    ))
+    .filter((value) => value > 0);
+  const slowThresholdMs = typeof options.slowThresholdMs === 'number' && Number.isFinite(options.slowThresholdMs)
+    ? options.slowThresholdMs
+    : null;
 
   const headline = correlationHeadline({
     focusedLabel: focused.label,
     focusedOksCount: focusedOks.length,
     focusedKnownInWindow,
+    focusedWindowLatencies,
+    focusedWindowMedian,
     focusedSpikeCount: focusedSpikeRounds.length,
     otherSpikesPerFocusedSpike,
     knownComparatorsPerSpike,
     otherCount: otherRows.length,
+    otherWindowMedians,
+    slowThresholdMs,
   });
 
   return {
@@ -312,6 +337,8 @@ interface HeadlineInput {
    * known data in the current window (so calling it "steady" would be wrong).
    */
   readonly focusedKnownInWindow: number;
+  readonly focusedWindowLatencies: readonly number[];
+  readonly focusedWindowMedian: number;
   readonly focusedSpikeCount: number;
   readonly otherSpikesPerFocusedSpike: readonly number[];
   /**
@@ -321,6 +348,27 @@ interface HeadlineInput {
    */
   readonly knownComparatorsPerSpike: readonly number[];
   readonly otherCount: number;
+  readonly otherWindowMedians: readonly number[];
+  readonly slowThresholdMs: number | null;
+}
+
+function isConsistentlyAboveThreshold(
+  latencies: readonly number[],
+  thresholdMs: number,
+): boolean {
+  return latencies.length > 0 && latencies.every((latency) => latency > thresholdMs);
+}
+
+function isConsistentlySlowerThanComparators(
+  focusedWindowMedian: number,
+  otherWindowMedians: readonly number[],
+): boolean {
+  const comparatorMedian = median(otherWindowMedians);
+  if (focusedWindowMedian <= 0 || comparatorMedian <= 0) return false;
+  return (
+    focusedWindowMedian >= comparatorMedian * SLOWER_THAN_COMPARATORS_FACTOR &&
+    focusedWindowMedian - comparatorMedian >= SLOWER_THAN_COMPARATORS_DELTA_MS
+  );
 }
 
 function correlationHeadline(input: HeadlineInput): string {
@@ -328,10 +376,14 @@ function correlationHeadline(input: HeadlineInput): string {
     focusedLabel,
     focusedOksCount,
     focusedKnownInWindow,
+    focusedWindowLatencies,
+    focusedWindowMedian,
     focusedSpikeCount,
     otherSpikesPerFocusedSpike,
     knownComparatorsPerSpike,
     otherCount,
+    otherWindowMedians,
+    slowThresholdMs,
   } = input;
 
   // Confidence gates — branch on data quality first so we never produce a
@@ -351,7 +403,17 @@ function correlationHeadline(input: HeadlineInput): string {
     return `Still learning ${focusedLabel}'s baseline — ${focusedOksCount} of ${MIN_SAMPLES_FOR_SPIKE} samples.`;
   }
   if (focusedSpikeCount === 0) {
-    return `${focusedLabel} has been steady — no notable spikes in this window.`;
+    if (slowThresholdMs !== null && focusedWindowMedian > slowThresholdMs) {
+      const thresholdLabel = `${Math.round(slowThresholdMs)} ms`;
+      const cadence = isConsistentlyAboveThreshold(focusedWindowLatencies, slowThresholdMs)
+        ? 'consistently'
+        : 'typically';
+      return `${focusedLabel} is ${cadence} above your ${thresholdLabel} threshold. It is not spiking; it is staying slow.`;
+    }
+    if (isConsistentlySlowerThanComparators(focusedWindowMedian, otherWindowMedians)) {
+      return `${focusedLabel} is consistently slower than the comparison endpoints. It is not spiking; it is staying slow.`;
+    }
+    return `${focusedLabel} has no notable spikes in this window.`;
   }
 
   // For each focused-spike round, decide whether comparators give us enough

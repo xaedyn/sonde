@@ -256,7 +256,7 @@ test.describe('Acceptance criteria verification', () => {
 
       const comparison = investigate.locator('section[aria-label="Cross-endpoint comparison"]');
       await expect(comparison).toBeVisible();
-      await expect(comparison.locator('.correlation-headline')).toContainText(/has been steady.*no notable spikes/i);
+      await expect(comparison.locator('.correlation-headline')).toContainText(/consistently above your 120 ms threshold.*staying slow/i);
       await expect(comparison.locator('.correlation-grid')).toBeVisible();
 
       const recentSamples = investigate.locator('section[aria-label="Recent samples"]');

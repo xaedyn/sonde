@@ -280,8 +280,34 @@ describe('buildCorrelation', () => {
     };
     const result = buildCorrelation(steady, [longSeries('Google', 80, 0, 0)]);
     expect(result.verdict.focusedSpikeRounds).toEqual([]);
-    expect(result.verdict.headline).toContain('steady');
     expect(result.verdict.headline).toContain('no notable spikes');
+    expect(result.verdict.headline).not.toContain('steady');
+  });
+
+  it('verdict calls out slow-but-steady latency when the focused endpoint stays above threshold', () => {
+    const slowSteady = {
+      id: 'api', label: 'api.example.com',
+      samples: Array.from({ length: 16 }, (_, i) => okSample(i + 1, 240)),
+    };
+    const others = [longSeries('Google', 45, 0, 0), longSeries('Cloudflare', 38, 0, 0)];
+    const result = buildCorrelation(slowSteady, others, 16, { slowThresholdMs: 120 });
+    expect(result.verdict.focusedSpikeRounds).toEqual([]);
+    expect(result.verdict.headline).toContain('consistently above your 120 ms threshold');
+    expect(result.verdict.headline).toContain('staying slow');
+    expect(result.verdict.headline).not.toContain('steady');
+  });
+
+  it('verdict calls out relative slow-but-steady latency when no threshold is provided', () => {
+    const slowSteady = {
+      id: 'api', label: 'api.example.com',
+      samples: Array.from({ length: 16 }, (_, i) => okSample(i + 1, 240)),
+    };
+    const others = [longSeries('Google', 45, 0, 0), longSeries('Cloudflare', 38, 0, 0)];
+    const result = buildCorrelation(slowSteady, others);
+    expect(result.verdict.focusedSpikeRounds).toEqual([]);
+    expect(result.verdict.headline).toContain('consistently slower than the comparison endpoints');
+    expect(result.verdict.headline).toContain('staying slow');
+    expect(result.verdict.headline).not.toContain('steady');
   });
 
   it('verdict prompts for comparison endpoints when only the focused one is provided', () => {
