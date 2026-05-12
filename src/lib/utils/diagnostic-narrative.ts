@@ -54,6 +54,27 @@ export interface PrimaryValidationAction {
   readonly endpointId?: string;
 }
 
+export type DiagnosticTriageActionId =
+  | 'collect-more-samples'
+  | 'review-browser-visibility'
+  | 'open-investigate'
+  | 'run-remote-check'
+  | 'compare-another-network'
+  | 'run-local-agent'
+  | 'share-support-report'
+  | 'share-snapshot'
+  | 'keep-running';
+
+export interface DiagnosticTriageAction {
+  readonly id: DiagnosticTriageActionId;
+  readonly label: string;
+  readonly action: string;
+  readonly why: string;
+  readonly watchFor: string;
+  readonly requiredEvidence: readonly DiagnosticEvidenceGate[];
+  readonly endpointId?: string;
+}
+
 export interface SnapshotEligibility {
   readonly eligible: boolean;
   readonly reason: string;
@@ -99,6 +120,7 @@ export interface DiagnosticNarrative {
   readonly explanation: string;
   readonly evidence: readonly DiagnosticEvidence[];
   readonly limitations: readonly DiagnosticLimitation[];
+  readonly triageActions: readonly DiagnosticTriageAction[];
   readonly nextSteps: readonly string[];
   readonly timingVisibility: TimingVisibility;
 }
@@ -490,6 +512,182 @@ function nextStepsFor(kind: DiagnosticKind, verdict: Verdict, rows: readonly Ver
   }
 }
 
+function browserVisibilityAction(timingVisibility: TimingVisibility): DiagnosticTriageAction | null {
+  if (timingVisibility.level !== 'total-only' && timingVisibility.level !== 'mixed') return null;
+  return {
+    id: 'review-browser-visibility',
+    label: 'Check visibility',
+    action: 'Review what the browser can and cannot see.',
+    why: 'Chronoscope can compare total load time, but the browser hides DNS, TCP, TLS, server, or transfer detail for some sites.',
+    watchFor: 'If detailed timing appears, the next test can be stronger; otherwise treat this as a timing comparison.',
+    requiredEvidence: ['total-timing'],
+  };
+}
+
+function endpointLabelFor(verdict: Verdict, rows: readonly VerdictRow[]): string {
+  return rows.find((row) => row.ep.id === verdict.worstEpId)?.ep.label ?? 'the slow site';
+}
+
+function triageActionsFor(input: {
+  readonly kind: DiagnosticKind;
+  readonly verdict: Verdict;
+  readonly rows: readonly VerdictRow[];
+  readonly timingVisibility: TimingVisibility;
+  readonly primaryAnswer: DiagnosticClaim;
+}): readonly DiagnosticTriageAction[] {
+  const { kind, verdict, rows, timingVisibility, primaryAnswer } = input;
+  const visibility = browserVisibilityAction(timingVisibility);
+  const endpointLabel = endpointLabelFor(verdict, rows);
+  const endpointId = verdict.worstEpId;
+
+  if (kind === 'collecting') {
+    return [{
+      id: 'collect-more-samples',
+      label: 'Keep collecting',
+      action: 'Let the test keep running before acting on the answer.',
+      why: 'Early samples can make one site look unusual before the set has enough successful checks.',
+      watchFor: `Wait until each enabled site has at least ${MIN_ACTIONABLE_SAMPLES} successful checks.`,
+      requiredEvidence: ['sample-ready'],
+    }];
+  }
+
+  if (kind === 'healthy') {
+    return [
+      {
+        id: 'share-snapshot',
+        label: 'Share result',
+        action: 'Share this clean measured run.',
+        why: 'Every enabled site has mature checks and Chronoscope did not see slow medians or failed requests in this browser run.',
+        watchFor: 'If the issue returns later, compare the new run against this clean snapshot.',
+        requiredEvidence: ['all-enabled-ready', 'sample-mature', 'total-timing'],
+      },
+      {
+        id: 'keep-running',
+        label: 'Watch intermittent issues',
+        action: 'Keep it running if the problem comes and goes.',
+        why: 'Intermittent network symptoms often need more time before they show a repeatable pattern.',
+        watchFor: 'If one site or several sites start crossing the threshold, use the changed report instead of this clean one.',
+        requiredEvidence: ['sample-mature'],
+      },
+    ];
+  }
+
+  if (kind === 'isolated-endpoint') {
+    return [
+      ...(visibility ? [visibility] : []),
+      {
+        id: 'open-investigate',
+        label: 'Inspect slow moments',
+        action: `Open Investigate for ${endpointLabel} and compare slow moments across sites.`,
+        why: 'This checks whether the slow moments are isolated or shared.',
+        watchFor: `If only ${endpointLabel} stays slow, run the outside check before sharing; if several sites slow together, use shared-path tests.`,
+        requiredEvidence: primaryAnswer.requiredEvidence,
+        ...(endpointId ? { endpointId } : {}),
+      },
+      {
+        id: 'run-remote-check',
+        label: 'Run outside check',
+        action: `Run a remote check for ${endpointLabel}.`,
+        why: 'This separates what this browser path sees from what another network path sees.',
+        watchFor: 'If the outside check is clean while this browser is slow, compare another local network; if both are slow, share the report.',
+        requiredEvidence: ['all-enabled-ready', 'sample-actionable', 'total-timing'],
+        ...(endpointId ? { endpointId } : {}),
+      },
+      {
+        id: 'compare-another-network',
+        label: 'Compare location',
+        action: 'Try the same check from another network or device.',
+        why: 'A second local vantage shows whether the pattern follows this connection.',
+        watchFor: `If ${endpointLabel} is slow from multiple networks, the report is stronger; if it is only slow here, continue local-path checks.`,
+        requiredEvidence: ['all-enabled-ready', 'sample-actionable', 'total-timing'],
+        ...(endpointId ? { endpointId } : {}),
+      },
+    ];
+  }
+
+  if (kind === 'shared-network' || kind === 'multiple-slow') {
+    const actions: DiagnosticTriageAction[] = [
+      ...(visibility ? [visibility] : []),
+      {
+        id: 'compare-another-network',
+        label: 'Compare location',
+        action: 'Run the same set from another network.',
+        why: 'A second network shows whether the symptom follows this path.',
+        watchFor: 'If the second network is clean, deepen local-path checks; if both show the same pattern, share the measured report.',
+        requiredEvidence: primaryAnswer.requiredEvidence,
+      },
+      {
+        id: 'run-local-agent',
+        label: 'Deepen local proof',
+        action: 'Run the local agent for DNS trace, route hops, TLS, and Wi-Fi details.',
+        why: 'The browser cannot see route hops, DNS-chain, certificate, or radio details by itself.',
+        watchFor: 'hop-by-hop loss, DNS failures, certificate errors, or weak Wi-Fi signal would make the local-path case stronger.',
+        requiredEvidence: ['sample-actionable', 'local-agent'],
+      },
+      {
+        id: 'share-support-report',
+        label: 'Share measured facts',
+        action: 'Share the support report with the evidence and browser limits included.',
+        why: 'The report is useful when it separates measured facts from what Chronoscope cannot see.',
+        watchFor: 'A responder should be able to see which sites were slow, how many samples were kept, and which timing details were hidden.',
+        requiredEvidence: ['all-enabled-ready', 'sample-actionable', 'total-timing'],
+      },
+    ];
+    return actions.slice(0, 4);
+  }
+
+  if (kind === 'packet-loss') {
+    return [
+      {
+        id: 'compare-another-network',
+        label: 'Confirm failures',
+        action: 'Run longer, then compare on another network or a wired connection.',
+        why: 'Failed requests need repeatability before they point to a useful next test.',
+        watchFor: 'If failures continue across networks, share the report; if they stop on another path, deepen local checks.',
+        requiredEvidence: primaryAnswer.requiredEvidence,
+      },
+      {
+        id: 'run-local-agent',
+        label: 'Check local path',
+        action: 'Run the local agent if failures keep appearing here.',
+        why: 'Local packet loss needs OS-level route and interface evidence that the browser cannot collect.',
+        watchFor: 'Hop-by-hop loss or interface errors would make the local-path case stronger.',
+        requiredEvidence: ['sample-actionable', 'local-agent'],
+      },
+    ];
+  }
+
+  if (kind === 'jitter') {
+    return [
+      {
+        id: 'compare-another-network',
+        label: 'Compare stability',
+        action: 'Compare wired, Wi-Fi, or another network while watching jitter.',
+        why: 'Latency swings can come from local radio, congestion, or the service path, so the next test is whether they follow this connection.',
+        watchFor: 'If jitter drops on another path, continue local checks; if it follows the same site set, share the report.',
+        requiredEvidence: primaryAnswer.requiredEvidence,
+      },
+      {
+        id: 'run-local-agent',
+        label: 'Measure deeper',
+        action: 'Run the local agent to add route and Wi-Fi signal evidence.',
+        why: 'The browser can show jumping latency, but not radio quality or hop-level variation.',
+        watchFor: 'Weak signal, changing route latency, or hop-level spikes would narrow the next support conversation.',
+        requiredEvidence: ['sample-actionable', 'local-agent'],
+      },
+    ];
+  }
+
+  return [{
+    id: 'share-support-report',
+    label: 'Share measured facts',
+    action: 'Share the report after one more run confirms the same pattern.',
+    why: 'A repeated run makes unresolved slow-site evidence more useful without overstating why it happened.',
+    watchFor: 'If the same endpoints cross the threshold again, the report is stronger; if the pattern changes, keep collecting.',
+    requiredEvidence: primaryAnswer.requiredEvidence,
+  }];
+}
+
 function successfulSampleCount(samples: readonly MeasurementSample[] | undefined): number | null {
   if (samples === undefined) return null;
   return samples.filter((sample) => sample.status === 'ok').length;
@@ -760,6 +958,13 @@ export function buildDiagnosticNarrative(input: DiagnosticInput): DiagnosticNarr
     snapshotEligibility,
     readiness,
   });
+  const triageActions = triageActionsFor({
+    kind,
+    verdict,
+    rows: input.rows,
+    timingVisibility,
+    primaryAnswer,
+  });
 
   return {
     verdict,
@@ -784,6 +989,7 @@ export function buildDiagnosticNarrative(input: DiagnosticInput): DiagnosticNarr
     explanation: primaryAnswer.text,
     evidence,
     limitations: limitationsFor(kind, timingVisibility),
+    triageActions,
     nextSteps: nextStepsFor(kind, verdict, input.rows),
     timingVisibility,
   };

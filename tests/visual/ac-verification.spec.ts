@@ -299,6 +299,9 @@ test.describe('Acceptance criteria verification', () => {
     await expect(page.getByRole('button', { name: /Open Interactive Analysis/i })).toBeVisible();
     await expect(page.getByRole('table', { name: /Endpoint report table/i })).toContainText('inspect');
     await expect(page.getByText(/Timing-Allow-Origin/i)).toBeVisible();
+    await expect(page.getByText('What to try next')).toBeVisible();
+    await expect(page.getByText('Review what the browser can and cannot see.')).toBeVisible();
+    await expect(page.getByText('Run a remote check for api.example.com.')).toBeVisible();
   });
 });
 

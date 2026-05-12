@@ -1,4 +1,4 @@
-import { fireEvent, render } from '@testing-library/svelte';
+import { fireEvent, render, waitFor } from '@testing-library/svelte';
 import { get } from 'svelte/store';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Topbar from '../../../src/lib/components/Topbar.svelte';
@@ -71,5 +71,22 @@ describe('shared run-own reset', () => {
 
     expect(get(uiStore).isSharedView).toBe(false);
     expect(get(uiStore).autoStartSuppressionReason).toBeNull();
+  });
+
+  it('ReportView Copy Summary handles clipboard rejection without claiming success', async () => {
+    const writeText = vi.fn().mockRejectedValue(new DOMException('Denied', 'NotAllowedError'));
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    const { getByRole, queryByRole } = render(ReportView);
+
+    await fireEvent.click(getByRole('button', { name: /copy summary/i }));
+
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledTimes(1);
+    });
+    expect(queryByRole('button', { name: /summary copied/i })).toBeNull();
+    expect(getByRole('button', { name: /copy failed/i })).toBeTruthy();
   });
 });

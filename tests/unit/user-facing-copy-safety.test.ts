@@ -18,6 +18,10 @@ const forbiddenClaims: readonly RegExp[] = [
   /ISP is clean/i,
   /No network issue exists/i,
   /inside the current thresholds/i,
+  /will fix/i,
+  /restart your router/i,
+  /the problem is your/i,
+  /your ISP is/i,
 ];
 
 function sourceFiles(dir: string): string[] {

@@ -47,21 +47,34 @@
 
   let copiedSummary = $state(false);
   let copiedLink = $state(false);
+  let copyError = $state<'summary' | 'link' | null>(null);
 
-  function copyText(text: string, onDone: () => void): void {
-    if (!navigator.clipboard) return;
+  function resetCopyState(): void {
+    copiedSummary = false;
+    copiedLink = false;
+    copyError = null;
+  }
+
+  function copyText(text: string, onDone: () => void, onError: () => void): void {
+    if (!navigator.clipboard) {
+      onError();
+      return;
+    }
     void navigator.clipboard.writeText(text).then(() => {
+      copyError = null;
       onDone();
-      setTimeout(() => {
-        copiedSummary = false;
-        copiedLink = false;
-      }, 1800);
+      setTimeout(resetCopyState, 1800);
+    }).catch(() => {
+      onError();
+      setTimeout(resetCopyState, 1800);
     });
   }
 
   function handleCopySummary(): void {
     copyText(report.copySummary, () => {
       copiedSummary = true;
+    }, () => {
+      copyError = 'summary';
     });
   }
 
@@ -102,6 +115,8 @@
       : null;
     copyText(hostedUrl ?? buildShareURL(fallbackPayload ?? builtForHostedReport.payload), () => {
       copiedLink = true;
+    }, () => {
+      copyError = 'link';
     });
   }
 
@@ -150,10 +165,10 @@
         Open Interactive Analysis
       </button>
       <button type="button" class="action" onclick={handleCopySummary}>
-        {copiedSummary ? 'Summary Copied' : 'Copy Summary'}
+        {copyError === 'summary' ? 'Copy Failed' : copiedSummary ? 'Summary Copied' : 'Copy Summary'}
       </button>
       <button type="button" class="action" onclick={handleCopyLink}>
-        {copiedLink ? 'Link Copied' : 'Copy Report Link'}
+        {copyError === 'link' ? 'Copy Failed' : copiedLink ? 'Link Copied' : 'Copy Report Link'}
       </button>
       <button type="button" class="action" onclick={handleRunOwn}>
         Run Your Own Test
@@ -180,6 +195,23 @@
       <span class="metric-label">Timing mode</span>
       <strong>{report.corsMode}</strong>
       <span class="metric-note">{report.corsModeSource === 'shared' ? 'from sender' : report.corsModeSource === 'payload-settings' ? 'legacy link' : 'local default'}</span>
+    </div>
+  </section>
+
+  <section class="next-steps" aria-label="Recommended next steps">
+    <div class="section-kicker">What to try next</div>
+    <div class="triage-grid">
+      {#each report.diagnosis.triageActions as action, i (action.id)}
+        <article class="triage-card">
+          <div class="triage-index">{i + 1}</div>
+          <div>
+            <h2>{action.label}</h2>
+            <p class="triage-action">{action.action}</p>
+            <p>{action.why}</p>
+            <p class="triage-watch"><strong>Watch for:</strong> {action.watchFor}</p>
+          </div>
+        </article>
+      {/each}
     </div>
   </section>
 
@@ -297,14 +329,6 @@
     </div>
   </section>
 
-  <section class="next-steps" aria-label="Recommended next steps">
-    <div class="section-kicker">Recommended next steps</div>
-    <ol>
-      {#each report.diagnosis.nextSteps as step, i (`${i}-${step}`)}
-        <li>{step}</li>
-      {/each}
-    </ol>
-  </section>
 </section>
 
 <style>
@@ -445,6 +469,9 @@
     border-radius: 8px;
     background: rgba(12,10,20,.58);
     padding: 16px;
+  }
+  .next-steps {
+    margin-bottom: 18px;
   }
 
   .evidence-grid {
@@ -633,14 +660,49 @@
   .status-pill.loss { color: var(--accent-amber); border-color: rgba(251,191,36,.28); background: rgba(251,191,36,.08); }
   .status-pill.muted { opacity: .75; }
 
-  .next-steps ol {
-    margin: 12px 0 0;
-    padding-left: 22px;
-    color: var(--t2);
-    line-height: 1.6;
+  .triage-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 12px;
   }
-  .next-steps li + li {
-    margin-top: 6px;
+  .triage-card {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 10px;
+    padding: 12px;
+    border-radius: 7px;
+    border: 1px solid rgba(255,255,255,.07);
+    background: rgba(255,255,255,.035);
+  }
+  .triage-index {
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(103,232,249,.25);
+    color: var(--accent-cyan);
+    font-family: var(--mono);
+    font-size: var(--ts-xs);
+    font-variant-numeric: tabular-nums;
+  }
+  .triage-card h2 {
+    margin-top: 0;
+    font-size: var(--ts-base);
+  }
+  .triage-card p {
+    margin: 6px 0 0;
+    color: var(--t3);
+    line-height: 1.45;
+  }
+  .triage-action {
+    color: var(--t1) !important;
+  }
+  .triage-watch strong {
+    color: var(--t2);
   }
 
   @media (max-width: 900px) {
@@ -659,6 +721,9 @@
       grid-template-columns: 1fr;
     }
     .baseline-list {
+      grid-template-columns: 1fr;
+    }
+    .triage-grid {
       grid-template-columns: 1fr;
     }
     .endpoint-table {

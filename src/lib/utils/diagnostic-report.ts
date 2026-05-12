@@ -161,7 +161,7 @@ function buildCopySummary(report: Omit<DiagnosticReport, 'copySummary'>): string
     : 'No endpoint is currently above the report threshold.';
   const visibility = report.diagnosis.timingVisibility;
   const limitation = report.diagnosis.limitations[0];
-  const nextStep = `${report.diagnosis.primaryValidation.label}: ${report.diagnosis.primaryValidation.reason}`;
+  const firstTriageAction = report.diagnosis.triageActions[0];
 
   return [
     `Chronoscope diagnostic report: ${report.diagnosis.primaryAnswer.text} (${report.diagnosis.confidenceLabel}).`,
@@ -169,7 +169,8 @@ function buildCopySummary(report: Omit<DiagnosticReport, 'copySummary'>): string
     slowLine,
     `Evidence: ${report.keptSampleCount} samples kept across ${report.endpointRows.length} endpoints; threshold ${fmtMs(report.threshold)}; browser visibility: ${visibility.headline}.`,
     limitation ? `Caveat: ${limitation.detail}` : '',
-    `Next validation: ${nextStep}`,
+    firstTriageAction ? `First next test: ${firstTriageAction.action}` : '',
+    firstTriageAction ? `Watch for: ${firstTriageAction.watchFor}` : '',
   ].filter(Boolean).join('\n');
 }
 

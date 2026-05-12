@@ -36,8 +36,10 @@
   const verdict = $derived(diagnosis.verdict);
   const primaryHeadline = $derived(diagnosis.primaryAnswer.text);
   const primaryAction = $derived(diagnosis.primaryValidation);
+  const triageActions = $derived(diagnosis.triageActions ?? []);
+  const primaryTriageAction = $derived(triageActions[0] ?? null);
   const primaryLimitation = $derived(diagnosis.limitations[0] ?? null);
-  const primaryNextStep = $derived(primaryAction?.reason ?? diagnosis.nextSteps[0] ?? null);
+  const primaryNextStep = $derived(primaryTriageAction?.action ?? primaryAction?.reason ?? diagnosis.nextSteps[0] ?? null);
   const drillActionLabel = $derived(primaryAction?.endpointId === drillEndpoint?.id
     ? (primaryAction.id === 'run-remote-check' ? 'Open Investigate' : primaryAction.label)
     : 'Investigate');
@@ -171,7 +173,10 @@
         </p>
       {/if}
       {#if primaryNextStep}
-        <p class="verdict-next">
+        <p
+          class="verdict-next"
+          title={primaryTriageAction ? `${primaryTriageAction.why} ${primaryTriageAction.watchFor}` : undefined}
+        >
           <span class="verdict-extra-label">Next</span>
           <span>{primaryNextStep}</span>
         </p>

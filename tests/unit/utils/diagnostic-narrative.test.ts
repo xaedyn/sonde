@@ -110,6 +110,12 @@ describe('buildDiagnosticNarrative', () => {
     expect(narrative.primaryAnswer.kind).toBe('measured');
     expect(narrative.primaryValidation.id).toBe('collect-more-samples');
     expect(narrative.nextSteps[0]).toContain('12 successful checks');
+    expect(narrative.triageActions[0]).toMatchObject({
+      id: 'collect-more-samples',
+      label: 'Keep collecting',
+      requiredEvidence: ['sample-ready'],
+    });
+    expect(narrative.triageActions[0].watchFor).toContain('12 successful checks');
   });
 
   it('marks healthy multi-endpoint evidence as high confidence when samples are mature', () => {
@@ -135,6 +141,9 @@ describe('buildDiagnosticNarrative', () => {
     expect(narrative.primaryValidation.id).toBe('share-snapshot');
     expect(narrative.safeSummary).toContain('This browser test: This test looks healthy.');
     expect(narrative.supportingSummary).toBe('Clean browser-visible run: 35+ successful checks across 3 sites.');
+    expect(narrative.triageActions.map((action) => action.id)).toEqual(['share-snapshot', 'keep-running']);
+    expect(narrative.triageActions[0].action).toContain('Share this clean measured run');
+    expect(narrative.triageActions[0].why).toContain('mature checks');
   });
 
   it('explains isolated endpoint slowness with evidence-labeled endpoint and next validation step', () => {
@@ -165,6 +174,18 @@ describe('buildDiagnosticNarrative', () => {
     expect(narrative.safeSummary).not.toMatch(/likely (source|site|network|your network)/i);
     expect(narrative.supportingSummary).toBe('Evidence: 18+ successful checks across 3 sites; total timing only.');
     expect(narrative.nextSteps.join(' ')).toContain('Open Investigate');
+    expect(narrative.triageActions.map((action) => action.id)).toEqual([
+      'review-browser-visibility',
+      'open-investigate',
+      'run-remote-check',
+      'compare-another-network',
+    ]);
+    expect(narrative.triageActions[0].action).toContain('Review what the browser can and cannot see');
+    expect(narrative.triageActions[1]).toMatchObject({
+      endpointId: 'api',
+      requiredEvidence: ['all-enabled-ready', 'sample-actionable', 'total-timing'],
+    });
+    expect(narrative.triageActions[2].watchFor).toContain('outside check');
   });
 
   it('adds CORS and Timing-Allow-Origin guidance when timing is total-only', () => {
@@ -238,6 +259,13 @@ describe('buildDiagnosticNarrative', () => {
     expect(narrative.primaryAnswer.text).not.toMatch(/\b(?:likely|ISP|VPN|Wi[- ]?Fi)\b/i);
     expect(narrative.primaryValidation.reason).toContain('browser');
     expect(narrative.nextSteps.join(' ')).toContain('Timing-Allow-Origin');
+    expect(narrative.triageActions.map((action) => action.id)).toEqual([
+      'compare-another-network',
+      'run-local-agent',
+      'share-support-report',
+    ]);
+    expect(narrative.triageActions[1].action).toContain('Run the local agent');
+    expect(narrative.triageActions[1].watchFor).toContain('hop-by-hop');
   });
 
   it('uses plain verdicts for failed requests, jitter, and unresolved slow sites', () => {
@@ -362,7 +390,21 @@ describe('buildDiagnosticNarrative', () => {
         supportingSummary,
         narrative.primaryValidation.reason,
         narrative.safeSummary,
+        ...narrative.triageActions.flatMap((action) => [
+          action.label,
+          action.action,
+          action.why,
+          action.watchFor,
+        ]),
       ].join(' ')).not.toMatch(/perfect internet|best connection|ISP is clean|No network issue exists|root cause|likely (?:that site|your network|source)/i);
+
+      for (const action of narrative.triageActions) {
+        expect(action.action).toBeTruthy();
+        expect(action.why).toBeTruthy();
+        expect(action.watchFor).toBeTruthy();
+        expect(action.requiredEvidence.length).toBeGreaterThan(0);
+        expect(`${action.action} ${action.why} ${action.watchFor}`).not.toMatch(/will fix|restart your router|the problem is your|your ISP is/i);
+      }
     }
   });
 });
