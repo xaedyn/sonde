@@ -2,7 +2,7 @@
 
 **Status:** Living source of truth  
 **Created:** 2026-05-12  
-**Current production baseline:** `main` through PR #116, deployed to Cloudflare Pages  
+**Current production baseline:** `main` through PR #117, deployed to Cloudflare Pages
 **Read this first in future sessions.**
 
 ---
@@ -70,6 +70,7 @@ Useful reference docs:
 - `docs/vision/PRODUCT-VISION-2026-04-11.md`
 - `docs/cloudflare-remote-vantage.md`
 - `docs/companion-local-agent.md`
+- `docs/superpowers/plans/2026-05-12-10-star-implementation-index.md`
 
 Recent product spine:
 
