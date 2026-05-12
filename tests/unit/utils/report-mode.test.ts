@@ -2,6 +2,19 @@ import { describe, expect, it } from 'vitest';
 import { reportModeCopy } from '../../../src/lib/utils/report-mode';
 
 describe('reportModeCopy', () => {
+  it('uses singular nouns when counts are 1', () => {
+    const copy = reportModeCopy({
+      reportKind: 'support',
+      primaryAnswer: 'Single endpoint check.',
+      confidenceLabel: 'High confidence',
+      sampleCount: 1,
+      endpointCount: 1,
+      timingHeadline: 'Detailed timing visible',
+    });
+
+    expect(copy.lede).toContain('1 sample across 1 endpoint');
+  });
+
   it('keeps support mode focused on facts, caveats, and next validation', () => {
     const copy = reportModeCopy({
       reportKind: 'support',

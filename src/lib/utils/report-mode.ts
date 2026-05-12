@@ -15,8 +15,12 @@ export interface ReportModeCopy {
   readonly primaryActionLabel: string;
 }
 
+function countLabel(count: number, noun: string): string {
+  return `${count} ${noun}${count === 1 ? '' : 's'}`;
+}
+
 export function reportModeCopy(input: ReportModeCopyInput): ReportModeCopy {
-  const evidence = `${input.sampleCount} samples across ${input.endpointCount} endpoints`;
+  const evidence = `${countLabel(input.sampleCount, 'sample')} across ${countLabel(input.endpointCount, 'endpoint')}`;
   if (input.reportKind === 'snapshot') {
     return {
       kicker: 'Performance snapshot',
