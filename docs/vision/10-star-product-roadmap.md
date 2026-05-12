@@ -2,7 +2,7 @@
 
 **Status:** Living source of truth  
 **Created:** 2026-05-12  
-**Current production baseline:** `main` through PR #117, deployed to Cloudflare Pages
+**Current production baseline:** `main` through PR #126, deployed to Cloudflare Pages
 **Read this first in future sessions.**
 
 ---
@@ -79,6 +79,8 @@ Recent product spine:
 - PR #110-#114: Plain-language verdict and trust hierarchy polish.
 - PR #115: Guided triage actions.
 - PR #116: Executable triage evidence trail.
+- PR #119-#121: Guided proof flow with remote proof loop, focused local proof, and stale proof refresh.
+- PR #122-#126: Share/report excellence with support versus snapshot report modes, mode-specific rendering, and copy/visual guardrails.
 
 ---
 
@@ -341,3 +343,4 @@ The assistant should then:
 - Created this roadmap after PR #116 shipped the compact evidence trail and executable report triage actions.
 - Decided the next phase should be **Guided Proof Flow**, not another visual redesign.
 - Decided the product's highest-order constraint remains trust: every diagnostic claim must be tied to measured evidence, known browser limits, or an explicit next validation step.
+- Shipped Phase 1 and Phase 2 through PR #126. Phase 3 begins with a registry that makes evidence-gated claim language reusable across narrative, reports, evidence trail, remote vantage, and history surfaces.
