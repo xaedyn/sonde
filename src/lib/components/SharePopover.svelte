@@ -16,7 +16,7 @@
     MAX_SHARE_URL_CHARS,
   } from '$lib/share/share-payload-builder';
   import { tokens } from '$lib/tokens';
-  import type { SharePayload } from '$lib/types';
+  import type { ReportKind, SharePayload } from '$lib/types';
 
   const MAX_HOSTED_REPORT_CHARS = 100_000;
 
@@ -35,8 +35,8 @@
   );
 
   let configPayload = $derived(buildConfigPayload());
-  let builtHostedReport = $derived(hasResults ? buildResultsPayload(MAX_HOSTED_REPORT_CHARS) : null);
-  let builtResults = $derived(hasResults ? buildResultsPayload() : null);
+  let builtHostedReport = $derived(hasResults ? buildResultsPayload(MAX_HOSTED_REPORT_CHARS, 'support') : null);
+  let builtResults = $derived(hasResults ? buildResultsPayload(MAX_SHARE_URL_CHARS, 'snapshot') : null);
   let hostedReportPayload = $derived(builtHostedReport?.payload ?? null);
   let resultsPayload = $derived(builtResults?.payload ?? null);
   let hostedReportTruncated = $derived(builtHostedReport?.truncated ?? false);
@@ -46,14 +46,14 @@
     return buildConfigSharePayload(get(endpointStore), get(settingsStore));
   }
 
-  function buildResultsPayload(maxChars = MAX_SHARE_URL_CHARS) {
+  function buildResultsPayload(maxChars = MAX_SHARE_URL_CHARS, reportKind: ReportKind = 'support') {
     return buildResultsSharePayload(
       get(endpointStore),
       get(settingsStore),
       get(measurementStore),
       maxChars,
       Date.now(),
-      undefined,
+      { reportKind },
       get(remoteVantageStore).lastProbe,
     );
   }
