@@ -89,6 +89,20 @@ describe('share-payload-builder', () => {
     expect(built.truncated).toBe(false);
   });
 
+  it('stores the requested report kind in v2 result metadata', () => {
+    const ep = endpoint('api');
+    const built = buildResultsSharePayload(
+      [ep],
+      DEFAULT_SETTINGS,
+      measurementState(ep.id, Array.from({ length: 12 }, (_, i) => ok(i + 1))),
+      8000,
+      1778352000000,
+      { reportKind: 'snapshot' },
+    );
+
+    expect(built.payload.report?.reportKind).toBe('snapshot');
+  });
+
   it('preserves report metadata overrides when re-copying a report link', () => {
     const ep = endpoint('api');
     const built = buildResultsSharePayload(

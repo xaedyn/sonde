@@ -4,6 +4,7 @@ import { isSafeSharedUrl } from '../utils/url-safety';
 
 const ALLOWED_TOP_LEVEL = new Set(['v', 'mode', 'endpoints', 'settings', 'results', 'report', 'remoteVantage']);
 const ALLOWED_REPORT_KEYS = new Set([
+  'reportKind',
   'createdAt',
   'healthThreshold',
   'corsMode',
@@ -58,6 +59,13 @@ function validateReport(report: unknown, obj: Record<string, unknown>): boolean 
   if (obj['mode'] !== 'results' || obj['v'] !== 2) return false;
   if (!isRecord(report)) return false;
   if (!hasOnlyKeys(report, ALLOWED_REPORT_KEYS)) return false;
+  if (report['reportKind'] === undefined) {
+    report['reportKind'] = 'support';
+  }
+  if (
+    report['reportKind'] !== 'support' &&
+    report['reportKind'] !== 'snapshot'
+  ) return false;
   if (!isNonNegativeFiniteNumber(report['createdAt'])) return false;
   if (!isNonNegativeFiniteNumber(report['healthThreshold']) || (report['healthThreshold'] as number) > 15000) return false;
   if (report['corsMode'] !== 'no-cors' && report['corsMode'] !== 'cors') return false;

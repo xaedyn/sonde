@@ -90,6 +90,7 @@ function samples(latency: number): MeasurementSample[] {
 }
 
 const sharedContext: SharedReportContext = {
+  reportKind: 'support',
   createdAt: 1778352000000,
   healthThreshold: 120,
   corsMode: 'no-cors',

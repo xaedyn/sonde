@@ -285,7 +285,10 @@ export interface UIState {
 }
 
 // ── Share payload ──────────────────────────────────────────────────────────
+export type ReportKind = 'support' | 'snapshot';
+
 export interface ShareReportMetadata {
+  readonly reportKind: ReportKind;
   readonly createdAt: number;
   readonly healthThreshold: number;
   readonly corsMode: 'no-cors' | 'cors';
@@ -296,6 +299,7 @@ export interface ShareReportMetadata {
 }
 
 export interface SharedReportContext {
+  readonly reportKind: ReportKind;
   readonly createdAt: number | null;
   readonly healthThreshold: number | null;
   readonly corsMode: 'no-cors' | 'cors' | null;

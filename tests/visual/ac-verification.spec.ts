@@ -139,6 +139,7 @@ function sharedReportUrl(): string {
       corsMode: 'no-cors',
     },
     report: {
+      reportKind: 'support',
       createdAt: 1778352000000,
       healthThreshold: 120,
       corsMode: 'no-cors',

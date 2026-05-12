@@ -88,6 +88,7 @@ describe('share-manager', () => {
       ...resultsPayload,
       v: 2,
       report: {
+        reportKind: 'support',
         createdAt: 1778352000000,
         healthThreshold: 120,
         corsMode: 'no-cors',
@@ -100,8 +101,28 @@ describe('share-manager', () => {
 
     const decoded = decodeSharePayload(encodeSharePayload(payload));
     expect(decoded?.v).toBe(2);
+    expect(decoded?.report?.reportKind).toBe('support');
     expect(decoded?.report?.healthThreshold).toBe(120);
     expect(decoded?.report?.keptSampleCount).toBe(100);
+  });
+
+  it('normalizes legacy v2 report metadata without reportKind', () => {
+    const legacyPayload = {
+      ...resultsPayload,
+      v: 2,
+      report: {
+        createdAt: 1778352000000,
+        healthThreshold: 120,
+        corsMode: 'no-cors' as const,
+        roundCount: 50,
+        totalSampleCount: 100,
+        keptSampleCount: 100,
+        truncated: false,
+      },
+    };
+
+    const decoded = decodeSharePayload(encodeSharePayload(legacyPayload as never));
+    expect(decoded?.report?.reportKind).toBe('support');
   });
 
   it('config-only payload is small', () => {

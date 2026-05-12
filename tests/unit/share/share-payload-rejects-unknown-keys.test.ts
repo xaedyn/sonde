@@ -148,6 +148,7 @@ describe('validateSharePayload: top-level unknown key rejection', () => {
       endpoints: [{ url: 'https://example.com', enabled: true }],
       settings: { timeout: 5000, delay: 0, cap: MAX_CAP, corsMode: 'no-cors' },
       report: {
+        reportKind: 'support',
         createdAt: 1778352000000,
         healthThreshold: 120,
         corsMode: 'no-cors',
@@ -176,6 +177,50 @@ describe('validateSharePayload: top-level unknown key rejection', () => {
     };
     const encoded = encodeSharePayload(payload);
     expect(decodeSharePayload(encoded)).not.toBeNull();
+  });
+
+  it('accepts a bounded reportKind in v2 report metadata', () => {
+    const payload: SharePayload = {
+      v: 2,
+      mode: 'results',
+      endpoints: [{ url: 'https://example.com', enabled: true }],
+      settings: { timeout: 5000, delay: 0, cap: MAX_CAP, corsMode: 'no-cors' },
+      report: {
+        createdAt: 1778352000000,
+        healthThreshold: 120,
+        corsMode: 'no-cors',
+        roundCount: 1,
+        totalSampleCount: 1,
+        keptSampleCount: 1,
+        truncated: false,
+        reportKind: 'support',
+      },
+      results: [{ samples: [{ round: 0, latency: 42, status: 'ok' }] }],
+    };
+
+    expect(decodeSharePayload(encodeSharePayload(payload))).not.toBeNull();
+  });
+
+  it('rejects unknown reportKind values', () => {
+    const payload = {
+      v: 2,
+      mode: 'results',
+      endpoints: [{ url: 'https://example.com', enabled: true }],
+      settings: { timeout: 5000, delay: 0, cap: MAX_CAP, corsMode: 'no-cors' as const },
+      report: {
+        createdAt: 1778352000000,
+        healthThreshold: 120,
+        corsMode: 'no-cors' as const,
+        roundCount: 1,
+        totalSampleCount: 1,
+        keptSampleCount: 1,
+        truncated: false,
+        reportKind: 'marketing',
+      },
+      results: [{ samples: [{ round: 0, latency: 42, status: 'ok' as const }] }],
+    };
+
+    expect(decodeSharePayload(encodeSharePayload(payload as never))).toBeNull();
   });
 
   it('rejects unknown remoteVantage nested keys', () => {

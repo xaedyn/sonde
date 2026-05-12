@@ -102,6 +102,7 @@ export function buildResultsSharePayload(
   );
 
   const metadata: ShareReportMetadata = {
+    reportKind: reportMetadata.reportKind ?? 'support',
     createdAt: reportMetadata.createdAt ?? now,
     healthThreshold: reportMetadata.healthThreshold ?? settings.healthThreshold,
     corsMode: reportMetadata.corsMode ?? settings.corsMode,

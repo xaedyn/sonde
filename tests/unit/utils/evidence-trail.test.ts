@@ -96,6 +96,7 @@ function measurementState(samplesByEndpoint: Record<string, readonly Measurement
 }
 
 const context: SharedReportContext = {
+  reportKind: 'support',
   createdAt: 1778352000000,
   healthThreshold: 120,
   corsMode: 'no-cors',

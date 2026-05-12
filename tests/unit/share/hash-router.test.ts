@@ -90,6 +90,7 @@ function reportPayload(): SharePayload {
     ...resultsPayload(),
     v: 2,
     report: {
+      reportKind: 'support',
       createdAt: 1778352000000,
       healthThreshold: 140,
       corsMode: 'cors',
@@ -443,6 +444,7 @@ describe('hash-router: results-mode application', () => {
     const ui = get(uiStore);
     expect(ui.sharedReportContext?.healthThreshold).toBe(140);
     expect(ui.sharedReportContext?.corsMode).toBe('cors');
+    expect(ui.sharedReportContext?.reportKind).toBe('support');
     expect(ui.sharedReportContext?.sourceVersion).toBe(2);
 
     const s = get(settingsStore);
@@ -450,10 +452,24 @@ describe('hash-router: results-mode application', () => {
     expect(s.corsMode).toBe(DEFAULT_SETTINGS.corsMode);
   });
 
+  it('stores explicit v2 snapshot report mode in shared report context', () => {
+    const payload = reportPayload();
+    applySharePayload({
+      ...payload,
+      report: {
+        ...payload.report,
+        reportKind: 'snapshot',
+      },
+    });
+
+    expect(get(uiStore).sharedReportContext?.reportKind).toBe('snapshot');
+  });
+
   it('infers legacy v1 report context from results without threshold metadata', () => {
     applySharePayload(resultsPayload());
     const context = get(uiStore).sharedReportContext;
     expect(context?.sourceVersion).toBe(1);
+    expect(context?.reportKind).toBe('support');
     expect(context?.healthThreshold).toBeNull();
     expect(context?.corsMode).toBe(MALICIOUS_CADENCE.corsMode);
     expect(context?.keptSampleCount).toBe(20);

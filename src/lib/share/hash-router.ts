@@ -107,6 +107,7 @@ function buildSharedReportContext(payload: SharePayload): SharedReportContext | 
   const keptSampleCount = countResultSamples(payload.results);
   if (payload.v === 2 && payload.report) {
     return {
+      reportKind: payload.report.reportKind ?? 'support',
       createdAt: payload.report.createdAt,
       healthThreshold: payload.report.healthThreshold,
       corsMode: payload.report.corsMode,
@@ -119,6 +120,7 @@ function buildSharedReportContext(payload: SharePayload): SharedReportContext | 
   }
 
   return {
+    reportKind: 'support',
     createdAt: null,
     healthThreshold: null,
     corsMode: payload.settings.corsMode,
