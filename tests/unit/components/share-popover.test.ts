@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, waitFor } from '@testing-library/svelte';
 import { get } from 'svelte/store';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import SharePopover from '../../../src/lib/components/SharePopover.svelte';
+import { parseShareURL } from '../../../src/lib/share/share-manager';
 import { endpointStore } from '../../../src/lib/stores/endpoints';
 import { measurementStore } from '../../../src/lib/stores/measurements';
 import { settingsStore } from '../../../src/lib/stores/settings';
@@ -98,6 +99,7 @@ describe('SharePopover hosted support reports', () => {
     });
     const payload = mocks.createHostedReport.mock.calls[0]?.[0];
     expect(payload?.mode).toBe('results');
+    expect(payload?.report?.reportKind).toBe('support');
     expect(payload?.results?.[0]?.samples).toHaveLength(4);
   });
 
@@ -124,6 +126,31 @@ describe('SharePopover hosted support reports', () => {
 
     expect(button.hasAttribute('disabled')).toBe(true);
     expect(get(uiStore).showShare).toBe(true);
+  });
+
+  it('copies snapshot links with snapshot report metadata', async () => {
+    seedResults();
+
+    const { getByRole } = render(SharePopover);
+    await fireEvent.click(getByRole('button', { name: /copy snapshot link/i }));
+
+    await waitFor(() => {
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining('/#s='));
+    });
+    const copiedUrl = vi.mocked(navigator.clipboard.writeText).mock.calls.at(-1)?.[0] as string;
+    const payload = parseShareURL(copiedUrl);
+
+    expect(payload?.mode).toBe('results');
+    expect(payload?.report?.reportKind).toBe('snapshot');
+  });
+
+  it('disables snapshot links until a run has samples', () => {
+    endpointStore.setEndpoints([endpoint]);
+
+    const { getByRole } = render(SharePopover);
+    const button = getByRole('button', { name: /copy snapshot link/i });
+
+    expect(button.hasAttribute('disabled')).toBe(true);
   });
 
   it('orders share actions as support report, snapshot link, then configuration link', () => {
