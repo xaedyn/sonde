@@ -6,9 +6,15 @@
 
   interface Props {
     agentStore?: CompanionStore;
+    title?: string;
+    idPrefix?: string;
   }
 
-  let { agentStore = companionStore }: Props = $props();
+  let {
+    agentStore = companionStore,
+    title = 'Local Companion',
+    idPrefix = 'companion',
+  }: Props = $props();
 
   let agentUrl = $state(DEFAULT_COMPANION_BASE_URL);
   let pairingToken = $state('');
@@ -29,6 +35,10 @@
       ?? null,
   );
   const defaultProbeUrl = $derived(selectedEndpoint?.url ?? '');
+  const urlId = $derived(`${idPrefix}-url`);
+  const tokenId = $derived(`${idPrefix}-token`);
+  const probeUrlId = $derived(`${idPrefix}-probe-url`);
+  const titleId = $derived(`${idPrefix}-title`);
   const hasSelectedProbe = $derived(dnsProbe || tlsProbe || routeProbe || wifiProbe);
   const isBusy = $derived(state.status === 'checking' || state.status === 'probing');
   const statusLabel = $derived(({
@@ -97,16 +107,16 @@
   }
 </script>
 
-<section class="companion-panel" aria-labelledby="companion-title">
+<section class="companion-panel" aria-labelledby={titleId}>
   <div class="companion-head">
-    <h3 id="companion-title">Local Companion</h3>
+    <h3 id={titleId}>{title}</h3>
     <span class="status-pill" data-status={state.status}>{statusLabel}</span>
   </div>
 
-  <label class="field-line" for="companion-url">
+  <label class="field-line" for={urlId}>
     <span>Agent URL</span>
     <input
-      id="companion-url"
+      id={urlId}
       class="field-input"
       type="url"
       autocomplete="off"
@@ -115,10 +125,10 @@
     />
   </label>
 
-  <label class="field-line" for="companion-token">
+  <label class="field-line" for={tokenId}>
     <span>Pairing token</span>
     <input
-      id="companion-token"
+      id={tokenId}
       class="field-input"
       type="password"
       autocomplete="off"
@@ -157,10 +167,10 @@
   {/if}
 
   <div class="probe-block">
-    <label class="field-line" for="companion-probe-url">
+    <label class="field-line" for={probeUrlId}>
       <span>Probe URL</span>
       <input
-        id="companion-probe-url"
+        id={probeUrlId}
         class="field-input"
         type="url"
         autocomplete="off"

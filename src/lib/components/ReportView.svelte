@@ -10,6 +10,7 @@
   import { uiStore } from '$lib/stores/ui';
   import { companionStore } from '$lib/stores/companion';
   import { remoteVantageStore } from '$lib/stores/remote-vantage';
+  import LocalProofPanel from './LocalProofPanel.svelte';
   import { buildShareURL } from '$lib/share/share-manager';
   import { buildResultsSharePayload, MAX_SHARE_URL_CHARS } from '$lib/share/share-payload-builder';
   import { buildDiagnosticReport, formatReportMetric } from '$lib/utils/diagnostic-report';
@@ -60,6 +61,7 @@
   let copiedSummary = $state(false);
   let copiedLink = $state(false);
   let copyError = $state<'summary' | 'link' | null>(null);
+  let localProofOpen = $state(false);
   let browserVisibilityPanel = $state<HTMLElement | null>(null);
 
   interface TriageOutcome {
@@ -164,9 +166,22 @@
     browserVisibilityPanel?.focus({ preventScroll: true });
   }
 
-  function openSettingsWorkflow(action: DiagnosticTriageAction): void {
-    if (action.endpointId) uiStore.setFocusedEndpoint(action.endpointId);
+  function openFullSettings(): void {
     if (!get(uiStore).showSettings) uiStore.toggleSettings();
+  }
+
+  function localProofEndpointId(action: DiagnosticTriageAction): string | null {
+    return action.endpointId
+      ?? report.diagnosis.verdict.worstEpId
+      ?? report.endpointRows.find((row) => row.implicated)?.endpointId
+      ?? endpoints.find((endpoint) => endpoint.enabled)?.id
+      ?? endpoints[0]?.id
+      ?? null;
+  }
+
+  function openLocalProofWorkflow(action: DiagnosticTriageAction): void {
+    uiStore.setFocusedEndpoint(localProofEndpointId(action));
+    localProofOpen = true;
   }
 
   function openShareWorkflow(): void {
@@ -185,7 +200,7 @@
         await remoteVantageStore.runProbe(get(endpointStore));
         return;
       case 'run-local-agent':
-        openSettingsWorkflow(action);
+        openLocalProofWorkflow(action);
         return;
       case 'share-support-report':
       case 'share-snapshot':
@@ -349,6 +364,10 @@
       {/each}
     </div>
   </section>
+
+  {#if localProofOpen}
+    <LocalProofPanel onOpenSettings={openFullSettings} onClose={() => { localProofOpen = false; }} />
+  {/if}
 
   <div class="report-grid">
     <section class="report-panel verdict-panel" aria-label="Verdict evidence">
