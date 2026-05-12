@@ -1,6 +1,7 @@
 import type { CompanionState } from '../stores/companion';
 import type { RemoteVantageState } from '../stores/remote-vantage';
 import type { DiagnosticReport } from './diagnostic-report';
+import { summarizeLocalProof, summarizeRemoteProof } from './proof-flow';
 
 export type EvidenceTrailTone = 'good' | 'watch' | 'bad' | 'neutral';
 
@@ -74,21 +75,17 @@ function confidenceStatus(confidence: DiagnosticReport['diagnosis']['confidence'
 
 function remoteTrail(remoteVantage: EvidenceTrailInput['remoteVantage']): EvidenceTrailItem {
   if (remoteVantage.lastProbe) {
-    const results = remoteVantage.lastProbe.results;
-    const problemCount = results.filter((result) => (
-      result.verdict === 'slow' ||
-      result.verdict === 'http-error' ||
-      result.verdict === 'unreachable'
-    )).length;
+    const summary = summarizeRemoteProof(remoteVantage.lastProbe);
+    const hasProblem = summary.tone === 'bad';
     const edge = edgeLabel(remoteVantage.lastProbe.edge);
     return {
       id: 'outside-check',
       source: 'Outside check',
-      fact: truncateFact(problemCount > 0
-        ? `${problemCount}/${results.length} ${plural(results.length, 'endpoint')} were slow or failed from ${edge}`
-        : `Cloudflare reached ${results.length} ${plural(results.length, 'endpoint')} without slow or failed results`),
-      status: 'Captured',
-      tone: problemCount > 0 ? 'bad' : 'good',
+      fact: truncateFact(hasProblem
+        ? summary.text.replace('from Cloudflare', `from ${edge}`)
+        : summary.text),
+      status: summary.status,
+      tone: summary.tone,
       detail: `Checked from ${edge}.`,
     };
   }
@@ -125,12 +122,13 @@ function remoteTrail(remoteVantage: EvidenceTrailInput['remoteVantage']): Eviden
 
 function companionTrail(companion: EvidenceTrailInput['companion']): EvidenceTrailItem {
   if (companion.lastProbe) {
+    const summary = summarizeLocalProof(companion.lastProbe);
     return {
       id: 'local-agent',
       source: 'Local agent',
-      fact: truncateFact(`${companion.lastProbe.targetHost}: ${companion.lastProbe.summary}`),
-      status: 'Captured',
-      tone: companion.lastProbe.ok ? 'good' : 'watch',
+      fact: truncateFact(summary.text),
+      status: summary.status,
+      tone: summary.tone,
     };
   }
 

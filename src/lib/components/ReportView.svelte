@@ -15,6 +15,7 @@
   import { buildDiagnosticReport, formatReportMetric } from '$lib/utils/diagnostic-report';
   import { buildEvidenceTrail } from '$lib/utils/evidence-trail';
   import { buildHistoryBaselineInsight } from '$lib/utils/history-baseline';
+  import { buildProofActionState, summarizeLocalProof, summarizeRemoteProof } from '$lib/utils/proof-flow';
   import { tokens } from '$lib/tokens';
   import type { DiagnosticTriageAction } from '$lib/utils/diagnostic-narrative';
 
@@ -199,25 +200,28 @@
   }
 
   function remoteOutcome(): TriageOutcome {
-    if (remoteBusy) return { label: 'Running', tone: 'watch', disabled: true };
-    if (remoteVantage.lastProbe) {
-      const hasProblem = remoteVantage.lastProbe.results.some((result) => (
-        result.verdict === 'slow' ||
-        result.verdict === 'http-error' ||
-        result.verdict === 'unreachable'
-      ));
-      return { label: 'Captured', tone: hasProblem ? 'bad' : 'good' };
-    }
-    if (remoteVantage.error) return { label: 'Failed', tone: 'watch' };
-    return { label: 'Not run', tone: 'neutral' };
+    const state = buildProofActionState({
+      kind: 'remote',
+      status: remoteVantage.status,
+      hasProof: Boolean(remoteVantage.lastProbe),
+      hasError: Boolean(remoteVantage.error),
+    });
+    if (remoteBusy || !remoteVantage.lastProbe) return state;
+    return { ...state, tone: summarizeRemoteProof(remoteVantage.lastProbe).tone };
   }
 
   function localAgentOutcome(): TriageOutcome {
-    if (companionBusy) return { label: 'Running', tone: 'watch', disabled: true };
-    if (companion.lastProbe) return { label: 'Captured', tone: companion.lastProbe.ok ? 'good' : 'watch' };
-    if (companion.status === 'connected') return { label: 'Ready', tone: 'neutral' };
-    if (companion.error) return { label: 'Needs setup', tone: 'watch' };
-    return { label: 'Not run', tone: 'neutral' };
+    const state = buildProofActionState({
+      kind: 'local',
+      status: companion.status,
+      hasProof: Boolean(companion.lastProbe),
+      hasError: Boolean(companion.error),
+    });
+    if (companionBusy || !companion.lastProbe) {
+      if (companion.status === 'connected') return { label: 'Ready', tone: 'neutral' };
+      return state;
+    }
+    return { ...state, tone: summarizeLocalProof(companion.lastProbe).tone };
   }
 
   function triageOutcome(action: DiagnosticTriageAction): TriageOutcome {

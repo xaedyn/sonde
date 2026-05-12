@@ -76,9 +76,9 @@ export function buildRemoteVantageInsight(input: RemoteVantageInsightInput): Rem
   if (browserSlow && !remoteSlow) {
     return {
       status: 'local-path',
-      headline: `Cloudflare reaches ${label} normally`,
-      detail: `${edge} reached it in ${fmtMs(result.durationMs)} while your browser-visible path has p50 ${fmtMs(browserP50 ?? 0)}.`,
-      action: 'Use the local companion agent or another network to narrow the local path.',
+      headline: `This outside check reached ${label} within threshold`,
+      detail: `${edge} measured ${fmtMs(result.durationMs)} while your browser p50 measured ${fmtMs(browserP50 ?? 0)}.`,
+      action: 'Use the local companion agent or another network to add local-path evidence.',
       edgeLabel: edge,
       result,
     };
@@ -87,7 +87,7 @@ export function buildRemoteVantageInsight(input: RemoteVantageInsightInput): Rem
   if (browserSlow && remoteSlow) {
     return {
       status: 'remote-confirms',
-      headline: `${label} is also slow from Cloudflare`,
+      headline: `${label} was also slow from Cloudflare`,
       detail: `${edge} took ${fmtMs(result.durationMs)} and your browser p50 is ${fmtMs(browserP50 ?? 0)}; both vantage points observed elevated latency.`,
       action: 'Share the report with the service owner; it now contains outside-vantage evidence.',
       edgeLabel: edge,
@@ -99,8 +99,8 @@ export function buildRemoteVantageInsight(input: RemoteVantageInsightInput): Rem
     return {
       status: 'remote-slow-only',
       headline: `${label} is slow from ${edge}, but not your browser`,
-      detail: `${edge} took ${fmtMs(result.durationMs)}${browserP50 !== null ? ` while your browser p50 is ${fmtMs(browserP50)}` : ''}, suggesting the outside edge path or origin may be inconsistent right now.`,
-      action: 'Run the check again or compare another outside vantage before drawing a local-path conclusion.',
+      detail: `Only the outside check was elevated in this snapshot${browserP50 !== null ? `; your browser p50 measured ${fmtMs(browserP50)}` : ''}.`,
+      action: 'Run the check again or compare another outside vantage before deciding what to inspect next.',
       edgeLabel: edge,
       result,
     };
@@ -108,8 +108,8 @@ export function buildRemoteVantageInsight(input: RemoteVantageInsightInput): Rem
 
   return {
     status: 'remote-normal',
-    headline: `${edge} reaches ${label} in ${fmtMs(result.durationMs)}`,
-    detail: 'The outside vantage is currently healthy for this endpoint.',
+    headline: `This outside check reached ${label} in ${fmtMs(result.durationMs)}`,
+    detail: 'This outside check was within threshold for this endpoint.',
     action: 'Keep the check available for intermittent issues or include it in a support report.',
     edgeLabel: edge,
     result,

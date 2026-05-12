@@ -55,6 +55,10 @@ function remote(overrides: Partial<RemoteVantageProbeResponse['results'][number]
   };
 }
 
+function insightCopy(input: ReturnType<typeof buildRemoteVantageInsight>): string {
+  return [input.headline, input.detail, input.action].join(' ');
+}
+
 describe('buildRemoteVantageInsight', () => {
   it('calls out local-path suspicion when the browser is slow but Cloudflare is fast', () => {
     const insight = buildRemoteVantageInsight({
@@ -65,8 +69,8 @@ describe('buildRemoteVantageInsight', () => {
     });
 
     expect(insight.status).toBe('local-path');
-    expect(insight.headline).toContain('Cloudflare reaches API normally');
-    expect(insight.detail).toContain('browser-visible path');
+    expect(insight.headline).toContain('outside check reached API within threshold');
+    expect(insight.detail).toContain('browser p50 measured');
     expect(insight.detail).not.toMatch(/ISP|VPN|WiFi|local network/i);
   });
 
@@ -79,7 +83,7 @@ describe('buildRemoteVantageInsight', () => {
     });
 
     expect(insight.status).toBe('remote-confirms');
-    expect(insight.headline).toContain('also slow from Cloudflare');
+    expect(insight.headline).toContain('was also slow from Cloudflare');
     expect(insight.detail).not.toMatch(/implicated|likely/i);
   });
 
@@ -92,7 +96,7 @@ describe('buildRemoteVantageInsight', () => {
     });
 
     expect(insight.status).toBe('remote-slow-only');
-    expect(insight.detail).toContain('outside edge path');
+    expect(insight.detail).toContain('Only the outside check was elevated');
     expect(insight.action).not.toMatch(/blaming|likely/i);
   });
 
@@ -119,5 +123,40 @@ describe('buildRemoteVantageInsight', () => {
     expect(insight.status).toBe('remote-error');
     expect(insight.action).not.toMatch(/likely source/i);
     expect(insight.action).toContain('outside-vantage evidence');
+  });
+
+  it('keeps all outside-check states free of root-cause and overconfident wording', () => {
+    const states = [
+      buildRemoteVantageInsight({
+        endpoint,
+        stats: slowStats,
+        threshold: 120,
+        probe: remote({ durationMs: 48, verdict: 'reachable' }),
+      }),
+      buildRemoteVantageInsight({
+        endpoint,
+        stats: slowStats,
+        threshold: 120,
+        probe: remote({ durationMs: 410, verdict: 'slow' }),
+      }),
+      buildRemoteVantageInsight({
+        endpoint,
+        stats: { ...slowStats, p50: 80 },
+        threshold: 120,
+        probe: remote({ durationMs: 410, verdict: 'slow' }),
+      }),
+      buildRemoteVantageInsight({
+        endpoint,
+        stats: { ...slowStats, p50: 80 },
+        threshold: 120,
+        probe: remote({ durationMs: 48, verdict: 'reachable' }),
+      }),
+    ];
+
+    for (const insight of states) {
+      expect(insightCopy(insight)).not.toMatch(/origin|cause|likely|healthy|local network|ISP|VPN/i);
+      expect(insightCopy(insight)).not.toMatch(/reaches .* normally/i);
+      expect(insightCopy(insight)).not.toMatch(/outside edge path/i);
+    }
   });
 });
