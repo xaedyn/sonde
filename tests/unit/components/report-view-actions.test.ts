@@ -131,6 +131,54 @@ function seedIsolatedReport(): Endpoint[] {
   return endpoints;
 }
 
+function seedSharedNetworkReport(): Endpoint[] {
+  const endpoints = [
+    endpoint('api', 'API'),
+    endpoint('google', 'Google'),
+    endpoint('cloudflare', 'Cloudflare'),
+  ];
+  endpointStore.setEndpoints(endpoints);
+  measurementStore.loadSnapshot({
+    lifecycle: 'completed',
+    epoch: 1,
+    roundCounter: 35,
+    startedAt: null,
+    stoppedAt: null,
+    freezeEvents: [],
+    errorCount: 0,
+    timeoutCount: 0,
+    endpoints: {
+      api: {
+        endpointId: 'api',
+        tierLevel: 1,
+        lastLatency: 260,
+        lastStatus: 'ok',
+        lastErrorMessage: null,
+        samples: samples(260),
+      },
+      google: {
+        endpointId: 'google',
+        tierLevel: 1,
+        lastLatency: 180,
+        lastStatus: 'ok',
+        lastErrorMessage: null,
+        samples: samples(180),
+      },
+      cloudflare: {
+        endpointId: 'cloudflare',
+        tierLevel: 1,
+        lastLatency: 170,
+        lastStatus: 'ok',
+        lastErrorMessage: null,
+        samples: samples(170),
+      },
+    },
+  } satisfies MeasurementState);
+  uiStore.setSharedView(true);
+  uiStore.setSharedReportMode(true);
+  return endpoints;
+}
+
 describe('ReportView triage actions', () => {
   beforeEach(() => {
     cleanup();
@@ -215,6 +263,22 @@ describe('ReportView triage actions', () => {
     });
     expect((await findAllByText('Captured')).length).toBeGreaterThan(0);
     expect(await findAllByText(/1 of 3 endpoints was slow or failed/i)).toHaveLength(1);
+  });
+
+  it('opens focused local proof in the report instead of primary settings', async () => {
+    seedSharedNetworkReport();
+    const { getByLabelText, getByRole, findByRole } = render(ReportView);
+
+    await fireEvent.click(getByRole('button', { name: /deepen local proof/i }));
+
+    expect(get(uiStore).showSettings).toBe(false);
+    expect(get(uiStore).focusedEndpointId).toBe('api');
+    expect(await findByRole('region', { name: /focused local proof/i })).toBeTruthy();
+    expect((getByLabelText('Probe URL') as HTMLInputElement).value).toBe('https://api.example.com');
+
+    await fireEvent.click(getByRole('button', { name: /open full settings/i }));
+
+    expect(get(uiStore).showSettings).toBe(true);
   });
 
   it('scrolls to browser visibility from the triage card', async () => {
