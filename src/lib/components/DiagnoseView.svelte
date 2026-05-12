@@ -230,7 +230,7 @@
   }
 
   async function handleRemoteCheck(): Promise<void> {
-    await remoteVantageStore.runProbe(monitored);
+    await remoteVantageStore.runProbe(focusedEndpoint ? [focusedEndpoint] : monitored);
   }
 
   // ── Accessibility summary for the hero bar ────────────────────────────────

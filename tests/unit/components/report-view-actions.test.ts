@@ -7,13 +7,45 @@ import { measurementStore } from '../../../src/lib/stores/measurements';
 import { resetStatisticsCache } from '../../../src/lib/stores/statistics';
 import { uiStore } from '../../../src/lib/stores/ui';
 import type { Endpoint, MeasurementSample, MeasurementState } from '../../../src/lib/types';
+import type { RemoteVantageState } from '../../../src/lib/stores/remote-vantage';
 
-const mocks = vi.hoisted(() => ({
-  historyUnsubscribe: vi.fn(),
-  remoteUnsubscribe: vi.fn(),
-  runProbe: vi.fn(),
-  createHostedReport: vi.fn<() => Promise<null>>().mockResolvedValue(null),
-}));
+const mocks = vi.hoisted(() => {
+  const remoteSubscribers = new Set<(state: RemoteVantageState) => void>();
+  let remoteState = {
+    status: 'idle',
+    health: null,
+    lastProbe: null,
+    hostedReport: null,
+    hostedReportFallback: null,
+    error: null,
+  } as RemoteVantageState;
+  const remoteUnsubscribe = vi.fn();
+
+  return {
+    historyUnsubscribe: vi.fn(),
+    remoteUnsubscribe,
+    runProbe: vi.fn(),
+    createHostedReport: vi.fn<() => Promise<null>>().mockResolvedValue(null),
+    get remoteState(): RemoteVantageState {
+      return remoteState;
+    },
+    clearRemoteSubscribers(): void {
+      remoteSubscribers.clear();
+    },
+    setRemoteState(update: Partial<RemoteVantageState>): void {
+      remoteState = { ...remoteState, ...update };
+      for (const subscriber of remoteSubscribers) subscriber(remoteState);
+    },
+    subscribeRemote(run: (state: RemoteVantageState) => void): () => void {
+      remoteSubscribers.add(run);
+      run(remoteState);
+      return () => {
+        remoteSubscribers.delete(run);
+        remoteUnsubscribe();
+      };
+    },
+  };
+});
 
 vi.mock('$lib/stores/history', () => ({
   historyStore: {
@@ -26,10 +58,7 @@ vi.mock('$lib/stores/history', () => ({
 
 vi.mock('$lib/stores/remote-vantage', () => ({
   remoteVantageStore: {
-    subscribe(run: (state: { status: 'idle'; lastProbe: null; error: null }) => void): () => void {
-      run({ status: 'idle', lastProbe: null, error: null });
-      return mocks.remoteUnsubscribe;
-    },
+    subscribe: mocks.subscribeRemote,
     runProbe: mocks.runProbe,
     createHostedReport: mocks.createHostedReport,
   },
@@ -110,6 +139,15 @@ describe('ReportView triage actions', () => {
     measurementStore.reset();
     resetStatisticsCache();
     uiStore.reset();
+    mocks.clearRemoteSubscribers();
+    mocks.setRemoteState({
+      status: 'idle',
+      health: null,
+      lastProbe: null,
+      hostedReport: null,
+      hostedReportFallback: null,
+      error: null,
+    });
     Object.defineProperty(Element.prototype, 'scrollIntoView', {
       configurable: true,
       value: vi.fn(),
@@ -141,6 +179,42 @@ describe('ReportView triage actions', () => {
     await waitFor(() => {
       expect(mocks.runProbe).toHaveBeenCalledWith(endpoints);
     });
+  });
+
+  it('shows captured outside proof after a remote check resolves', async () => {
+    const endpoints = seedIsolatedReport();
+    mocks.runProbe.mockImplementation(() => {
+      mocks.setRemoteState({
+        status: 'connected',
+        lastProbe: {
+          ok: true,
+          generatedAt: 1778352005000,
+          edge: { colo: 'IAD', city: 'Ashburn', country: 'US' },
+          results: endpoints.map((ep) => ({
+            endpointId: ep.id,
+            label: ep.label,
+            url: ep.url,
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            durationMs: ep.id === 'api' ? 310 : 45,
+            checkedAt: 1778352005000,
+            verdict: ep.id === 'api' ? 'slow' : 'reachable',
+            headers: {},
+          })),
+        },
+      });
+      return Promise.resolve(mocks.remoteState.lastProbe);
+    });
+    const { getByRole, findAllByText } = render(ReportView);
+
+    await fireEvent.click(getByRole('button', { name: /run outside check/i }));
+
+    await waitFor(() => {
+      expect(mocks.runProbe).toHaveBeenCalledWith(endpoints);
+    });
+    expect((await findAllByText('Captured')).length).toBeGreaterThan(0);
+    expect(await findAllByText(/1 of 3 endpoints was slow or failed/i)).toHaveLength(1);
   });
 
   it('scrolls to browser visibility from the triage card', async () => {

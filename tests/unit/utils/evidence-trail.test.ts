@@ -240,7 +240,7 @@ describe('buildEvidenceTrail', () => {
     expect(trail.find((item) => item.id === 'outside-check')).toMatchObject({
       status: 'Captured',
       tone: 'bad',
-      fact: '1/2 endpoints were slow or failed from IAD / Ashburn / US',
+      fact: '1 of 2 endpoints was slow or failed from IAD / Ashburn / US',
     });
     expect(trail.find((item) => item.id === 'local-agent')).toMatchObject({
       status: 'Captured',

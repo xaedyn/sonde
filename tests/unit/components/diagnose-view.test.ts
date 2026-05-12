@@ -1,6 +1,6 @@
-import { cleanup, render, waitFor } from '@testing-library/svelte';
+import { cleanup, fireEvent, render, waitFor } from '@testing-library/svelte';
 import { get } from 'svelte/store';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import DiagnoseView from '../../../src/lib/components/DiagnoseView.svelte';
 import { endpointStore } from '../../../src/lib/stores/endpoints';
 import { measurementStore } from '../../../src/lib/stores/measurements';
@@ -114,6 +114,7 @@ describe('DiagnoseView investigation focus', () => {
 
   afterEach(() => {
     cleanup();
+    vi.restoreAllMocks();
   });
 
   it('auto-selects the helper-selected endpoint on direct investigate entry', async () => {
@@ -180,5 +181,22 @@ describe('DiagnoseView investigation focus', () => {
     expect(getByText(/phase timing unavailable/i)).toBeTruthy();
     expect(getAllByText(/total only/i).length).toBeGreaterThan(0);
     expect(getAllByText('80 ms').length).toBeGreaterThan(0);
+  });
+
+  it('runs an outside check for the focused endpoint from Investigate', async () => {
+    const api = endpoint('api', 'API');
+    const cdn = endpoint('cdn', 'CDN');
+    endpointStore.setEndpoints([api, cdn]);
+    seedReadySamples({ api: 260, cdn: 45 });
+    uiStore.setActiveView('diagnose');
+    uiStore.setFocusedEndpoint('api');
+    const runProbe = vi.spyOn(remoteVantageStore, 'runProbe').mockResolvedValue(null);
+    const { getByRole } = render(DiagnoseView);
+
+    await fireEvent.click(getByRole('button', { name: /check from cloudflare/i }));
+
+    await waitFor(() => {
+      expect(runProbe).toHaveBeenCalledWith([api]);
+    });
   });
 });
