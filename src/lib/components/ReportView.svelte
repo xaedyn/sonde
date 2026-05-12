@@ -16,7 +16,12 @@
   import { buildDiagnosticReport, formatReportMetric } from '$lib/utils/diagnostic-report';
   import { buildEvidenceTrail } from '$lib/utils/evidence-trail';
   import { buildHistoryBaselineInsight } from '$lib/utils/history-baseline';
-  import { buildProofActionState, summarizeLocalProof, summarizeRemoteProof } from '$lib/utils/proof-flow';
+  import {
+    buildProofActionState,
+    isProofStale,
+    summarizeLocalProof,
+    summarizeRemoteProof,
+  } from '$lib/utils/proof-flow';
   import { tokens } from '$lib/tokens';
   import type { DiagnosticTriageAction } from '$lib/utils/diagnostic-narrative';
 
@@ -220,8 +225,12 @@
       status: remoteVantage.status,
       hasProof: Boolean(remoteVantage.lastProbe),
       hasError: Boolean(remoteVantage.error),
+      isStale: isProofStale({
+        reportCreatedAt: report.createdAt,
+        proofGeneratedAt: remoteVantage.lastProbe?.generatedAt ?? null,
+      }),
     });
-    if (remoteBusy || !remoteVantage.lastProbe) return state;
+    if (remoteBusy || !remoteVantage.lastProbe || state.label === 'Stale') return state;
     return { ...state, tone: summarizeRemoteProof(remoteVantage.lastProbe).tone };
   }
 
@@ -232,11 +241,16 @@
       hasProof: Boolean(companion.lastProbe),
       hasError: Boolean(companion.error),
       hasSecret: companion.hasSecret,
+      isStale: isProofStale({
+        reportCreatedAt: report.createdAt,
+        proofGeneratedAt: companion.lastProbe?.createdAt ?? null,
+      }),
     });
     if (companionBusy || !companion.lastProbe) {
       if (companion.status === 'connected') return { label: 'Ready', tone: 'neutral' };
       return state;
     }
+    if (state.label === 'Stale') return state;
     return { ...state, tone: summarizeLocalProof(companion.lastProbe).tone };
   }
 

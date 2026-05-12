@@ -1,7 +1,7 @@
 import type { CompanionState } from '../stores/companion';
 import type { RemoteVantageState } from '../stores/remote-vantage';
 import type { DiagnosticReport } from './diagnostic-report';
-import { summarizeLocalProof, summarizeRemoteProof } from './proof-flow';
+import { proofFreshnessLabel, summarizeLocalProof, summarizeRemoteProof } from './proof-flow';
 
 export type EvidenceTrailTone = 'good' | 'watch' | 'bad' | 'neutral';
 
@@ -73,9 +73,21 @@ function confidenceStatus(confidence: DiagnosticReport['diagnosis']['confidence'
   return confidence.charAt(0).toUpperCase() + confidence.slice(1);
 }
 
-function remoteTrail(remoteVantage: EvidenceTrailInput['remoteVantage']): EvidenceTrailItem {
+function staleProofDetail(source: 'outside check' | 'local agent'): string {
+  return `This ${source} was captured before the report snapshot. Run it again to refresh the proof.`;
+}
+
+function remoteTrail(
+  remoteVantage: EvidenceTrailInput['remoteVantage'],
+  reportCreatedAt: number | null,
+): EvidenceTrailItem {
   if (remoteVantage.lastProbe) {
     const summary = summarizeRemoteProof(remoteVantage.lastProbe);
+    const freshness = proofFreshnessLabel({
+      reportCreatedAt,
+      proofGeneratedAt: remoteVantage.lastProbe.generatedAt,
+    });
+    const stale = freshness === 'Stale';
     const hasProblem = summary.tone === 'bad';
     const edge = edgeLabel(remoteVantage.lastProbe.edge);
     return {
@@ -84,9 +96,9 @@ function remoteTrail(remoteVantage: EvidenceTrailInput['remoteVantage']): Eviden
       fact: truncateFact(hasProblem
         ? summary.text.replace('from Cloudflare', `from ${edge}`)
         : summary.text),
-      status: summary.status,
-      tone: summary.tone,
-      detail: `Checked from ${edge}.`,
+      status: stale ? freshness : summary.status,
+      tone: stale ? 'watch' : summary.tone,
+      detail: stale ? staleProofDetail('outside check') : `Checked from ${edge}.`,
     };
   }
 
@@ -120,15 +132,24 @@ function remoteTrail(remoteVantage: EvidenceTrailInput['remoteVantage']): Eviden
   };
 }
 
-function companionTrail(companion: EvidenceTrailInput['companion']): EvidenceTrailItem {
+function companionTrail(
+  companion: EvidenceTrailInput['companion'],
+  reportCreatedAt: number | null,
+): EvidenceTrailItem {
   if (companion.lastProbe) {
     const summary = summarizeLocalProof(companion.lastProbe);
+    const freshness = proofFreshnessLabel({
+      reportCreatedAt,
+      proofGeneratedAt: companion.lastProbe.createdAt,
+    });
+    const stale = freshness === 'Stale';
     return {
       id: 'local-agent',
       source: 'Local agent',
       fact: truncateFact(summary.text),
-      status: summary.status,
-      tone: summary.tone,
+      status: stale ? freshness : summary.status,
+      tone: stale ? 'watch' : summary.tone,
+      detail: stale ? staleProofDetail('local agent') : undefined,
     };
   }
 
@@ -202,7 +223,7 @@ export function buildEvidenceTrail(input: EvidenceTrailInput): EvidenceTrailItem
       tone: visibilityTone(report.diagnosis.timingVisibility.level),
       detail: truncateFact(report.diagnosis.timingVisibility.detail),
     },
-    remoteTrail(input.remoteVantage),
-    companionTrail(input.companion),
+    remoteTrail(input.remoteVantage, report.createdAt),
+    companionTrail(input.companion, report.createdAt),
   ];
 }

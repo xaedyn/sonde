@@ -103,4 +103,18 @@ describe('proof-flow', () => {
       tone: 'watch',
     });
   });
+
+  it('marks captured proof actions as stale when the proof predates the report', () => {
+    expect(buildProofActionState({
+      kind: 'remote',
+      status: 'connected',
+      hasProof: true,
+      hasError: false,
+      isStale: true,
+    })).toMatchObject({
+      label: 'Stale',
+      disabled: false,
+      tone: 'watch',
+    });
+  });
 });

@@ -248,4 +248,50 @@ describe('buildEvidenceTrail', () => {
       fact: 'api.example.test: DNS, TLS, route, and WiFi completed',
     });
   });
+
+  it('marks outside proof as stale when the report is newer than the outside check', () => {
+    const trail = buildEvidenceTrail({
+      report: isolatedReport(),
+      remoteVantage: {
+        ...emptyRemote,
+        status: 'connected',
+        lastProbe: {
+          ok: true,
+          generatedAt: context.createdAt - 1000,
+          edge: { colo: 'IAD' },
+          results: [],
+        },
+      },
+      companion: emptyCompanion,
+    });
+
+    expect(trail.find((item) => item.id === 'outside-check')).toMatchObject({
+      status: 'Stale',
+      tone: 'watch',
+    });
+  });
+
+  it('marks local proof as stale when the report is newer than the local probe', () => {
+    const trail = buildEvidenceTrail({
+      report: isolatedReport(),
+      remoteVantage: emptyRemote,
+      companion: {
+        ...emptyCompanion,
+        status: 'connected',
+        lastProbe: {
+          ok: true,
+          id: 'probe-1',
+          targetHost: 'api.example.test',
+          createdAt: context.createdAt - 1000,
+          summary: 'DNS and route completed',
+          results: {},
+        },
+      },
+    });
+
+    expect(trail.find((item) => item.id === 'local-agent')).toMatchObject({
+      status: 'Stale',
+      tone: 'watch',
+    });
+  });
 });

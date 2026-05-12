@@ -6,7 +6,13 @@ import { endpointStore } from '../../../src/lib/stores/endpoints';
 import { measurementStore } from '../../../src/lib/stores/measurements';
 import { resetStatisticsCache } from '../../../src/lib/stores/statistics';
 import { uiStore } from '../../../src/lib/stores/ui';
-import type { Endpoint, MeasurementSample, MeasurementState } from '../../../src/lib/types';
+import type {
+  Endpoint,
+  MeasurementSample,
+  MeasurementState,
+  SharePayload,
+  SharedReportContext,
+} from '../../../src/lib/types';
 import type { RemoteVantageState } from '../../../src/lib/stores/remote-vantage';
 
 const mocks = vi.hoisted(() => {
@@ -25,7 +31,7 @@ const mocks = vi.hoisted(() => {
     historyUnsubscribe: vi.fn(),
     remoteUnsubscribe,
     runProbe: vi.fn(),
-    createHostedReport: vi.fn<() => Promise<null>>().mockResolvedValue(null),
+    createHostedReport: vi.fn<(payload: SharePayload) => Promise<string | null>>().mockResolvedValue(null),
     get remoteState(): RemoteVantageState {
       return remoteState;
     },
@@ -83,6 +89,17 @@ function samples(latency: number): MeasurementSample[] {
   }));
 }
 
+const sharedContext: SharedReportContext = {
+  createdAt: 1778352000000,
+  healthThreshold: 120,
+  corsMode: 'no-cors',
+  roundCount: 35,
+  totalSampleCount: 105,
+  keptSampleCount: 105,
+  truncated: false,
+  sourceVersion: 2,
+};
+
 function seedIsolatedReport(): Endpoint[] {
   const endpoints = [
     endpoint('api', 'API'),
@@ -128,6 +145,7 @@ function seedIsolatedReport(): Endpoint[] {
   } satisfies MeasurementState);
   uiStore.setSharedView(true);
   uiStore.setSharedReportMode(true);
+  uiStore.setSharedReportContext(sharedContext);
   return endpoints;
 }
 
@@ -176,6 +194,7 @@ function seedSharedNetworkReport(): Endpoint[] {
   } satisfies MeasurementState);
   uiStore.setSharedView(true);
   uiStore.setSharedReportMode(true);
+  uiStore.setSharedReportContext(sharedContext);
   return endpoints;
 }
 
@@ -199,6 +218,11 @@ describe('ReportView triage actions', () => {
     Object.defineProperty(Element.prototype, 'scrollIntoView', {
       configurable: true,
       value: vi.fn(),
+    });
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: vi.fn().mockResolvedValue(),
+      },
     });
   });
 
@@ -263,6 +287,78 @@ describe('ReportView triage actions', () => {
     });
     expect((await findAllByText('Captured')).length).toBeGreaterThan(0);
     expect(await findAllByText(/1 of 3 endpoints was slow or failed/i)).toHaveLength(1);
+  });
+
+  it('includes newly captured outside proof in copied report payloads', async () => {
+    const endpoints = seedIsolatedReport();
+    mocks.runProbe.mockImplementation(() => {
+      mocks.setRemoteState({
+        status: 'connected',
+        lastProbe: {
+          ok: true,
+          generatedAt: 1778352005000,
+          edge: { colo: 'IAD', city: 'Ashburn', country: 'US' },
+          results: endpoints.map((ep) => ({
+            endpointId: ep.id,
+            label: ep.label,
+            url: ep.url,
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            durationMs: ep.id === 'api' ? 310 : 45,
+            checkedAt: 1778352005000,
+            verdict: ep.id === 'api' ? 'slow' : 'reachable',
+            headers: {},
+          })),
+        },
+      });
+      return Promise.resolve(mocks.remoteState.lastProbe);
+    });
+    const { getByRole } = render(ReportView);
+
+    await fireEvent.click(getByRole('button', { name: /run outside check/i }));
+    await waitFor(() => {
+      expect(mocks.runProbe).toHaveBeenCalledWith(endpoints);
+    });
+    await fireEvent.click(getByRole('button', { name: /copy report link/i }));
+
+    await waitFor(() => {
+      expect(mocks.createHostedReport).toHaveBeenCalledTimes(1);
+    });
+    expect(mocks.createHostedReport.mock.calls[0]?.[0].remoteVantage).toEqual(expect.objectContaining({
+      generatedAt: 1778352005000,
+      edge: { colo: 'IAD', city: 'Ashburn', country: 'US' },
+      results: expect.arrayContaining([
+        expect.objectContaining({ endpointId: 'api', verdict: 'slow' }),
+      ]),
+    }));
+  });
+
+  it('marks an older outside proof action as stale against the current report', () => {
+    seedIsolatedReport();
+    mocks.setRemoteState({
+      status: 'connected',
+      lastProbe: {
+        ok: true,
+        generatedAt: 1,
+        edge: { colo: 'IAD', city: 'Ashburn', country: 'US' },
+        results: [{
+          endpointId: 'api',
+          label: 'API',
+          url: 'https://api.example.com',
+          ok: true,
+          status: 200,
+          statusText: 'OK',
+          durationMs: 45,
+          checkedAt: 1,
+          verdict: 'reachable',
+          headers: {},
+        }],
+      },
+    });
+    const { getAllByText } = render(ReportView);
+
+    expect(getAllByText('Stale').length).toBeGreaterThanOrEqual(2);
   });
 
   it('opens focused local proof in the report instead of primary settings', async () => {

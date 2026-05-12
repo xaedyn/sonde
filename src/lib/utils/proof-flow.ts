@@ -100,9 +100,13 @@ export function buildProofActionState(input: {
   readonly hasProof: boolean;
   readonly hasError: boolean;
   readonly hasSecret?: boolean;
+  readonly isStale?: boolean;
 }): ProofActionState {
   if (input.status === 'checking' || input.status === 'probing') {
     return { label: 'Running', tone: 'watch', disabled: true };
+  }
+  if (input.hasProof && input.isStale) {
+    return { label: 'Stale', tone: 'watch', disabled: false };
   }
   if (input.hasProof) return { label: 'Captured', tone: 'good', disabled: false };
   if (input.hasError) {
