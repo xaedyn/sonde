@@ -147,7 +147,7 @@ describe('buildDiagnosticReport', () => {
     expect(report.copySummary).not.toContain(report.diagnosis.verdict.headline);
     expect(report.copySummary).toContain(report.diagnosis.primaryAnswer.text);
     expect(report.copySummary).toContain('Trust: Evidence: 30+ successful checks across 3 sites; total timing only.');
-    expect(report.copySummary).toContain('First next test: Review what the browser can and cannot see.');
+    expect(report.copySummary).toContain(`Next validation: ${report.diagnosis.primaryValidation.claim.text}`);
     expect(report.copySummary).toContain('Watch for: If detailed timing appears');
     expect(report.copySummary.match(new RegExp(report.diagnosis.primaryAnswer.text, 'g'))).toHaveLength(1);
     expect(report.copySummary).not.toMatch(/This browser test: .*This browser test:/s);

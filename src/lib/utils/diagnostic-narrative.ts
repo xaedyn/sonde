@@ -3,6 +3,7 @@
 // confidence, supporting evidence, browser visibility limits, and next steps.
 
 import type { MeasurementSample, Settings } from '../types';
+import { renderClaim, type ClaimEvidenceState, type ClaimId } from './claim-registry';
 import { computeCausalVerdict, PHASE_LABELS, type Verdict, type VerdictRow } from './verdict';
 
 export type DiagnosticKind =
@@ -528,6 +529,74 @@ function endpointLabelFor(verdict: Verdict, rows: readonly VerdictRow[]): string
   return rows.find((row) => row.ep.id === verdict.worstEpId)?.ep.label ?? 'the slow site';
 }
 
+function claimEvidenceStateFor(
+  readiness: ReturnType<typeof sampleReadiness>,
+  timingVisibility: TimingVisibility,
+): ClaimEvidenceState {
+  return {
+    sampleReady: readiness.minSamples >= MIN_READY_SAMPLES,
+    sampleActionable: readiness.allEnabledActionable,
+    sampleMature: readiness.allEnabledMature,
+    allEnabledReady: readiness.allEnabledReady,
+    totalTiming: timingVisibility.level !== 'none',
+    phaseTiming: timingVisibility.level === 'phase' || timingVisibility.level === 'mixed',
+    remoteVantage: false,
+    baselineReady: false,
+    localAgent: false,
+  };
+}
+
+function appendRegistryClaim(
+  claims: DiagnosticClaim[],
+  id: ClaimId,
+  evidence: ClaimEvidenceState,
+  vars: Record<string, string> = {},
+): void {
+  const claim = renderClaim(id, evidence, vars);
+  if (claim) claims.push(claim);
+}
+
+function registryClaimsFor(input: {
+  readonly kind: DiagnosticKind;
+  readonly verdict: Verdict;
+  readonly rows: readonly VerdictRow[];
+  readonly timingVisibility: TimingVisibility;
+  readonly readiness: ReturnType<typeof sampleReadiness>;
+}): readonly DiagnosticClaim[] {
+  const { kind, verdict, rows, timingVisibility, readiness } = input;
+  const evidence = claimEvidenceStateFor(readiness, timingVisibility);
+  const endpointLabel = endpointLabelFor(verdict, rows);
+  const claims: DiagnosticClaim[] = [];
+
+  if (kind === 'isolated-endpoint' && readiness.allEnabledActionable) {
+    appendRegistryClaim(claims, 'browser-measured-comparison', evidence, { endpointLabel });
+  }
+
+  if (timingVisibility.level === 'total-only' || timingVisibility.level === 'mixed') {
+    appendRegistryClaim(claims, 'browser-visibility-limited', evidence);
+  }
+
+  if (verdict.worstEpId !== undefined && readiness.allEnabledActionable) {
+    appendRegistryClaim(claims, 'run-outside-check-next', evidence, { endpointLabel });
+  }
+
+  if (
+    readiness.allEnabledActionable &&
+    (kind === 'shared-network' || kind === 'multiple-slow' || kind === 'packet-loss' || kind === 'jitter')
+  ) {
+    appendRegistryClaim(claims, 'run-local-agent-next', evidence, { endpointLabel: 'this result' });
+  }
+
+  return claims;
+}
+
+function registryClaimById(
+  claims: readonly DiagnosticClaim[],
+  id: ClaimId,
+): DiagnosticClaim | null {
+  return claims.find((claim) => claim.id === id) ?? null;
+}
+
 function triageActionsFor(input: {
   readonly kind: DiagnosticKind;
   readonly verdict: Verdict;
@@ -776,10 +845,21 @@ function primaryValidationFor(input: {
   readonly timingVisibility: TimingVisibility;
   readonly verdict: Verdict;
   readonly claim: DiagnosticClaim;
+  readonly registryClaims: readonly DiagnosticClaim[];
   readonly snapshotEligibility: SnapshotEligibility;
   readonly readiness: ReturnType<typeof sampleReadiness>;
 }): PrimaryValidationAction {
-  const { kind, rows, monitoredEndpointCount, timingVisibility, verdict, claim, snapshotEligibility, readiness } = input;
+  const {
+    kind,
+    rows,
+    monitoredEndpointCount,
+    timingVisibility,
+    verdict,
+    claim,
+    registryClaims,
+    snapshotEligibility,
+    readiness,
+  } = input;
   const minSamples = readiness.minSamples;
 
   // Priority 1: sample readiness outranks every other action so the UI does not
@@ -815,7 +895,7 @@ function primaryValidationFor(input: {
       id: 'explain-browser-visibility',
       label: 'Review browser visibility',
       reason: 'Chronoscope can compare total load time, but not every DNS, TCP, TLS, or server timing detail is visible.',
-      claim,
+      claim: registryClaimById(registryClaims, 'browser-visibility-limited') ?? claim,
       ...(verdict.worstEpId ? { endpointId: verdict.worstEpId } : {}),
     };
   }
@@ -827,7 +907,7 @@ function primaryValidationFor(input: {
       id: 'run-remote-check',
       label: 'Run remote check',
       reason: 'Compare this test from outside your network before assigning cause.',
-      claim,
+      claim: registryClaimById(registryClaims, 'run-outside-check-next') ?? claim,
       endpointId: verdict.worstEpId,
     };
   }
@@ -839,7 +919,7 @@ function primaryValidationFor(input: {
       id: 'compare-network',
       label: 'Compare another network',
       reason: 'This browser test shows the symptom; another network or the local agent can narrow where it appears.',
-      claim,
+      claim: registryClaimById(registryClaims, 'run-local-agent-next') ?? claim,
     };
   }
 
@@ -933,6 +1013,13 @@ export function buildDiagnosticNarrative(input: DiagnosticInput): DiagnosticNarr
     verdict,
     timingVisibility,
   });
+  const registryClaims = registryClaimsFor({
+    kind,
+    verdict,
+    rows: input.rows,
+    timingVisibility,
+    readiness,
+  });
   const evidence = evidenceFor({
     rows: input.rows,
     monitoredEndpointCount: input.monitoredEndpointCount,
@@ -955,6 +1042,7 @@ export function buildDiagnosticNarrative(input: DiagnosticInput): DiagnosticNarr
     timingVisibility,
     verdict,
     claim: primaryAnswer,
+    registryClaims,
     snapshotEligibility,
     readiness,
   });
@@ -974,7 +1062,7 @@ export function buildDiagnosticNarrative(input: DiagnosticInput): DiagnosticNarr
     confidenceLabel: `${confidence} confidence`,
     confidenceReason: confidenceReasonText,
     primaryAnswer,
-    claims: [primaryAnswer],
+    claims: [primaryAnswer, ...registryClaims],
     primaryValidation,
     safeSummary: safeSummaryFor(primaryAnswer, confidenceReasonText),
     supportingSummary: supportingSummaryFor({

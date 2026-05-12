@@ -170,6 +170,20 @@ describe('buildDiagnosticNarrative', () => {
     expect(narrative.primaryAnswer.text).toBe('API is slower than the others in this test.');
     expect(narrative.primaryAnswer.kind).toBe('inferred');
     expect(narrative.primaryValidation.id).toBe('explain-browser-visibility');
+    expect(narrative.primaryValidation.claim).toMatchObject({
+      id: 'browser-visibility-limited',
+      kind: 'limited',
+      requiredEvidence: ['total-timing'],
+    });
+    expect(narrative.claims.map((claim) => claim.id)).toEqual([
+      'isolated-endpoint',
+      'browser-measured-comparison',
+      'browser-visibility-limited',
+      'run-outside-check-next',
+    ]);
+    expect(narrative.claims.find((claim) => claim.id === 'browser-measured-comparison')?.text).toBe(
+      'Chronoscope measured API against the other enabled sites in this browser run.',
+    );
     expect(narrative.evidence.some((item) => item.label === 'Site to inspect' && item.value === 'API')).toBe(true);
     expect(narrative.safeSummary).not.toMatch(/likely (source|site|network|your network)/i);
     expect(narrative.supportingSummary).toBe('Evidence: 18+ successful checks across 3 sites; total timing only.');
@@ -186,6 +200,42 @@ describe('buildDiagnosticNarrative', () => {
       requiredEvidence: ['all-enabled-ready', 'sample-actionable', 'total-timing'],
     });
     expect(narrative.triageActions[2].watchFor).toContain('outside check');
+  });
+
+  it('uses a registry next-validation claim when phase timing supports remote validation', () => {
+    const rows = [
+      row('api', { p50: 240, sampleCount: 18 }, 'API'),
+      row('google', { p50: 45, sampleCount: 18 }, 'Google'),
+      row('cloudflare', { p50: 35, sampleCount: 18 }, 'Cloudflare'),
+    ];
+    const narrative = buildDiagnosticNarrative({
+      rows,
+      threshold: 120,
+      corsMode: 'cors',
+      samplesByEndpoint: {
+        api: samples(18, 240, true),
+        google: samples(18, 45, true),
+        cloudflare: samples(18, 35, true),
+      },
+      monitoredEndpointCount: 3,
+    });
+
+    expect(narrative.primaryValidation.id).toBe('run-remote-check');
+    expect(narrative.primaryValidation.claim).toMatchObject({
+      id: 'run-outside-check-next',
+      kind: 'next-validation',
+      strength: 'low',
+      requiredEvidence: [],
+    });
+    expect(narrative.primaryValidation.claim.text).toBe(
+      'Run an outside check for API to compare your browser path with a Cloudflare edge.',
+    );
+    expect(narrative.claims.map((claim) => claim.id)).toEqual([
+      'isolated-endpoint',
+      'browser-measured-comparison',
+      'run-outside-check-next',
+    ]);
+    expect(narrative.claims.map((claim) => claim.text).join(' ')).not.toMatch(/likely|will fix|the problem is/i);
   });
 
   it('adds CORS and Timing-Allow-Origin guidance when timing is total-only', () => {

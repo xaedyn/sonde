@@ -168,6 +168,9 @@ function buildCopySummary(report: Omit<DiagnosticReport, 'copySummary'>): string
   const visibility = report.diagnosis.timingVisibility;
   const limitation = report.diagnosis.limitations[0];
   const firstTriageAction = report.diagnosis.triageActions[0];
+  const validationLine = report.diagnosis.primaryValidation.claim.id !== report.diagnosis.primaryAnswer.id
+    ? `Next validation: ${report.diagnosis.primaryValidation.claim.text}`
+    : firstTriageAction ? `First next test: ${firstTriageAction.action}` : '';
   const reportLabel = report.reportKind === 'snapshot'
     ? 'Chronoscope performance snapshot'
     : 'Chronoscope support report';
@@ -178,7 +181,7 @@ function buildCopySummary(report: Omit<DiagnosticReport, 'copySummary'>): string
     slowLine,
     `Evidence: ${report.keptSampleCount} samples kept across ${report.endpointRows.length} endpoints; threshold ${fmtMs(report.threshold)}; browser visibility: ${visibility.headline}.`,
     limitation ? `Caveat: ${limitation.detail}` : '',
-    firstTriageAction ? `First next test: ${firstTriageAction.action}` : '',
+    validationLine,
     firstTriageAction ? `Watch for: ${firstTriageAction.watchFor}` : '',
   ].filter(Boolean).join('\n');
 }
