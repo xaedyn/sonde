@@ -5,6 +5,7 @@
 import type { MeasurementSample, Settings } from '../types';
 import { classifyLossPattern } from '../loss/patterns';
 import { renderClaim, type ClaimEvidenceState, type ClaimId } from './claim-registry';
+import { classify } from './classify';
 import { computeCausalVerdict, PHASE_LABELS, type Verdict, type VerdictRow } from './verdict';
 
 export type DiagnosticKind =
@@ -254,6 +255,13 @@ function severityFor(kind: DiagnosticKind): DiagnosticSeverity {
   return 'degraded';
 }
 
+function hasHealthyVariation(rows: readonly VerdictRow[], threshold: number): boolean {
+  return rows.some((row) => {
+    const bucket = classify(row.stats, threshold);
+    return bucket === 'degraded' || bucket === 'unhealthy';
+  });
+}
+
 function confidenceFor(input: {
   readonly kind: DiagnosticKind;
   readonly rows: readonly VerdictRow[];
@@ -318,7 +326,9 @@ function explanationFor(
     case 'collecting':
       return 'Collecting enough data to call this test.';
     case 'healthy':
-      return 'This test looks healthy.';
+      return hasHealthyVariation(rows, threshold)
+        ? 'Looks good, with minor variation.'
+        : 'This test looks healthy.';
     case 'isolated-endpoint': {
       const bad = rows.find((row) => row.ep.id === verdict.worstEpId) ?? overRows[0];
       const label = bad?.ep.label ?? 'One site';
@@ -614,10 +624,11 @@ function triageActionsFor(input: {
   readonly kind: DiagnosticKind;
   readonly verdict: Verdict;
   readonly rows: readonly VerdictRow[];
+  readonly threshold: number;
   readonly timingVisibility: TimingVisibility;
   readonly primaryAnswer: DiagnosticClaim;
 }): readonly DiagnosticTriageAction[] {
-  const { kind, verdict, rows, timingVisibility, primaryAnswer } = input;
+  const { kind, verdict, rows, threshold, timingVisibility, primaryAnswer } = input;
   const visibility = browserVisibilityAction(timingVisibility);
   const endpointLabel = endpointLabelFor(verdict, rows);
   const endpointId = verdict.worstEpId;
@@ -634,13 +645,18 @@ function triageActionsFor(input: {
   }
 
   if (kind === 'healthy') {
+    const withVariation = hasHealthyVariation(rows, threshold);
     return [
       {
         id: 'share-snapshot',
         label: 'Share result',
-        action: 'Share this clean measured run.',
-        why: 'Every enabled site has mature checks and Chronoscope did not see slow medians or failed requests in this browser run.',
-        watchFor: 'If the issue returns later, compare the new run against this clean snapshot.',
+        action: withVariation ? 'Share this measured run with the variation visible.' : 'Share this clean measured run.',
+        why: withVariation
+          ? 'No enabled site is consistently slow or failing, but higher-latency checks are visible in the measurements.'
+          : 'Every enabled site has mature checks and Chronoscope did not see slow medians or failed requests in this browser run.',
+        watchFor: withVariation
+          ? 'If one site or several sites start crossing the threshold, use the changed report instead of this measured snapshot.'
+          : 'If the issue returns later, compare the new run against this clean snapshot.',
         requiredEvidence: ['all-enabled-ready', 'sample-mature', 'total-timing'],
       },
       {
@@ -808,10 +824,11 @@ function snapshotEligibilityFor(input: {
   readonly kind: DiagnosticKind;
   readonly confidence: DiagnosticConfidence;
   readonly rows: readonly VerdictRow[];
+  readonly threshold: number;
   readonly evidence: readonly DiagnosticEvidence[];
   readonly readiness: ReturnType<typeof sampleReadiness>;
 }): SnapshotEligibility {
-  const { kind, confidence, rows, evidence, readiness } = input;
+  const { kind, confidence, rows, threshold, evidence, readiness } = input;
   if (kind !== 'healthy') {
     return {
       eligible: false,
@@ -844,7 +861,9 @@ function snapshotEligibilityFor(input: {
   }
   return {
     eligible: true,
-    reason: 'This run has enough clean checks for a snapshot link.',
+    reason: hasHealthyVariation(rows, threshold)
+      ? 'This run has enough checks for a measured snapshot, with the variation included.'
+      : 'This run has enough clean checks for a snapshot link.',
     facts: evidence.filter((item) => (
       item.id === 'ready-endpoints' || item.id === 'slow-endpoints' || item.id === 'timing-visibility'
     )),
@@ -983,15 +1002,20 @@ function supportingSummaryFor(input: {
   readonly kind: DiagnosticKind;
   readonly confidence: DiagnosticConfidence;
   readonly rows: readonly VerdictRow[];
+  readonly threshold: number;
   readonly monitoredEndpointCount: number;
   readonly timingVisibility: TimingVisibility;
   readonly readiness: ReturnType<typeof sampleReadiness>;
 }): string {
-  const { kind, confidence, rows, monitoredEndpointCount, timingVisibility, readiness } = input;
+  const { kind, confidence, rows, threshold, monitoredEndpointCount, timingVisibility, readiness } = input;
   const sampleScope = sampleScopeFor(rows, monitoredEndpointCount, readiness);
 
   if (kind === 'collecting') {
     return `Collecting: ${sampleScope}.`;
+  }
+
+  if (kind === 'healthy' && confidence === 'high' && readiness.allEnabledMature && hasHealthyVariation(rows, threshold)) {
+    return `Good browser-visible run with variation: no site is consistently slow; ${sampleScope}.`;
   }
 
   if (kind === 'healthy' && confidence === 'high' && readiness.allEnabledMature) {
@@ -1046,6 +1070,7 @@ export function buildDiagnosticNarrative(input: DiagnosticInput): DiagnosticNarr
     kind,
     confidence,
     rows: input.rows,
+    threshold: input.threshold,
     evidence,
     readiness,
   });
@@ -1064,6 +1089,7 @@ export function buildDiagnosticNarrative(input: DiagnosticInput): DiagnosticNarr
     kind,
     verdict,
     rows: input.rows,
+    threshold: input.threshold,
     timingVisibility,
     primaryAnswer,
   });
@@ -1083,6 +1109,7 @@ export function buildDiagnosticNarrative(input: DiagnosticInput): DiagnosticNarr
       kind,
       confidence,
       rows: input.rows,
+      threshold: input.threshold,
       monitoredEndpointCount: input.monitoredEndpointCount,
       timingVisibility,
       readiness,

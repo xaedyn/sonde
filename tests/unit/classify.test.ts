@@ -137,9 +137,13 @@ describe('overviewVerdict()', () => {
   it('returns "unknown" for null score', () => {
     expect(overviewVerdict(null)).toBe('unknown');
   });
-  it('returns "healthy" at 80 and above', () => {
+  it('returns "healthy" only for clean top-band scores', () => {
     expect(overviewVerdict(100)).toBe('healthy');
-    expect(overviewVerdict(80)).toBe('healthy');
+    expect(overviewVerdict(95)).toBe('healthy');
+  });
+  it('returns "good" for non-clean passing scores', () => {
+    expect(overviewVerdict(94)).toBe('good');
+    expect(overviewVerdict(80)).toBe('good');
   });
   it('returns "degraded" between 50 and 79', () => {
     expect(overviewVerdict(79)).toBe('degraded');
@@ -153,14 +157,14 @@ describe('overviewVerdict()', () => {
 
 describe('VERDICT_STYLES', () => {
   it('defines an entry for every verdict including kicker text', () => {
-    for (const v of ['unknown', 'healthy', 'degraded', 'unhealthy'] as const) {
+    for (const v of ['unknown', 'healthy', 'good', 'degraded', 'unhealthy'] as const) {
       expect(VERDICT_STYLES[v].color).toBeTruthy();
       expect(VERDICT_STYLES[v].label).toBeTruthy();
       expect(VERDICT_STYLES[v].kicker).toBeTruthy();
     }
   });
   it('uses CSS custom properties rather than raw hex', () => {
-    for (const v of ['healthy', 'degraded', 'unhealthy'] as const) {
+    for (const v of ['healthy', 'good', 'degraded', 'unhealthy'] as const) {
       expect(VERDICT_STYLES[v].color).toMatch(/^var\(--/);
     }
   });

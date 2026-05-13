@@ -155,6 +155,35 @@ describe('buildDiagnosticNarrative', () => {
     expect(narrative.triageActions[0].why).toContain('mature checks');
   });
 
+  it('does not call a good run clean when tail latency lowers the score', () => {
+    const rows = [
+      row('google', { p50: 48, p95: 175, sampleCount: 35 }, 'Google'),
+      row('cloudflare', { p50: 44, p95: 72, sampleCount: 35 }, 'Cloudflare'),
+      row('aws', { p50: 46, p95: 74, sampleCount: 35 }, 'AWS'),
+    ];
+    const narrative = buildDiagnosticNarrative({
+      rows,
+      threshold: 120,
+      corsMode: 'cors',
+      samplesByEndpoint: {
+        google: samples(35, 48, true),
+        cloudflare: samples(35, 44, true),
+        aws: samples(35, 46, true),
+      },
+      monitoredEndpointCount: 3,
+    });
+
+    expect(narrative.kind).toBe('healthy');
+    expect(narrative.severity).toBe('healthy');
+    expect(narrative.primaryAnswer.text).toBe('Looks good, with minor variation.');
+    expect(narrative.supportingSummary).toBe(
+      'Good browser-visible run with variation: no site is consistently slow; 35+ successful checks across 3 sites.',
+    );
+    expect(narrative.safeSummary).toContain('Looks good, with minor variation.');
+    expect(narrative.triageActions[0].action).toBe('Share this measured run with the variation visible.');
+    expect(narrative.triageActions[0].why).toContain('higher-latency checks');
+  });
+
   it('explains isolated endpoint slowness with evidence-labeled endpoint and next validation step', () => {
     const rows = [
       row('api', { p50: 240, sampleCount: 18 }, 'API'),

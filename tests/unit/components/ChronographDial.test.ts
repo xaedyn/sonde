@@ -208,7 +208,7 @@ describe('ChronographDial — overlap polish · verdict+LIVE merged strip', () =
     expect(tspans).toHaveLength(3);
     // Segment 1: verdict kicker. Segment 2: live median prefix.
     // Segment 3: band label.
-    expect(tspans[0].textContent).toBe('HEALTHY');
+    expect(tspans[0].textContent).toBe('GOOD');
     expect(tspans[1].textContent?.trim().startsWith('· LIVE')).toBe(true);
     expect(tspans[2].textContent?.trim()).toBe('· WITHIN BAND');
   });
@@ -219,7 +219,7 @@ describe('ChronographDial — overlap polish · verdict+LIVE merged strip', () =
       'text[data-role="merged-verdict-live"]',
     );
     const tspans = Array.from(merged?.querySelectorAll('tspan') ?? []);
-    // Verdict tspan inherits verdictStyle.color for its state (healthy = cyan).
+    // Verdict tspan inherits verdictStyle.color for its state (score 85 = good).
     expect(tspans[0].getAttribute('fill')).toMatch(/cyan|accent|#67/);
     // Live-median tspan uses t3 grey.
     expect(tspans[1].getAttribute('fill')).toBe('var(--t3)');

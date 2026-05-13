@@ -115,7 +115,7 @@ export function diagnosticAlignedScore(
   return score;
 }
 
-export type OverviewVerdict = 'unknown' | 'healthy' | 'degraded' | 'unhealthy';
+export type OverviewVerdict = 'unknown' | 'healthy' | 'good' | 'degraded' | 'unhealthy';
 
 interface VerdictStyle {
   readonly color:  string;
@@ -125,16 +125,18 @@ interface VerdictStyle {
 }
 
 /**
- * Coarse 3-bucket label for the Overview dial and diagnosis strip.
+ * Coarse label for the Overview dial and diagnosis strip.
  *
  *   null    → unknown   (Awaiting samples)
- *   ≥ 80    → healthy
+ *   ≥ 95    → healthy   (clean top-band score)
+ *   ≥ 80    → good      (passing, but not pristine)
  *   ≥ 50    → degraded
  *   <  50   → unhealthy
  */
 export function overviewVerdict(score: number | null): OverviewVerdict {
   if (score === null) return 'unknown';
-  if (score >= 80) return 'healthy';
+  if (score >= 95) return 'healthy';
+  if (score >= 80) return 'good';
   if (score >= 50) return 'degraded';
   return 'unhealthy';
 }
@@ -142,6 +144,7 @@ export function overviewVerdict(score: number | null): OverviewVerdict {
 export const VERDICT_STYLES: Record<OverviewVerdict, VerdictStyle> = {
   unknown:   { color: 'var(--t4)',           glow: 'transparent',              label: 'Awaiting samples', kicker: '···' },
   healthy:   { color: 'var(--accent-cyan)',  glow: 'var(--accent-cyan-glow)',  label: 'Healthy',          kicker: 'HEALTHY' },
+  good:      { color: 'var(--accent-green)', glow: 'var(--green-glow)',        label: 'Good',             kicker: 'GOOD' },
   degraded:  { color: 'var(--accent-amber)', glow: 'var(--accent-amber-glow)', label: 'Degraded',         kicker: 'DEGRADED' },
   unhealthy: { color: 'var(--accent-pink)',  glow: 'var(--accent-pink-glow)',  label: 'Unhealthy',        kicker: 'CRITICAL' },
 };
