@@ -28,6 +28,10 @@ The HTTP server binds to `127.0.0.1` and rejects non-loopback browser configurat
 
 WiFi SSID and BSSID are shown only when `Private WiFi` is selected; otherwise they are redacted. Probe history is stored locally in SQLite at `~/.chronoscope/agent-history.sqlite` by default.
 
+## Probe Response Shape
+
+Probe responses group evidence by section: `dns`, `tls`, `route`, and `wifi`. Each section uses the same timed envelope: `ok`, `durationMs`, optional `value`, optional `error`, and optional `unavailable`/`reason`. This lets the app explain which local proof was captured, which proof was unavailable, and how long each local check took without guessing from a generic blob.
+
 ## What Local Probes Can Prove
 
 - DNS shows what this computer resolved for the target host. It does not prove every resolver or network will resolve the same way.

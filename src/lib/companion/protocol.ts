@@ -27,13 +27,53 @@ export interface CompanionProbeRequest {
   readonly includePrivateWifi?: boolean;
 }
 
+export interface CompanionTimedResult<T> {
+  readonly ok: boolean;
+  readonly durationMs: number;
+  readonly value?: T;
+  readonly error?: string;
+  readonly unavailable?: boolean;
+  readonly reason?: string;
+}
+
+export interface CompanionProbeResults {
+  readonly dns?: CompanionTimedResult<{
+    readonly lookup: readonly { readonly address: string; readonly family: number }[];
+    readonly a: readonly string[];
+    readonly aaaa: readonly string[];
+    readonly cname: readonly string[];
+  }>;
+  readonly tls?: CompanionTimedResult<{
+    readonly authorized: boolean;
+    readonly authorizationError: string | null;
+    readonly protocol: string | null;
+    readonly cipher: string | null;
+    readonly validFrom: string | null;
+    readonly validTo: string | null;
+    readonly subject: string | null;
+    readonly issuer: string | null;
+    readonly fingerprint256: string | null;
+  }>;
+  readonly route?: CompanionTimedResult<{
+    readonly tool: string;
+    readonly hops: readonly { readonly raw: string }[];
+    readonly stderr?: string;
+  }>;
+  readonly wifi?: CompanionTimedResult<{
+    readonly ssid?: string;
+    readonly bssid?: string;
+    readonly rssi: number | null;
+    readonly noise: number | null;
+  }>;
+}
+
 export interface CompanionProbeResponse {
   readonly ok: boolean;
   readonly id: string;
   readonly targetHost: string;
   readonly createdAt: number;
   readonly summary: string;
-  readonly results: Record<string, unknown>;
+  readonly results: CompanionProbeResults;
 }
 
 export interface CompanionHistoryEntry {

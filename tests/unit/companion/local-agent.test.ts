@@ -56,6 +56,35 @@ const agent = requireAgent(path.resolve('companion/local-agent.cjs')) as {
     secret: string;
     history: AgentHistoryStore;
   };
+  routeCommandTimeout(input: {
+    startedAt: number;
+    budgetMs: number;
+    capMs: number;
+    now?: number;
+  }): number;
+  runProbe(payload: {
+    targetUrl: string;
+    probes?: readonly string[];
+    includePrivateWifi?: boolean;
+  }): Promise<{
+    ok: boolean;
+    targetHost: string;
+    results: {
+      wifi?: {
+        ok: boolean;
+        durationMs: number;
+        value?: {
+          ssid?: string;
+          bssid?: string;
+          rssi: number | null;
+          noise: number | null;
+        };
+        unavailable?: boolean;
+        reason?: string;
+        error?: string;
+      };
+    };
+  }>;
 };
 
 describe('local companion agent helpers', () => {
@@ -165,6 +194,47 @@ describe('local companion agent helpers', () => {
       }),
     ]);
     history.close();
+  });
+
+  it('keeps route command timeouts inside the route probe budget', () => {
+    expect(agent.routeCommandTimeout({
+      startedAt: 1000,
+      budgetMs: 16000,
+      capMs: 15000,
+      now: 1000,
+    })).toBe(15000);
+    expect(agent.routeCommandTimeout({
+      startedAt: 1000,
+      budgetMs: 16000,
+      capMs: 10000,
+      now: 16050,
+    })).toBe(950);
+    expect(agent.routeCommandTimeout({
+      startedAt: 1000,
+      budgetMs: 16000,
+      capMs: 10000,
+      now: 17001,
+    })).toBe(0);
+  });
+
+  it('returns local probe sections as timed result envelopes', async () => {
+    const probe = await agent.runProbe({
+      targetUrl: 'https://example.com',
+      probes: ['wifi'],
+      includePrivateWifi: false,
+    });
+
+    expect(probe).toMatchObject({
+      ok: true,
+      targetHost: 'example.com',
+      results: {
+        wifi: {
+          ok: expect.any(Boolean),
+          durationMs: expect.any(Number),
+        },
+      },
+    });
+    expect(probe.results.wifi?.value?.ssid).not.toBe('Home Network');
   });
 
   it('allows health checks unsigned but requires signatures for local history', async () => {

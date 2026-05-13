@@ -2,7 +2,7 @@
 
 **Status:** Living source of truth  
 **Created:** 2026-05-12  
-**Current production baseline:** `main` through PR #130, deployed to Cloudflare Pages
+**Current production baseline:** `main` through PR #131, deployed to Cloudflare Pages
 **Read this first in future sessions.**
 
 ---
@@ -85,6 +85,7 @@ Recent product spine:
 - PR #128: Claim registry wired into diagnostic narrative validation and copied report summaries.
 - PR #129: Trust-copy hardening for remote vantage, evidence trail, and history baseline surfaces.
 - PR #130: Plain-language metric copy for copied reports and outside-vantage explanations.
+- PR #131: Guided local-agent pairing with local-only safety, token-path guidance, health state, and WiFi redaction defaults.
 
 ---
 
@@ -347,4 +348,4 @@ The assistant should then:
 - Created this roadmap after PR #116 shipped the compact evidence trail and executable report triage actions.
 - Decided the next phase should be **Guided Proof Flow**, not another visual redesign.
 - Decided the product's highest-order constraint remains trust: every diagnostic claim must be tied to measured evidence, known browser limits, or an explicit next validation step.
-- Shipped Phase 1 and Phase 2 through PR #126. Phase 3 began with PR #127's registry and PR #128's narrative/report wiring, then PR #129 extended trust-copy guardrails through evidence trail, remote vantage, and history baseline surfaces. PR #130 completed the plain-language metric copy slice by keeping internal p50 data while exposing median language in copied report and outside-vantage text.
+- Shipped Phase 1 and Phase 2 through PR #126. Phase 3 began with PR #127's registry and PR #128's narrative/report wiring, then PR #129 extended trust-copy guardrails through evidence trail, remote vantage, and history baseline surfaces. PR #130 completed the plain-language metric copy slice by keeping internal p50 data while exposing median language in copied report and outside-vantage text. PR #131 opened Phase 4 with guided local-agent pairing, token-path guidance, health state, and default WiFi privacy.

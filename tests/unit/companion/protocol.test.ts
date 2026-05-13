@@ -3,6 +3,7 @@ import {
   buildCompanionHeaders,
   canonicalCompanionRequest,
   normalizeCompanionBaseUrl,
+  type CompanionProbeResults,
 } from '../../../src/lib/companion/protocol';
 
 describe('companion protocol', () => {
@@ -46,5 +47,56 @@ describe('companion protocol', () => {
       'X-Chronoscope-Nonce': 'nonce-1',
       'X-Chronoscope-Signature': 'pairing-secret:39',
     });
+  });
+
+  it('allows typed companion probe sections', () => {
+    const results: CompanionProbeResults = {
+      dns: {
+        ok: true,
+        durationMs: 12,
+        value: {
+          lookup: [{ address: '203.0.113.1', family: 4 }],
+          a: ['203.0.113.1'],
+          aaaa: [],
+          cname: [],
+        },
+      },
+      tls: {
+        ok: true,
+        durationMs: 28,
+        value: {
+          authorized: true,
+          authorizationError: null,
+          protocol: 'TLSv1.3',
+          cipher: 'TLS_AES_128_GCM_SHA256',
+          validFrom: 'Jan 1',
+          validTo: 'Dec 31',
+          subject: 'example.com',
+          issuer: 'Example CA',
+          fingerprint256: 'AA:BB',
+        },
+      },
+      route: {
+        ok: false,
+        durationMs: 10000,
+        error: 'traceroute command not found',
+        unavailable: true,
+        reason: 'traceroute command not found',
+      },
+      wifi: {
+        ok: true,
+        durationMs: 4,
+        value: {
+          ssid: 'redacted',
+          bssid: 'redacted',
+          rssi: -48,
+          noise: -91,
+        },
+      },
+    };
+
+    expect(results.dns?.ok).toBe(true);
+    expect(results.route?.durationMs).toBe(10000);
+    expect(results.wifi?.value?.ssid).toBe('redacted');
   });
 });

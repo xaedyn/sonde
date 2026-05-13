@@ -141,11 +141,37 @@ function timeoutPromise(ms, label) {
   });
 }
 
-async function timed(label, fn) {
+async function timed(label, fn, timeoutMs = 7000) {
   const startedAt = Date.now();
   try {
-    const value = await Promise.race([fn(), timeoutPromise(7000, label)]);
+    const value = await Promise.race([fn(), timeoutPromise(timeoutMs, label)]);
     return { ok: true, durationMs: Date.now() - startedAt, value };
+  } catch (error) {
+    return {
+      ok: false,
+      durationMs: Date.now() - startedAt,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+async function timedSection(label, fn, timeoutMs = 7000) {
+  const startedAt = Date.now();
+  try {
+    const result = await Promise.race([fn(), timeoutPromise(timeoutMs, label)]);
+    const durationMs = Date.now() - startedAt;
+    if (result && typeof result === 'object' && result.ok === false) {
+      const { ok, error, unavailable, reason, ...value } = result;
+      return {
+        ok,
+        durationMs,
+        ...(Object.keys(value).length > 0 ? { value } : {}),
+        ...(error ? { error } : {}),
+        ...(unavailable ? { unavailable } : {}),
+        ...(reason ? { reason } : {}),
+      };
+    }
+    return { ok: true, durationMs, value: result };
   } catch (error) {
     return {
       ok: false,
@@ -249,22 +275,43 @@ function parseRouteOutput(output) {
     .map((line) => ({ raw: line.replace(/\s+/g, ' ') }));
 }
 
-async function routeTrace(hostname) {
-  if (commandExists('mtr')) {
-    const result = await runCommand('mtr', ['--report', '--report-cycles', '3', '--no-dns', hostname], 15000);
-    if (result.code === 0) {
-      return { ok: true, tool: 'mtr', hops: parseRouteOutput(result.stdout), stderr: result.stderr };
+function routeCommandTimeout(input) {
+  const now = input.now ?? Date.now();
+  const remaining = input.budgetMs - (now - input.startedAt);
+  if (remaining <= 0) return 0;
+  return Math.min(input.capMs, Math.max(100, remaining));
+}
+
+function routeTrace(hostname) {
+  const routeBudgetMs = 16000;
+  const startedAt = Date.now();
+  const remainingFor = (capMs) => routeCommandTimeout({ startedAt, budgetMs: routeBudgetMs, capMs });
+
+  return timedSection('Route trace', async () => {
+    if (commandExists('mtr')) {
+      const timeoutMs = remainingFor(15000);
+      if (timeoutMs <= 0) return { ok: false, unavailable: true, reason: 'Route trace timed out before mtr could run.' };
+      const result = await runCommand('mtr', ['--report', '--report-cycles', '3', '--no-dns', hostname], timeoutMs);
+      if (result.code === 0) {
+        return { tool: 'mtr', hops: parseRouteOutput(result.stdout), stderr: result.stderr };
+      }
     }
-  }
-  if (process.platform === 'win32') {
-    const result = await runCommand('tracert', ['-d', '-h', '16', hostname]);
-    return { ok: result.code === 0, tool: 'tracert', hops: parseRouteOutput(result.stdout), stderr: result.stderr };
-  }
-  if (!commandExists('traceroute')) {
-    return { ok: false, tool: 'traceroute', unavailable: true, reason: 'traceroute command not found' };
-  }
-  const result = await runCommand('traceroute', ['-n', '-m', '16', hostname]);
-  return { ok: result.code === 0, tool: 'traceroute', hops: parseRouteOutput(result.stdout), stderr: result.stderr };
+    if (process.platform === 'win32') {
+      const timeoutMs = remainingFor(10000);
+      if (timeoutMs <= 0) return { ok: false, tool: 'tracert', unavailable: true, reason: 'Route trace timed out before tracert could run.' };
+      const result = await runCommand('tracert', ['-d', '-h', '16', hostname], timeoutMs);
+      if (result.code === 0) return { tool: 'tracert', hops: parseRouteOutput(result.stdout), stderr: result.stderr };
+      return { ok: false, tool: 'tracert', hops: parseRouteOutput(result.stdout), stderr: result.stderr };
+    }
+    if (!commandExists('traceroute')) {
+      return { ok: false, tool: 'traceroute', unavailable: true, reason: 'traceroute command not found' };
+    }
+    const timeoutMs = remainingFor(10000);
+    if (timeoutMs <= 0) return { ok: false, tool: 'traceroute', unavailable: true, reason: 'Route trace timed out before traceroute could run.' };
+    const result = await runCommand('traceroute', ['-n', '-m', '16', hostname], timeoutMs);
+    if (result.code === 0) return { tool: 'traceroute', hops: parseRouteOutput(result.stdout), stderr: result.stderr };
+    return { ok: false, tool: 'traceroute', hops: parseRouteOutput(result.stdout), stderr: result.stderr };
+  }, routeBudgetMs);
 }
 
 function redactWifiInfo(input, includePrivate = false) {
@@ -290,17 +337,19 @@ function parseAirportInfo(output) {
   };
 }
 
-async function wifiSignal(includePrivate) {
-  if (process.platform !== 'darwin') {
-    return { ok: false, unavailable: true, reason: 'WiFi signal is currently implemented for macOS only.' };
-  }
-  const airport = '/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport';
-  if (!fs.existsSync(airport)) {
-    return { ok: false, unavailable: true, reason: 'macOS airport utility not found.' };
-  }
-  const result = await runCommand(airport, ['-I'], 4000);
-  if (result.code !== 0) return { ok: false, stderr: result.stderr };
-  return { ok: true, ...redactWifiInfo(parseAirportInfo(result.stdout), includePrivate) };
+function wifiSignal(includePrivate) {
+  return timedSection('WiFi signal', async () => {
+    if (process.platform !== 'darwin') {
+      return { ok: false, unavailable: true, reason: 'WiFi signal is currently implemented for macOS only.' };
+    }
+    const airport = '/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport';
+    if (!fs.existsSync(airport)) {
+      return { ok: false, unavailable: true, reason: 'macOS airport utility not found.' };
+    }
+    const result = await runCommand(airport, ['-I'], 4000);
+    if (result.code !== 0) return { ok: false, error: result.stderr };
+    return redactWifiInfo(parseAirportInfo(result.stdout), includePrivate);
+  }, 5000);
 }
 
 function createHistoryStore(databasePath) {
@@ -510,6 +559,8 @@ module.exports = {
   signAgentRequest,
   verifySignedRequest,
   redactWifiInfo,
+  routeCommandTimeout,
   createHistoryStore,
   createServer,
+  runProbe,
 };
