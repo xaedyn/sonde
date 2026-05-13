@@ -5,6 +5,7 @@ import DiagnoseView from '../../../src/lib/components/DiagnoseView.svelte';
 import { bufferbloatStore } from '../../../src/lib/stores/bufferbloat';
 import { endpointStore } from '../../../src/lib/stores/endpoints';
 import { measurementStore } from '../../../src/lib/stores/measurements';
+import { networkContextStore } from '../../../src/lib/stores/network-context';
 import { remoteVantageStore } from '../../../src/lib/stores/remote-vantage';
 import { settingsStore } from '../../../src/lib/stores/settings';
 import { resetStatisticsCache } from '../../../src/lib/stores/statistics';
@@ -109,6 +110,7 @@ describe('DiagnoseView investigation focus', () => {
     measurementStore.reset();
     resetStatisticsCache();
     bufferbloatStore.reset();
+    networkContextStore.reset();
     remoteVantageStore.reset();
     settingsStore.reset();
     uiStore.reset();
@@ -224,6 +226,33 @@ describe('DiagnoseView investigation focus', () => {
           timeout: 5000,
         }),
       });
+    });
+  });
+
+  it('runs optional network context from Investigate with proof-scoped copy', async () => {
+    const api = endpoint('api', 'API');
+    endpointStore.setEndpoints([api]);
+    seedReadySamples({ api: 35 });
+    uiStore.setActiveView('diagnose');
+    uiStore.setFocusedEndpoint('api');
+    const runNetworkContext = vi.spyOn(networkContextStore, 'run').mockResolvedValue({
+      status: 'complete',
+      hostname: 'api.example.com',
+      dnsInsight: null,
+      topologyInsight: null,
+      dnsError: null,
+      topologyError: null,
+      error: null,
+    });
+
+    const { getByRole, getByText } = render(DiagnoseView);
+
+    expect(getByText(/outside resolver and public topology context/i)).toBeTruthy();
+    expect(getByText(/not your local DNS path or active route proof/i)).toBeTruthy();
+    await fireEvent.click(getByRole('button', { name: /run context check/i }));
+
+    await waitFor(() => {
+      expect(runNetworkContext).toHaveBeenCalledWith(api);
     });
   });
 });

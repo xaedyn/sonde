@@ -6,7 +6,7 @@ export default defineConfig({
   forbidOnly: !!process.env['CI'],
   retries: process.env['CI'] ? 2 : 0,
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: 'http://127.0.0.1:5174',
     trace: 'on-first-retry',
   },
   projects: [
@@ -14,8 +14,8 @@ export default defineConfig({
     { name: 'mobile-chrome', use: { ...devices['Pixel 5'] } },
   ],
   webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:5173',
-    reuseExistingServer: !process.env['CI'],
+    command: 'npm run dev -- --host 127.0.0.1 --port 5174 --strictPort',
+    url: 'http://127.0.0.1:5174',
+    reuseExistingServer: false,
   },
 });

@@ -8,6 +8,7 @@
   import { monitoredEndpointsStore } from '$lib/stores/derived';
   import { bufferbloatStore } from '$lib/stores/bufferbloat';
   import { measurementStore } from '$lib/stores/measurements';
+  import { networkContextStore } from '$lib/stores/network-context';
   import { remoteVantageStore } from '$lib/stores/remote-vantage';
   import { settingsStore } from '$lib/stores/settings';
   import { statisticsStore } from '$lib/stores/statistics';
@@ -26,6 +27,7 @@
   const measurements = $derived($measurementStore);
   const settings = $derived($settingsStore);
   const bufferbloat = $derived($bufferbloatStore);
+  const networkContext = $derived($networkContextStore);
   const remoteVantage = $derived($remoteVantageStore);
   const focusedId = $derived($uiStore.focusedEndpointId);
 
@@ -55,6 +57,16 @@
     probe: remoteVantage.lastProbe,
   }));
   const bufferbloatBusy = $derived(bufferbloat.status === 'running');
+  const networkContextBusy = $derived(networkContext.status === 'running');
+  const focusedHostname = $derived(focusedEndpoint ? hostnameFromUrl(focusedEndpoint.url) : null);
+  const networkContextMatchesFocus = $derived(Boolean(
+    focusedHostname && networkContext.hostname === focusedHostname,
+  ));
+  const networkContextDnsInsight = $derived(networkContextMatchesFocus ? networkContext.dnsInsight : null);
+  const networkContextTopologyInsight = $derived(networkContextMatchesFocus ? networkContext.topologyInsight : null);
+  const networkContextDnsError = $derived(networkContextMatchesFocus ? networkContext.dnsError : null);
+  const networkContextTopologyError = $derived(networkContextMatchesFocus ? networkContext.topologyError : null);
+  const networkContextError = $derived(networkContextMatchesFocus ? networkContext.error : null);
   const bufferbloatStatusLabel = $derived.by(() => {
     if (bufferbloat.status === 'running') return 'Running';
     if (bufferbloat.status === 'stopped') return 'Stopped';
@@ -264,6 +276,19 @@
 
   function handleLoadedLatencyStop(): void {
     bufferbloatStore.stop();
+  }
+
+  async function handleNetworkContextCheck(): Promise<void> {
+    if (!focusedEndpoint) return;
+    await networkContextStore.run(focusedEndpoint);
+  }
+
+  function hostnameFromUrl(url: string): string | null {
+    try {
+      return new URL(url).hostname;
+    } catch {
+      return null;
+    }
   }
 
   function loadedLatencyMetric(value: number | null): string {
@@ -504,6 +529,47 @@
         <p class="loaded-action">Downloading a bounded Cloudflare response and timing this endpoint from the browser.</p>
       {:else}
         <p class="loaded-action">{bufferbloat.grade.summary}</p>
+      {/if}
+    </section>
+
+    <section class="diagnose-network-context" aria-label="Network context">
+      <div class="network-context-head">
+        <div>
+          <div class="diagnose-section-kicker">Network context</div>
+          <p class="network-context-headline">Outside resolver and public topology context</p>
+        </div>
+        <button
+          type="button"
+          class="diagnose-chip diagnose-chip-action"
+          disabled={networkContextBusy}
+          aria-disabled={networkContextBusy}
+          onclick={handleNetworkContextCheck}
+        >
+          {networkContextBusy ? 'Checking…' : 'Run context check'}
+        </button>
+      </div>
+      <p class="network-context-detail">
+        This asks Cloudflare DNS-over-HTTPS and RIPEstat for the focused hostname{focusedHostname ? `, ${focusedHostname}` : ''}. It is not your local DNS path or active route proof.
+      </p>
+      <dl class="network-context-evidence">
+        <div>
+          <dt>Outside resolver</dt>
+          <dd>{networkContextDnsInsight?.headline ?? networkContextDnsError ?? 'Not run'}</dd>
+          {#if networkContextDnsInsight?.detail}
+            <p>{networkContextDnsInsight.detail}</p>
+          {/if}
+        </div>
+        <div>
+          <dt>Public topology</dt>
+          <dd>{networkContextTopologyInsight ?? networkContextTopologyError ?? 'Not run'}</dd>
+        </div>
+      </dl>
+      {#if networkContextError}
+        <p class="network-context-error">{networkContextError}</p>
+      {:else if networkContext.status === 'complete' && networkContextMatchesFocus}
+        <p class="network-context-action">Use this as context only; confirm path or resolver problems with local-agent evidence when needed.</p>
+      {:else}
+        <p class="network-context-action">No context captured for this endpoint yet.</p>
       {/if}
     </section>
 
@@ -768,7 +834,8 @@
   .diagnose-answer,
   .diagnose-visibility,
   .diagnose-remote,
-  .diagnose-loaded {
+  .diagnose-loaded,
+  .diagnose-network-context {
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -1002,6 +1069,67 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .network-context-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .network-context-headline,
+  .network-context-detail,
+  .network-context-action,
+  .network-context-error {
+    margin: 0;
+  }
+  .network-context-headline {
+    color: var(--t1);
+    font-size: var(--ts-md);
+    line-height: 1.4;
+  }
+  .network-context-detail,
+  .network-context-action,
+  .network-context-error,
+  .network-context-evidence p {
+    color: var(--t3);
+    font-size: var(--ts-sm);
+    line-height: 1.45;
+  }
+  .network-context-action {
+    color: var(--accent-cyan);
+  }
+  .network-context-error {
+    color: var(--accent-amber);
+  }
+  .network-context-evidence {
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .network-context-evidence div {
+    min-width: 0;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-mid);
+  }
+  .network-context-evidence dt {
+    margin: 0 0 3px;
+    color: var(--t2);
+    font-family: var(--mono);
+    font-size: var(--ts-xs);
+    letter-spacing: var(--tr-kicker);
+    text-transform: uppercase;
+  }
+  .network-context-evidence dd {
+    margin: 0;
+    color: var(--t1);
+    font-size: var(--ts-sm);
+    line-height: 1.4;
+  }
+  .network-context-evidence p {
+    margin: 4px 0 0;
   }
 
   /* ── Cross-endpoint correlation ────────────────────────────────────────── */
@@ -1454,6 +1582,7 @@
     .diagnose-header { flex-direction: column; align-items: flex-start; }
     .diagnose-answer-evidence { grid-template-columns: 1fr; }
     .loaded-evidence { grid-template-columns: 1fr; }
+    .network-context-evidence { grid-template-columns: 1fr; }
     .diagnose-evidence-row { grid-template-columns: 10px 110px 70px 1fr 40px; }
   }
 </style>
