@@ -3,6 +3,7 @@
 // confidence, supporting evidence, browser visibility limits, and next steps.
 
 import type { MeasurementSample, Settings } from '../types';
+import { classifyLossPattern } from '../loss/patterns';
 import { renderClaim, type ClaimEvidenceState, type ClaimId } from './claim-registry';
 import { computeCausalVerdict, PHASE_LABELS, type Verdict, type VerdictRow } from './verdict';
 
@@ -401,6 +402,7 @@ function evidenceFor(input: {
   readonly overRows: readonly VerdictRow[];
   readonly verdict: Verdict;
   readonly timingVisibility: TimingVisibility;
+  readonly samplesByEndpoint: Readonly<Record<string, readonly MeasurementSample[]>>;
 }): DiagnosticEvidence[] {
   const { rows, monitoredEndpointCount, threshold, overRows, verdict, timingVisibility } = input;
   const evidence: DiagnosticEvidence[] = [
@@ -447,7 +449,18 @@ function evidenceFor(input: {
 
   const avgLoss = mean(rows.map((row) => row.stats.lossPercent));
   if (avgLoss > LOSS_WARN_PERCENT) {
-    evidence.push({ id: 'failed-requests', label: 'Failed requests', value: fmtPct(avgLoss) });
+    const lossySamples = rows
+      .filter((row) => row.stats.lossPercent > LOSS_WARN_PERCENT)
+      .flatMap((row) => input.samplesByEndpoint[row.ep.id] ?? []);
+    const lossPattern = classifyLossPattern(lossySamples);
+    evidence.push({
+      id: 'failed-requests',
+      label: 'Failed requests',
+      value: fmtPct(avgLoss),
+      ...(lossPattern.kind === 'none' || lossPattern.totalCount === 0
+        ? {}
+        : { detail: lossPattern.safeSummary }),
+    });
   }
 
   const avgJitter = mean(rows.map((row) => row.stats.stddev));
@@ -1027,6 +1040,7 @@ export function buildDiagnosticNarrative(input: DiagnosticInput): DiagnosticNarr
     overRows,
     verdict,
     timingVisibility,
+    samplesByEndpoint: input.samplesByEndpoint,
   });
   const snapshotEligibility = snapshotEligibilityFor({
     kind,

@@ -61,6 +61,15 @@ function ok(round: number, latency = 50, sampleOver: Partial<MeasurementSample> 
   };
 }
 
+function timeout(round: number): MeasurementSample {
+  return {
+    round,
+    latency: 5000,
+    status: 'timeout',
+    timestamp: 0,
+  };
+}
+
 function samples(count: number, latency = 50, withTier2 = false): MeasurementSample[] {
   return Array.from({ length: count }, (_, i) => ok(i + 1, latency, withTier2 ? { tier2 } : {}));
 }
@@ -257,6 +266,29 @@ describe('buildDiagnosticNarrative', () => {
     expect(narrative.primaryValidation.id).toBe('explain-browser-visibility');
     expect(narrative.primaryValidation.reason).toBe('Chronoscope can compare total load time, but not every DNS, TCP, TLS, or server timing detail is visible.');
     expect(narrative.confidenceReason).toBe('Based on 12+ successful checks across 2 sites.');
+  });
+
+  it('adds a compact loss pattern detail without guessing the cause', () => {
+    const narrative = buildDiagnosticNarrative({
+      rows: [
+        row('google', { lossPercent: 20, sampleCount: 10 }),
+        row('cloudflare', { lossPercent: 0, sampleCount: 10 }),
+      ],
+      threshold: 120,
+      corsMode: 'no-cors',
+      samplesByEndpoint: {
+        google: [ok(1), ok(2), timeout(3), timeout(4), timeout(5), ok(6), ok(7), ok(8), ok(9), ok(10)],
+        cloudflare: samples(10, 55),
+      },
+      monitoredEndpointCount: 2,
+    });
+
+    const lossEvidence = narrative.evidence.find((item) => item.id === 'failed-requests');
+    expect(lossEvidence).toMatchObject({
+      label: 'Failed requests',
+      detail: 'Failed requests are clustered in a short burst.',
+    });
+    expect(lossEvidence?.detail).not.toMatch(/cause|because|router|ISP|Wi[- ]?Fi|server/i);
   });
 
   it('estimates successful samples from loss when raw samples are unavailable', () => {
