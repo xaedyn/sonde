@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, waitFor } from '@testing-library/svelte';
 import { get } from 'svelte/store';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import DiagnoseView from '../../../src/lib/components/DiagnoseView.svelte';
+import { bufferbloatStore } from '../../../src/lib/stores/bufferbloat';
 import { endpointStore } from '../../../src/lib/stores/endpoints';
 import { measurementStore } from '../../../src/lib/stores/measurements';
 import { remoteVantageStore } from '../../../src/lib/stores/remote-vantage';
@@ -107,6 +108,7 @@ describe('DiagnoseView investigation focus', () => {
     endpointStore.setEndpoints([]);
     measurementStore.reset();
     resetStatisticsCache();
+    bufferbloatStore.reset();
     remoteVantageStore.reset();
     settingsStore.reset();
     uiStore.reset();
@@ -197,6 +199,31 @@ describe('DiagnoseView investigation focus', () => {
 
     await waitFor(() => {
       expect(runProbe).toHaveBeenCalledWith([api]);
+    });
+  });
+
+  it('runs a loaded latency check from Investigate with proof-scoped copy', async () => {
+    const api = endpoint('api', 'API');
+    endpointStore.setEndpoints([api]);
+    seedReadySamples({ api: 35 });
+    uiStore.setActiveView('diagnose');
+    uiStore.setFocusedEndpoint('api');
+    const runLoadedLatency = vi.spyOn(bufferbloatStore, 'run').mockResolvedValue(null);
+
+    const { getByRole, getByText } = render(DiagnoseView);
+
+    expect(getByText(/loaded-latency evidence, not packet-level proof/i)).toBeTruthy();
+    await fireEvent.click(getByRole('button', { name: /run loaded check/i }));
+
+    await waitFor(() => {
+      expect(runLoadedLatency).toHaveBeenCalledWith({
+        endpoint: api,
+        idleSamples: expect.arrayContaining([expect.objectContaining({ latency: 35 })]),
+        settings: expect.objectContaining({
+          corsMode: 'no-cors',
+          timeout: 5000,
+        }),
+      });
     });
   });
 });

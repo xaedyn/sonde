@@ -6,6 +6,7 @@
 <!-- auto-selects an investigation target when focus is missing or stale.       -->
 <script lang="ts">
   import { monitoredEndpointsStore } from '$lib/stores/derived';
+  import { bufferbloatStore } from '$lib/stores/bufferbloat';
   import { measurementStore } from '$lib/stores/measurements';
   import { remoteVantageStore } from '$lib/stores/remote-vantage';
   import { settingsStore } from '$lib/stores/settings';
@@ -24,6 +25,7 @@
   const stats = $derived($statisticsStore);
   const measurements = $derived($measurementStore);
   const settings = $derived($settingsStore);
+  const bufferbloat = $derived($bufferbloatStore);
   const remoteVantage = $derived($remoteVantageStore);
   const focusedId = $derived($uiStore.focusedEndpointId);
 
@@ -52,6 +54,21 @@
     threshold: settings.healthThreshold,
     probe: remoteVantage.lastProbe,
   }));
+  const bufferbloatBusy = $derived(bufferbloat.status === 'running');
+  const bufferbloatStatusLabel = $derived.by(() => {
+    if (bufferbloat.status === 'running') return 'Running';
+    if (bufferbloat.status === 'stopped') return 'Stopped';
+    switch (bufferbloat.grade.grade) {
+      case 'clean':
+        return 'Clean';
+      case 'watch':
+        return 'Watch';
+      case 'loaded-latency-high':
+        return 'High';
+      case 'insufficient-data':
+        return bufferbloat.status === 'error' ? 'Needs data' : 'Not run';
+    }
+  });
   const remoteBusy = $derived(remoteVantage.status === 'checking' || remoteVantage.status === 'probing');
 
   // ── Mode toggle ──────────────────────────────────────────────────────────
@@ -231,6 +248,26 @@
 
   async function handleRemoteCheck(): Promise<void> {
     await remoteVantageStore.runProbe(focusedEndpoint ? [focusedEndpoint] : monitored);
+  }
+
+  async function handleLoadedLatencyCheck(): Promise<void> {
+    if (!focusedEndpoint) return;
+    await bufferbloatStore.run({
+      endpoint: focusedEndpoint,
+      idleSamples: focusedAllSamples,
+      settings: {
+        corsMode: settings.corsMode,
+        timeout: settings.timeout,
+      },
+    });
+  }
+
+  function handleLoadedLatencyStop(): void {
+    bufferbloatStore.stop();
+  }
+
+  function loadedLatencyMetric(value: number | null): string {
+    return value === null ? '—' : `${fmt(value)} ms`;
   }
 
   // ── Accessibility summary for the hero bar ────────────────────────────────
@@ -413,6 +450,60 @@
         <p class="remote-error">{remoteVantage.error}</p>
       {:else}
         <p class="remote-action">{remoteInsight.action}</p>
+      {/if}
+    </section>
+
+    <section
+      class="diagnose-loaded"
+      class:clean={bufferbloat.grade.grade === 'clean'}
+      class:watch={bufferbloat.grade.grade === 'watch'}
+      class:high={bufferbloat.grade.grade === 'loaded-latency-high'}
+      aria-label="Loaded latency"
+    >
+      <div class="loaded-head">
+        <div>
+          <div class="diagnose-section-kicker">Loaded latency</div>
+          <p class="loaded-headline">Browser latency while the connection is busy</p>
+        </div>
+        {#if bufferbloatBusy}
+          <button
+            type="button"
+            class="diagnose-chip diagnose-chip-action"
+            onclick={handleLoadedLatencyStop}
+          >Stop loaded check</button>
+        {:else}
+          <button
+            type="button"
+            class="diagnose-chip diagnose-chip-action"
+            disabled={!distroStats}
+            aria-disabled={!distroStats}
+            onclick={handleLoadedLatencyCheck}
+          >Run loaded check</button>
+        {/if}
+      </div>
+      <p class="loaded-detail">
+        This measures browser-visible latency while a download is running. It is loaded-latency evidence, not packet-level proof.
+      </p>
+      <dl class="loaded-evidence">
+        <div>
+          <dt>Idle median</dt>
+          <dd>{loadedLatencyMetric(bufferbloat.idleMedianMs)}</dd>
+        </div>
+        <div>
+          <dt>Loaded median</dt>
+          <dd>{loadedLatencyMetric(bufferbloat.loadedMedianMs)}</dd>
+        </div>
+        <div>
+          <dt>Status</dt>
+          <dd>{bufferbloatStatusLabel}</dd>
+        </div>
+      </dl>
+      {#if bufferbloat.error}
+        <p class="loaded-error">{bufferbloat.error}</p>
+      {:else if bufferbloat.status === 'running'}
+        <p class="loaded-action">Downloading a bounded Cloudflare response and timing this endpoint from the browser.</p>
+      {:else}
+        <p class="loaded-action">{bufferbloat.grade.summary}</p>
       {/if}
     </section>
 
@@ -676,7 +767,8 @@
   /* ── Diagnostic answer + browser visibility ───────────────────────────── */
   .diagnose-answer,
   .diagnose-visibility,
-  .diagnose-remote {
+  .diagnose-remote,
+  .diagnose-loaded {
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -831,6 +923,78 @@
     text-transform: uppercase;
   }
   .remote-evidence dd {
+    margin: 0;
+    color: var(--t1);
+    font-family: var(--mono);
+    font-size: var(--ts-sm);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .diagnose-loaded.clean {
+    border-color: rgba(134, 239, 172, 0.24);
+    background: rgba(134, 239, 172, 0.035);
+  }
+  .diagnose-loaded.watch {
+    border-color: rgba(251, 191, 36, 0.28);
+    background: rgba(251, 191, 36, 0.04);
+  }
+  .diagnose-loaded.high {
+    border-color: rgba(249, 168, 212, 0.3);
+    background: rgba(249, 168, 212, 0.045);
+  }
+  .loaded-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .loaded-headline,
+  .loaded-detail,
+  .loaded-action,
+  .loaded-error {
+    margin: 0;
+  }
+  .loaded-headline {
+    color: var(--t1);
+    font-size: var(--ts-md);
+    line-height: 1.4;
+  }
+  .loaded-detail,
+  .loaded-action,
+  .loaded-error {
+    color: var(--t3);
+    font-size: var(--ts-sm);
+    line-height: 1.45;
+  }
+  .loaded-action {
+    color: var(--accent-cyan);
+  }
+  .loaded-error {
+    color: var(--accent-amber);
+  }
+  .loaded-evidence {
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .loaded-evidence div {
+    min-width: 0;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-mid);
+  }
+  .loaded-evidence dt {
+    margin: 0 0 3px;
+    color: var(--t2);
+    font-family: var(--mono);
+    font-size: var(--ts-xs);
+    letter-spacing: var(--tr-kicker);
+    text-transform: uppercase;
+  }
+  .loaded-evidence dd {
     margin: 0;
     color: var(--t1);
     font-family: var(--mono);
@@ -1289,6 +1453,7 @@
     .diagnose { padding: 12px; gap: 12px; }
     .diagnose-header { flex-direction: column; align-items: flex-start; }
     .diagnose-answer-evidence { grid-template-columns: 1fr; }
+    .loaded-evidence { grid-template-columns: 1fr; }
     .diagnose-evidence-row { grid-template-columns: 10px 110px 70px 1fr 40px; }
   }
 </style>
