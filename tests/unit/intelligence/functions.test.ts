@@ -3,6 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   handleIntelligenceIngest,
+  handleIntelligenceSummary,
   validateIntelligencePayload,
   type IntelligenceStore,
 } from '../../../functions/_shared/intelligence';
@@ -17,6 +18,14 @@ class FakeIntelligenceStore implements IntelligenceStore {
   put(key: string, value: string): Promise<void> {
     this.values.set(key, value);
     return Promise.resolve();
+  }
+
+  list(options?: { readonly prefix?: string; readonly limit?: number }): Promise<{ readonly keys: readonly { readonly name: string }[] }> {
+    const keys = [...this.values.keys()]
+      .filter((name) => options?.prefix === undefined || name.startsWith(options.prefix))
+      .slice(0, options?.limit ?? 1000)
+      .map((name) => ({ name }));
+    return Promise.resolve({ keys });
   }
 }
 
@@ -123,5 +132,58 @@ describe('collective intelligence functions', () => {
 
     expect(response.status).toBe(204);
     expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
+  });
+
+  it('returns aggregate summary buckets only', async () => {
+    const store = new FakeIntelligenceStore();
+    await store.put('intelligence:v1:2026-05-13:named-public-endpoint:host:api.example.com', JSON.stringify({
+      v: 1,
+      bucket: '2026-05-13',
+      consent: 'named-public-endpoint',
+      originHost: 'api.example.com',
+      count: 2,
+      sampleCount: 70,
+      p50Sum: 90,
+      p95Sum: 170,
+      lossPercentSum: 1.5,
+      updatedAt: 1778352060000,
+    }));
+    await store.put('unrelated', JSON.stringify({
+      url: 'https://private.example/path',
+      ssid: 'HomeNetwork',
+    }));
+
+    const response = await handleIntelligenceSummary(new Request('https://chronoscope.dev/api/intelligence/summary'), {
+      store,
+    });
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload).toEqual({
+      ok: true,
+      buckets: [{
+        bucket: '2026-05-13',
+        consent: 'named-public-endpoint',
+        originHost: 'api.example.com',
+        count: 2,
+        sampleCount: 70,
+        p50Avg: 45,
+        p95Avg: 85,
+        lossPercentAvg: 0.75,
+        updatedAt: 1778352060000,
+      }],
+    });
+    expect(JSON.stringify(payload)).not.toMatch(/https?:\/\//);
+    expect(JSON.stringify(payload)).not.toMatch(/ssid|bssid|history/i);
+  });
+
+  it('returns 503 for summaries when aggregate storage cannot be listed', async () => {
+    const response = await handleIntelligenceSummary(new Request('https://chronoscope.dev/api/intelligence/summary'));
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      ok: false,
+      error: 'Intelligence summary storage is not configured.',
+    });
   });
 });

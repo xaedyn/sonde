@@ -1,6 +1,7 @@
 export interface IntelligenceStore {
   get(key: string): Promise<string | null>;
   put(key: string, value: string): Promise<void>;
+  list?(options?: { readonly prefix?: string; readonly limit?: number }): Promise<{ readonly keys: readonly { readonly name: string }[] }>;
 }
 
 export interface IntelligenceIngestOptions {
@@ -35,6 +36,18 @@ interface IntelligenceAggregate {
   readonly updatedAt: number;
 }
 
+interface IntelligenceSummaryBucket {
+  readonly bucket: string;
+  readonly consent: IntelligenceConsent;
+  readonly originHost: string | null;
+  readonly count: number;
+  readonly sampleCount: number;
+  readonly p50Avg: number;
+  readonly p95Avg: number;
+  readonly lossPercentAvg: number;
+  readonly updatedAt: number;
+}
+
 const PRIVATE_FIELD_KEYS = new Set([
   'url',
   'endpointurl',
@@ -47,6 +60,7 @@ const PRIVATE_FIELD_KEYS = new Set([
 ]);
 const MAX_SAMPLE_COUNT = 10_000;
 const MAX_LATENCY_MS = 600_000;
+const INTELLIGENCE_KEY_PREFIX = 'intelligence:v1:';
 
 function json(status: number, payload: unknown, extraHeaders: HeadersInit = {}): Response {
   return new Response(status === 204 ? null : JSON.stringify(payload), {
@@ -127,6 +141,48 @@ function bucketDay(createdAt: number): string {
 function aggregateKey(payload: ValidIntelligencePayload): string {
   const hostKey = payload.originHost === null ? 'anonymous' : `host:${payload.originHost}`;
   return `intelligence:v1:${bucketDay(payload.createdAt)}:${payload.consent}:${hostKey}`;
+}
+
+function summaryBucketFromAggregate(value: string | null): IntelligenceSummaryBucket | null {
+  if (value === null) return null;
+  let record: Record<string, unknown>;
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return null;
+    record = parsed as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+
+  if (record.v !== 1) return null;
+  if (record.consent !== 'anonymous-aggregate' && record.consent !== 'named-public-endpoint') return null;
+  if (typeof record.bucket !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(record.bucket)) return null;
+  if (!finiteNumber(record.count, 1, Number.MAX_SAFE_INTEGER)) return null;
+  if (!finiteNumber(record.sampleCount, 1, Number.MAX_SAFE_INTEGER)) return null;
+  if (!finiteNumber(record.p50Sum, 0, Number.MAX_SAFE_INTEGER)) return null;
+  if (!finiteNumber(record.p95Sum, 0, Number.MAX_SAFE_INTEGER)) return null;
+  if (!finiteNumber(record.lossPercentSum, 0, Number.MAX_SAFE_INTEGER)) return null;
+  if (!finiteNumber(record.updatedAt, 0, Number.MAX_SAFE_INTEGER)) return null;
+
+  let originHost: string | null = null;
+  if (record.consent === 'named-public-endpoint') {
+    if (!isPublicNamedHost(record.originHost)) return null;
+    originHost = record.originHost;
+  } else if (record.originHost !== null) {
+    return null;
+  }
+
+  return {
+    bucket: record.bucket,
+    consent: record.consent,
+    originHost,
+    count: record.count,
+    sampleCount: record.sampleCount,
+    p50Avg: Math.round(record.p50Sum / record.count),
+    p95Avg: Math.round(record.p95Sum / record.count),
+    lossPercentAvg: Number((record.lossPercentSum / record.count).toFixed(2)),
+    updatedAt: record.updatedAt,
+  };
 }
 
 async function recordAggregate(
@@ -230,4 +286,32 @@ export async function handleIntelligenceIngest(
 
   await recordAggregate(options.store, validated.payload, options.now?.() ?? Date.now());
   return json(202, { ok: true, accepted: true });
+}
+
+export async function handleIntelligenceSummary(
+  request: Request,
+  options: IntelligenceIngestOptions = {},
+): Promise<Response> {
+  if (request.method === 'OPTIONS') return json(204, null, { 'Access-Control-Allow-Methods': 'GET,OPTIONS' });
+  if (request.method !== 'GET') return json(405, { ok: false, error: 'Method not allowed.' }, {
+    Allow: 'GET, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET,OPTIONS',
+  });
+  if (!options.store?.list) {
+    return json(503, { ok: false, error: 'Intelligence summary storage is not configured.' }, {
+      'Access-Control-Allow-Methods': 'GET,OPTIONS',
+    });
+  }
+
+  const listed = await options.store.list({ prefix: INTELLIGENCE_KEY_PREFIX, limit: 50 });
+  const buckets = (await Promise.all(
+    listed.keys.map(async (key) => summaryBucketFromAggregate(await options.store?.get(key.name) ?? null)),
+  ))
+    .filter((bucket): bucket is IntelligenceSummaryBucket => bucket !== null)
+    .sort((a, b) => b.updatedAt - a.updatedAt)
+    .slice(0, 20);
+
+  return json(200, { ok: true, buckets }, {
+    'Access-Control-Allow-Methods': 'GET,OPTIONS',
+  });
 }

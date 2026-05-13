@@ -6,6 +6,7 @@
 <!-- auto-selects an investigation target when focus is missing or stale.       -->
 <script lang="ts">
   import { monitoredEndpointsStore } from '$lib/stores/derived';
+  import IntelligencePanel from '$lib/components/IntelligencePanel.svelte';
   import { bufferbloatStore } from '$lib/stores/bufferbloat';
   import { measurementStore } from '$lib/stores/measurements';
   import { networkContextStore } from '$lib/stores/network-context';
@@ -722,6 +723,8 @@
         </table>
       </section>
     {/if}
+
+    <IntelligencePanel />
   {/if}
 </section>
 
