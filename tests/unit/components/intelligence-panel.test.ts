@@ -60,10 +60,12 @@ describe('IntelligencePanel', () => {
 
   it('treats missing storage as unavailable rather than an alarming diagnosis', async () => {
     stubFetch(new Response(JSON.stringify({
-      ok: false,
-      error: 'Intelligence summary storage is not configured.',
+      ok: true,
+      buckets: [],
+      unavailable: true,
+      message: 'Aggregate context is not available yet.',
     }), {
-      status: 503,
+      status: 200,
       headers: { 'Content-Type': 'application/json' },
     }));
     const { getByRole, getByText } = render(IntelligencePanel);

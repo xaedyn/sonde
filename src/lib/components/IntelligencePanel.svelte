@@ -16,6 +16,8 @@
   interface IntelligenceSummaryResponse {
     readonly ok: true;
     readonly buckets: readonly IntelligenceSummaryBucket[];
+    readonly unavailable?: boolean;
+    readonly message?: string;
   }
 
   type LoadStatus = 'idle' | 'loading' | 'ready' | 'unavailable' | 'error';
@@ -90,17 +92,12 @@
         payload = null;
       }
 
-      if (response.status === 503) {
-        buckets = [];
-        status = 'unavailable';
-        return;
-      }
       if (!response.ok || !isSummaryResponse(payload)) {
         throw new Error('Invalid aggregate context response.');
       }
 
       buckets = payload.buckets;
-      status = 'ready';
+      status = payload.unavailable === true ? 'unavailable' : 'ready';
     } catch {
       buckets = [];
       errorMessage = 'Could not load aggregate context.';
