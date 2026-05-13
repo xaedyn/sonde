@@ -10,6 +10,8 @@ npm run companion
 
 The agent writes a one-time pairing token to `~/.chronoscope/agent-token.txt`. Paste that token into Chronoscope Settings under `Local Companion`.
 
+Chronoscope only connects to the agent on loopback, normally `http://127.0.0.1:47317`. Health checks are unsigned so the browser can confirm the agent is running. Probe and history requests are signed with the pairing token, timestamp, and nonce.
+
 ## Configuration
 
 ```bash
@@ -20,8 +22,16 @@ CHRONOSCOPE_ALLOWED_ORIGINS="https://chronoscope.dev,http://localhost:5173,http:
 npm run companion
 ```
 
-The HTTP server binds to `127.0.0.1` and rejects non-loopback browser configuration. Probe and history requests are signed with HMAC-SHA256 using timestamp and nonce headers; replayed or stale requests are rejected.
+The HTTP server binds to `127.0.0.1` and rejects non-loopback browser configuration. Replayed or stale signed requests are rejected.
 
 ## Privacy
 
 WiFi SSID and BSSID are shown only when `Private WiFi` is selected; otherwise they are redacted. Probe history is stored locally in SQLite at `~/.chronoscope/agent-history.sqlite` by default.
+
+## What Local Probes Can Prove
+
+- DNS shows what this computer resolved for the target host. It does not prove every resolver or network will resolve the same way.
+- TLS shows the certificate and handshake details visible from this computer. It does not prove the remote service is healthy for everyone.
+- Route/MTR shows the path tool output available on this device. It can show a local-path clue, but missing hops or blocked probes are common.
+- WiFi shows local signal and noise when available. Private SSID and BSSID values stay redacted unless explicitly enabled for the run.
+- History shows prior local-agent probes stored on this computer. It is local context, not public report evidence unless explicitly exported in a later flow.
