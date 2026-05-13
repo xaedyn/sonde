@@ -298,7 +298,12 @@ export async function handleIntelligenceSummary(
     'Access-Control-Allow-Methods': 'GET,OPTIONS',
   });
   if (!options.store?.list) {
-    return json(503, { ok: false, error: 'Intelligence summary storage is not configured.' }, {
+    return json(200, {
+      ok: true,
+      buckets: [],
+      unavailable: true,
+      message: 'Aggregate context is not available yet.',
+    }, {
       'Access-Control-Allow-Methods': 'GET,OPTIONS',
     });
   }

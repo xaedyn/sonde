@@ -177,13 +177,15 @@ describe('collective intelligence functions', () => {
     expect(JSON.stringify(payload)).not.toMatch(/ssid|bssid|history/i);
   });
 
-  it('returns 503 for summaries when aggregate storage cannot be listed', async () => {
+  it('returns a non-error unavailable summary when aggregate storage cannot be listed', async () => {
     const response = await handleIntelligenceSummary(new Request('https://chronoscope.dev/api/intelligence/summary'));
 
-    expect(response.status).toBe(503);
-    await expect(response.json()).resolves.toMatchObject({
-      ok: false,
-      error: 'Intelligence summary storage is not configured.',
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      ok: true,
+      buckets: [],
+      unavailable: true,
+      message: 'Aggregate context is not available yet.',
     });
   });
 });
