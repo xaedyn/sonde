@@ -232,6 +232,7 @@
     threshold,
     score,
     rawScore,
+    capReason: diagnosticNarrative.primaryAnswer.text,
   }));
   // Score history ring buffer — one entry per round, max 60 entries. Driven by
   // roundCounter changes and aligned to the diagnostic narrative so the trace

@@ -76,11 +76,27 @@ describe('buildScoreExplanation()', () => {
       threshold: 120,
       score: 79,
       rawScore: 87,
+      capReason: 'API is slower than the others in this test.',
     });
 
     expect(explanation?.headline).toBe('Score 79 · Degraded');
-    expect(explanation?.summary).toBe('2 sites clean; 1 is consistently above threshold. Score capped to match the diagnostic answer.');
+    expect(explanation?.summary).toBe('2 sites clean; 1 is consistently above threshold. Score capped because API is slower than the others in this test.');
     expect(explanation?.detail).toContain('API 60: median above threshold');
+  });
+
+  it('keeps capped-score reasons plain when the diagnostic answer starts with a normal word', () => {
+    const explanation = buildScoreExplanation({
+      rows: [
+        row('google', {}, 'Google'),
+        row('edge', {}, 'Edge'),
+      ],
+      threshold: 120,
+      score: 79,
+      rawScore: 100,
+      capReason: 'Latency is jumping around.',
+    });
+
+    expect(explanation?.summary).toBe('2 sites clean. Score capped because latency is jumping around.');
   });
 
   it('withholds explanation copy until a score can be shown', () => {

@@ -33,6 +33,7 @@ interface ScoreExplanationInput {
   readonly threshold: number;
   readonly score: number | null;
   readonly rawScore?: number | null;
+  readonly capReason?: string | null;
 }
 
 const BUCKET_POINTS: Record<ScoredBucket, number> = {
@@ -69,7 +70,20 @@ function isVerb(count: number): string {
   return count === 1 ? 'is' : 'are';
 }
 
-function summarize(contributions: readonly ScoreContribution[], capped: boolean): string {
+function capReasonFragment(reason: string | null | undefined): string | null {
+  const trimmed = reason?.trim().replace(/[.!?]+$/, '') ?? '';
+  if (trimmed === '') return null;
+  if (/^[A-Z][a-z]/.test(trimmed)) {
+    return `${trimmed.charAt(0).toLowerCase()}${trimmed.slice(1)}`;
+  }
+  return trimmed;
+}
+
+function summarize(
+  contributions: readonly ScoreContribution[],
+  capped: boolean,
+  capReason: string | null | undefined,
+): string {
   const clean = contributions.filter((item) => item.reason === 'clean').length;
   const tail = contributions.filter((item) => item.reason === 'some slower checks').length;
   const consistentlySlow = contributions.filter((item) => item.reason === 'median above threshold').length;
@@ -86,7 +100,12 @@ function summarize(contributions: readonly ScoreContribution[], capped: boolean)
   if (other > 0) parts.push(`${other} ${isVerb(other)} outside the clean band`);
 
   const summary = `${parts.join('; ')}.`;
-  return capped ? `${summary} Score capped to match the diagnostic answer.` : summary;
+  if (!capped) return summary;
+
+  const reason = capReasonFragment(capReason);
+  return reason === null
+    ? `${summary} Score capped to match the diagnostic answer.`
+    : `${summary} Score capped because ${reason}.`;
 }
 
 export function buildScoreExplanation(input: ScoreExplanationInput): ScoreExplanation | null {
@@ -120,7 +139,7 @@ export function buildScoreExplanation(input: ScoreExplanationInput): ScoreExplan
     rawScore,
     verdict,
     headline,
-    summary: summarize(contributions, capped),
+    summary: summarize(contributions, capped, input.capReason),
     detail,
     contributions,
   };
