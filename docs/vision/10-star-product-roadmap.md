@@ -2,7 +2,7 @@
 
 **Status:** Living source of truth  
 **Created:** 2026-05-12  
-**Current production baseline:** `main` through PR #132, deployed to Cloudflare Pages
+**Current production baseline:** `main` through PR #143, deployed to Cloudflare Pages
 **Read this first in future sessions.**
 
 ---
@@ -59,6 +59,8 @@ Shipped capabilities:
 - Local history baselines for comparing current runs to prior browser sessions.
 - Cloudflare outside-vantage checks and hosted reports.
 - Optional local companion agent with signed loopback communication, DNS/TLS/route/WiFi probes, and SQLite history.
+- Advanced browser diagnostics with loaded-latency checks, outside DNS/topology context, and proof-scoped caveats.
+- Opt-in collective intelligence foundation with privacy contract, local payload sanitizer, server-side private-field rejection, aggregate ingest, and an aggregate summary surface.
 - Share/support report flow with hosted fallback to hash-based links.
 - Compact evidence trail on reports: browser test, current answer, browser visibility, outside check, local agent.
 - Executable triage cards on reports: visibility, Investigate, outside check, local agent, share/compare.
@@ -87,12 +89,17 @@ Recent product spine:
 - PR #130: Plain-language metric copy for copied reports and outside-vantage explanations.
 - PR #131: Guided local-agent pairing with local-only safety, token-path guidance, health state, and WiFi redaction defaults.
 - PR #132: Typed local companion probe results with section envelopes and bounded route subprocess timeouts.
+- PR #133-#138: Local-agent report safety, guided proof integration, and local proof polish.
+- PR #139: Advanced browser diagnostics with optional network context.
+- PR #140-#143: Collective intelligence privacy, payload, ingest, and summary context.
 
 ---
 
 ## Roadmap Order
 
 ### Phase 1: Guided Proof Flow
+
+**Status:** Shipped through PR #121.
 
 **Goal:** Turn the current action cards into a guided loop where every action updates the evidence trail and report state in place.
 
@@ -141,6 +148,8 @@ Likely files:
 
 ### Phase 2: Share and Report Excellence
 
+**Status:** Shipped through PR #126.
+
 **Goal:** Make reports feel like polished diagnostic artifacts, not app screenshots.
 
 Expected PR slices:
@@ -178,6 +187,8 @@ Likely files:
 
 ### Phase 3: Trust Language System
 
+**Status:** Shipped through PR #130.
+
 **Goal:** Make diagnostic language mechanically hard to misuse.
 
 Expected PR slices:
@@ -212,6 +223,8 @@ Likely files:
 - `tests/unit/utils/diagnostic-narrative.test.ts`
 
 ### Phase 4: Local Agent Productization
+
+**Status:** Shipped through PR #138.
 
 **Goal:** Turn the optional companion from a powerful hidden tool into a first-class proof engine.
 
@@ -251,6 +264,8 @@ Likely files:
 
 ### Phase 5: Advanced Browser Diagnostics
 
+**Status:** Shipped through PR #139.
+
 **Goal:** Add more no-install evidence while preserving the browser-first promise.
 
 Candidate slices:
@@ -287,6 +302,8 @@ Likely files:
 - `src/lib/components/ReportView.svelte`
 
 ### Phase 6: Collective Edge Intelligence
+
+**Status:** Shipped through PR #143.
 
 **Goal:** Explore the longer-term moat: aggregate opt-in browser measurements into anonymous internet health intelligence.
 
@@ -350,3 +367,11 @@ The assistant should then:
 - Decided the next phase should be **Guided Proof Flow**, not another visual redesign.
 - Decided the product's highest-order constraint remains trust: every diagnostic claim must be tied to measured evidence, known browser limits, or an explicit next validation step.
 - Shipped Phase 1 and Phase 2 through PR #126. Phase 3 began with PR #127's registry and PR #128's narrative/report wiring, then PR #129 extended trust-copy guardrails through evidence trail, remote vantage, and history baseline surfaces. PR #130 completed the plain-language metric copy slice by keeping internal p50 data while exposing median language in copied report and outside-vantage text. PR #131 opened Phase 4 with guided local-agent pairing, token-path guidance, health state, and default WiFi privacy. PR #132 added typed local companion probe result sections and bounded route command timeouts.
+
+### 2026-05-13
+
+- Completed the original six-phase 10-star roadmap through PR #143.
+- Phase 4 continued through local-agent report safety and guided proof integration.
+- Phase 5 shipped advanced browser diagnostics: loaded-latency evidence, browser-safe outside DNS/topology context, and strict proof-boundary copy.
+- Phase 6 shipped as an explicitly opt-in foundation: consent contract, sanitized aggregate payloads, server ingest guardrails, aggregate summary API, and a compact Investigate aggregate-context panel.
+- Current next step is not another roadmap phase by default. It is a fresh live product review, then a new roadmap only for issues discovered in production use.
