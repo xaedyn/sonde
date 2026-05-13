@@ -44,12 +44,19 @@ export interface DohDnsOptions {
   readonly performanceNow?: () => number;
 }
 
+export interface TopologyOptions {
+  readonly fetcher?: typeof fetch;
+  readonly now?: () => number;
+  readonly performanceNow?: () => number;
+}
+
 const MAX_TARGETS = 8;
 const MAX_REPORT_BYTES = 120_000;
 const REPORT_TTL_SECONDS = 60 * 60 * 24 * 30;
 const REPORT_ID_PATTERN = /^[a-zA-Z0-9_-]{8,80}$/;
 const PROBE_TIMEOUT_MS = 4500;
 const DOH_TIMEOUT_MS = 3000;
+const TOPOLOGY_TIMEOUT_MS = 5500;
 const SLOW_REMOTE_MS = 500;
 const DEFAULT_SATURATION_BYTES = 25 * 1024 * 1024;
 const MAX_SATURATION_BYTES = 100 * 1024 * 1024;
@@ -414,6 +421,138 @@ export function handleDohDnsRequest(request: Request, options: DohDnsOptions = {
   return runDohLookup({
     hostname,
     recordType,
+    fetcher: options.fetcher ?? globalThis.fetch.bind(globalThis),
+    now: options.now ?? Date.now,
+    performanceNow: options.performanceNow ?? performance.now.bind(performance),
+  });
+}
+
+function firstPublicARecord(payload: unknown): string | null {
+  const records = parseDohRecords(payload, 'A');
+  for (const record of records) {
+    if (parseIPv4(record) !== null && !isBlockedIPv4(record)) return record;
+  }
+  return null;
+}
+
+function parseAsn(value: unknown): number | null {
+  const raw = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN;
+  return Number.isInteger(raw) && raw > 0 && raw <= 4_294_967_295 ? raw : null;
+}
+
+function parseNetworkInfo(payload: unknown): { readonly asn: number | null; readonly prefix: string | null } {
+  const data = isRecord(payload) && isRecord(payload.data) ? payload.data : {};
+  const rawAsns = Array.isArray(data.asns) ? data.asns : [];
+  const asn = rawAsns.map(parseAsn).find((candidate) => candidate !== null) ?? null;
+  const prefix = typeof data.prefix === 'string' ? data.prefix.slice(0, 80) : null;
+  return { asn, prefix };
+}
+
+function parseAsOverviewHolder(payload: unknown): string | null {
+  const data = isRecord(payload) && isRecord(payload.data) ? payload.data : {};
+  return typeof data.holder === 'string' ? data.holder.slice(0, 160) : null;
+}
+
+async function fetchJson(input: {
+  readonly url: string;
+  readonly fetcher: typeof fetch;
+  readonly signal: AbortSignal;
+}): Promise<unknown> {
+  const response = await input.fetcher(input.url, {
+    method: 'GET',
+    signal: input.signal,
+    headers: { Accept: 'application/json' },
+    cf: {
+      cacheTtl: 0,
+      cacheEverything: false,
+    },
+  } as RequestInit & { cf: Record<string, unknown> });
+  if (!response.ok) throw new Error(`Topology source returned HTTP ${response.status}.`);
+  return response.json() as Promise<unknown>;
+}
+
+async function runTopologyLookup(input: {
+  readonly hostname: string;
+  readonly fetcher: typeof fetch;
+  readonly now: () => number;
+  readonly performanceNow: () => number;
+}): Promise<Response> {
+  const startedAt = input.performanceNow();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TOPOLOGY_TIMEOUT_MS);
+
+  try {
+    const dnsEndpoint = new URL('https://cloudflare-dns.com/dns-query');
+    dnsEndpoint.searchParams.set('name', input.hostname);
+    dnsEndpoint.searchParams.set('type', 'A');
+    const dnsPayload = await fetchJson({
+      url: dnsEndpoint.toString(),
+      fetcher: input.fetcher,
+      signal: controller.signal,
+    });
+    const ip = firstPublicARecord(dnsPayload);
+    if (ip === null) {
+      return json(400, {
+        ok: false,
+        error: 'No public DNS A record was available for topology context.',
+      });
+    }
+
+    const networkInfoUrl = `https://stat.ripe.net/data/network-info/data.json?resource=${encodeURIComponent(ip)}`;
+    const networkInfo = parseNetworkInfo(await fetchJson({
+      url: networkInfoUrl,
+      fetcher: input.fetcher,
+      signal: controller.signal,
+    }));
+
+    let organization: string | null = null;
+    if (networkInfo.asn !== null) {
+      const asOverviewUrl = `https://stat.ripe.net/data/as-overview/data.json?resource=AS${networkInfo.asn}`;
+      organization = parseAsOverviewHolder(await fetchJson({
+        url: asOverviewUrl,
+        fetcher: input.fetcher,
+        signal: controller.signal,
+      }));
+    }
+
+    return json(200, {
+      ok: true,
+      vantage: 'public-topology',
+      hostname: input.hostname,
+      ip,
+      prefix: networkInfo.prefix,
+      asn: networkInfo.asn,
+      organization,
+      durationMs: Math.max(0, Math.round(input.performanceNow() - startedAt)),
+      checkedAt: input.now(),
+    });
+  } catch {
+    return json(502, {
+      ok: false,
+      error: 'Topology context lookup did not complete.',
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export function handleTopologyRequest(request: Request, options: TopologyOptions = {}): Response | Promise<Response> {
+  if (request.method === 'OPTIONS') return json(204, {});
+  if (request.method !== 'GET') return json(405, { ok: false, error: 'Method not allowed.' });
+
+  let hostname: string;
+  try {
+    const url = new URL(request.url);
+    hostname = parseDnsHostname(url.searchParams.get('hostname'));
+  } catch {
+    return json(400, {
+      ok: false,
+      error: 'Topology context requires a public hostname.',
+    });
+  }
+
+  return runTopologyLookup({
+    hostname,
     fetcher: options.fetcher ?? globalThis.fetch.bind(globalThis),
     now: options.now ?? Date.now,
     performanceNow: options.performanceNow ?? performance.now.bind(performance),

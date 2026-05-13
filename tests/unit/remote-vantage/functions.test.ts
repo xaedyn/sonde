@@ -7,6 +7,7 @@ import {
   handleGetHostedReport,
   handleRemoteProbe,
   handleSaturationRequest,
+  handleTopologyRequest,
 } from '../../../functions/_shared/remote-vantage';
 import type { SharePayload } from '../../../src/lib/types';
 
@@ -334,6 +335,85 @@ describe('Cloudflare remote vantage functions', () => {
   it('answers DNS CORS preflight requests', async () => {
     const response = await handleDohDnsRequest(
       new Request('https://chronoscope.dev/api/vantage/dns', { method: 'OPTIONS' }),
+      {},
+    );
+
+    expect(response.status).toBe(204);
+    expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
+  });
+
+  it('returns ASN topology context for a public hostname and public resolved IP', async () => {
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        Answer: [{ type: 1, data: '104.20.23.154' }],
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        data: { asns: ['13335'], prefix: '104.20.16.0/20' },
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        data: { holder: 'CLOUDFLARENET - Cloudflare, Inc.' },
+      }), { status: 200 }));
+
+    const response = await handleTopologyRequest(
+      new Request('https://chronoscope.dev/api/vantage/topology?hostname=example.com'),
+      {
+        fetcher,
+        now: () => 1778352000000,
+        performanceNow: vi.fn()
+          .mockReturnValueOnce(100)
+          .mockReturnValueOnce(128),
+      },
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(fetcher).toHaveBeenNthCalledWith(
+      1,
+      'https://cloudflare-dns.com/dns-query?name=example.com&type=A',
+      expect.objectContaining({ method: 'GET' }),
+    );
+    expect(fetcher).toHaveBeenNthCalledWith(
+      2,
+      'https://stat.ripe.net/data/network-info/data.json?resource=104.20.23.154',
+      expect.objectContaining({ method: 'GET' }),
+    );
+    expect(fetcher).toHaveBeenNthCalledWith(
+      3,
+      'https://stat.ripe.net/data/as-overview/data.json?resource=AS13335',
+      expect.objectContaining({ method: 'GET' }),
+    );
+    expect(payload).toMatchObject({
+      ok: true,
+      vantage: 'public-topology',
+      hostname: 'example.com',
+      ip: '104.20.23.154',
+      prefix: '104.20.16.0/20',
+      asn: 13335,
+      organization: 'CLOUDFLARENET - Cloudflare, Inc.',
+      durationMs: 28,
+      checkedAt: 1778352000000,
+    });
+  });
+
+  it('rejects topology lookups when DNS only returns private IPs', async () => {
+    const fetcher = vi.fn(() => Promise.resolve(new Response(JSON.stringify({
+      Answer: [{ type: 1, data: '10.0.0.10' }],
+    }), { status: 200 })));
+
+    const response = await handleTopologyRequest(
+      new Request('https://chronoscope.dev/api/vantage/topology?hostname=example.com'),
+      { fetcher },
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(payload.error).toBe('No public DNS A record was available for topology context.');
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
+  it('answers topology CORS preflight requests', async () => {
+    const response = await handleTopologyRequest(
+      new Request('https://chronoscope.dev/api/vantage/topology', { method: 'OPTIONS' }),
       {},
     );
 
