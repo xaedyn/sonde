@@ -63,6 +63,16 @@ beforeEach(() => {
 });
 
 describe('CompanionPanel', () => {
+  it('guides first-time pairing without enabling private WiFi sharing by default', () => {
+    const store = createFakeCompanionStore();
+    const { getByLabelText, getByText } = render(CompanionPanel, { props: { agentStore: store } });
+
+    expect(getByText(/local-only/i)).toBeTruthy();
+    expect(getByText(/agent-token\.txt/i)).toBeTruthy();
+    expect(getByText(/Health check: Offline/i)).toBeTruthy();
+    expect((getByLabelText('Private WiFi') as HTMLInputElement).checked).toBe(false);
+  });
+
   it('checks local companion health with the configured loopback URL', async () => {
     const store = createFakeCompanionStore();
     const { getByLabelText, getByRole, findByText } = render(CompanionPanel, { props: { agentStore: store } });

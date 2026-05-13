@@ -113,6 +113,17 @@
     <span class="status-pill" data-status={state.status}>{statusLabel}</span>
   </div>
 
+  <p class="agent-note">
+    Local-only: Chronoscope talks to 127.0.0.1. Signed probes use the token at ~/.chronoscope/agent-token.txt.
+  </p>
+
+  <div class="health-row" aria-live="polite">
+    <span>Health check: {statusLabel}</span>
+    {#if state.version}
+      <span>Agent {state.version}</span>
+    {/if}
+  </div>
+
   <label class="field-line" for={urlId}>
     <span>Agent URL</span>
     <input
@@ -202,6 +213,10 @@
       </label>
     </div>
 
+    <p class="agent-note subtle">
+      Private WiFi is off by default; SSID and BSSID stay redacted unless enabled for this run.
+    </p>
+
     <button
       type="button"
       class="agent-btn primary full"
@@ -267,6 +282,35 @@
     padding: 2px 7px;
     border: 1px solid var(--glass-border);
     border-radius: 999px;
+    color: var(--t3);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0;
+  }
+
+  .agent-note {
+    margin: 0;
+    color: var(--t2);
+    font-family: var(--sans);
+    font-size: 12px;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+  }
+
+  .agent-note.subtle {
+    color: var(--t3);
+    font-size: 11px;
+  }
+
+  .health-row {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--spacing-xs);
+    min-width: 0;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--btn-radius);
+    background: rgba(0,0,0,.14);
     color: var(--t3);
     font-family: var(--mono);
     font-size: 10px;
