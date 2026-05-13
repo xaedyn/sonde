@@ -1,7 +1,7 @@
 <!-- src/lib/components/OverviewView.svelte -->
 <!-- Overview — verdict-first Status layout. Composes the CausalVerdictStrip, -->
-<!-- chronograph dial, RacingStrip, and EventFeed. Score-history /             -->
-<!-- baseline / events are derived locally here; the underlying stats + samples -->
+<!-- chronograph dial, RacingStrip, and RunStorylineCard. Score-history /      -->
+<!-- baseline / storyline are derived locally here; the underlying stats + samples -->
 <!-- flow through the monitoredEndpointsStore invariant.                        -->
 <!-- The classic Overview mode was retired in v8; pre-v10 payloads that         -->
 <!-- carried overviewMode are reset to defaults on load via persistence.ts.     -->
@@ -17,15 +17,15 @@
   import { diagnosticAlignedScore } from '$lib/utils/classify';
   import { buildScoreExplanation } from '$lib/utils/score-explanation';
   import { buildHistoryBaselineInsight, type HistoryBaselineInsight } from '$lib/utils/history-baseline';
+  import { buildRunStoryline, type RunStoryline } from '$lib/utils/run-storyline';
   import type { VerdictRow } from '$lib/utils/verdict';
   import { tokens } from '$lib/tokens';
   import ChronographDial from './ChronographDial.svelte';
   import CausalVerdictStrip from './CausalVerdictStrip.svelte';
   import RacingStrip from './RacingStrip.svelte';
-  import EventFeed from './EventFeed.svelte';
+  import RunStorylineCard from './RunStorylineCard.svelte';
   import OverviewSubtabStrip from './OverviewSubtabStrip.svelte';
   import type { Endpoint, MeasurementSample } from '$lib/types';
-  import type { FeedEvent } from './EventFeed.svelte';
 
   let { onStart }: { onStart?: () => void } = $props();
 
@@ -113,57 +113,26 @@
     return out;
   });
 
+  const storylineSamplesByEndpoint = $derived.by<Record<string, readonly MeasurementSample[]>>(() => {
+    const out: Record<string, readonly MeasurementSample[]> = {};
+    for (const ep of monitored) {
+      const m = measurements.endpoints[ep.id];
+      out[ep.id] = m ? m.samples.toArray() : [];
+    }
+    return out;
+  });
+
   const HISTORY_MAX = 60;
   let scoreHistory = $state<number[]>([]);
   let lastSeenRound = -1;
 
-  // Event ring buffer — threshold crossings + p95 shifts. Per-endpoint
-  // prev-state map tracks the comparison baseline across ticks.
-  const EVENT_MAX = 12;
-  const SHIFT_FRACTION = 0.35;
-  interface PrevState { readonly over: boolean; readonly p95: number; }
-  let prevByEp: Record<string, PrevState> = {};
-  let events = $state<FeedEvent[]>([]);
-  let lastSeenEventRound = -1;
-  $effect(() => {
-    const round = measurements.roundCounter;
-    if (round === lastSeenEventRound) return;
-    const prevRound = lastSeenEventRound;
-    lastSeenEventRound = round;
-
-    const now = Date.now();
-    const nextPrev: Record<string, PrevState> = {};
-    const newEvents: FeedEvent[] = [];
-
-    for (const ep of monitored) {
-      const lat = measurements.endpoints[ep.id]?.lastLatency ?? null;
-      const s = stats[ep.id];
-      const p95 = s?.p95 ?? 0;
-      const over = lat != null && lat > threshold;
-      const prev = prevByEp[ep.id];
-
-      if (prev !== undefined) {
-        if (over && !prev.over) {
-          newEvents.push({ t: now, epId: ep.id, kind: 'cross-up', value: lat ?? undefined, threshold });
-        } else if (!over && prev.over) {
-          newEvents.push({ t: now, epId: ep.id, kind: 'cross-down', value: lat ?? undefined, threshold });
-        }
-        // Shift event: only check every 8th round to avoid chatter.
-        if (prevRound >= 0 && round % 8 === 0 && prev.p95 > 0) {
-          const delta = Math.abs(p95 - prev.p95) / prev.p95;
-          if (delta > SHIFT_FRACTION) {
-            newEvents.push({ t: now, epId: ep.id, kind: 'shift', from: prev.p95, to: p95 });
-          }
-        }
-      }
-      nextPrev[ep.id] = { over, p95 };
-    }
-
-    prevByEp = nextPrev;
-    if (newEvents.length > 0) {
-      events = [...newEvents.reverse(), ...events].slice(0, EVENT_MAX);
-    }
-  });
+  const runStoryline: RunStoryline = $derived(buildRunStoryline({
+    endpoints: monitored,
+    samplesByEndpoint: storylineSamplesByEndpoint,
+    threshold,
+    runStart: measurements.startedAt,
+    focusedEndpointId: $uiStore.focusedEndpointId,
+  }));
 
   // Baseline — p25/median/p75 over last 120s of samples × monitored endpoints.
   // Recomputes every 5s on a setInterval, not every tick — stable band avoids
@@ -287,31 +256,10 @@
     uiStore.setActiveView('diagnose');
   }
 
-  function handleEventDrill(epId: string): void {
+  function handleStorylineDrill(epId: string): void {
     uiStore.setFocusedEndpoint(epId);
-    uiStore.setActiveView('live');
+    uiStore.setActiveView('diagnose');
   }
-
-  // Rerender clock for the event feed's relative-time labels. Ticks every
-  // second so labels age monotonically regardless of measurement cadence —
-  // a round-counter-driven clock would freeze "N s ago" between rounds or
-  // after lifecycle stops. Torn down on component destroy.
-  let nowTick = $state(Date.now());
-  let nowTimer: ReturnType<typeof setInterval> | null = null;
-  $effect(() => {
-    nowTick = Date.now();
-    if (nowTimer !== null) clearInterval(nowTimer);
-    nowTimer = setInterval(() => { nowTick = Date.now(); }, 1000);
-  });
-  onDestroy(() => {
-    if (nowTimer !== null) clearInterval(nowTimer);
-  });
-  // Include the round counter as a secondary trigger so the feed also updates
-  // on the measurement edge (not just on the 1s tick).
-  const now = $derived.by(() => {
-    void measurements.roundCounter;
-    return nowTick;
-  });
 </script>
 
 <section class="overview status-view" aria-label="Status">
@@ -347,7 +295,7 @@
       </div>
       <div
         class="overview-right"
-        data-has-events={events.length > 0 ? 'true' : 'false'}
+        data-has-events={runStoryline.markers.length > 0 ? 'true' : 'false'}
         data-subtab={$uiStore.overviewSubtab}
       >
         <div class="overview-subtab-strip">
@@ -378,11 +326,9 @@
           role="tabpanel"
           aria-labelledby="overview-subtab-events"
         >
-          <EventFeed
-            {events}
-            endpoints={monitored}
-            {now}
-            onDrill={handleEventDrill}
+          <RunStorylineCard
+            storyline={runStoryline}
+            onDrill={handleStorylineDrill}
           />
         </div>
       </div>
@@ -500,7 +446,9 @@
     .overview { --status-shell-gap: 10px; }
     .overview { padding-block: 10px; }
     .overview-grid { gap: 16px; }
-    .overview-right .card-slot--events { display: none; }
+    .overview-subtab-strip { display: block; }
+    .overview-right[data-subtab="racing"] .card-slot--events { display: none; }
+    .overview-right[data-subtab="events"] .card-slot--racing { display: none; }
   }
 
   @media (max-width: 767px) and (max-height: 860px) {

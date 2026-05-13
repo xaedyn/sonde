@@ -1,6 +1,6 @@
 <!-- src/lib/components/OverviewSubtabStrip.svelte -->
 <!-- Two-button segmented control that selects between the racing-strip and   -->
-<!-- event-feed cards in OverviewView's right column. Rendered on narrow      -->
+<!-- timeline cards in OverviewView's right column. Rendered on narrow        -->
 <!-- viewports only (≤1023 px) where both cards don't fit above the fold;     -->
 <!-- the parent hides this strip via CSS at desktop widths.                   -->
 <script lang="ts">
@@ -20,7 +20,7 @@
   // proper WAI-ARIA tabs relationship.
   const TABS: readonly { readonly id: Subtab; readonly label: string; readonly tabId: string; readonly panelId: string }[] = [
     { id: 'racing', label: 'Per-endpoint', tabId: 'overview-subtab-racing', panelId: 'overview-panel-racing' },
-    { id: 'events', label: 'Events', tabId: 'overview-subtab-events', panelId: 'overview-panel-events' },
+    { id: 'events', label: 'Timeline', tabId: 'overview-subtab-events', panelId: 'overview-panel-events' },
   ];
 
   function onKeydown(e: KeyboardEvent, idx: number): void {

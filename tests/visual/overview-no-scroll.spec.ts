@@ -250,6 +250,41 @@ test.describe('Status — no scroll on first visit', () => {
     ).toBeLessThanOrEqual(warning.main!.bottom - 4);
   });
 
+  test('recent timeline remains reachable on short desktop viewports', async ({ page }) => {
+    await page.setViewportSize({ width: 1366, height: 768 });
+    await page.goto('/');
+    await page.waitForSelector('#chronoscope-root');
+    await page.waitForTimeout(400);
+
+    const state = await scrollState(page);
+    expect(
+      state.overflowingScrollers,
+      `internal scrollers with hidden content: ${JSON.stringify(state.overflowingScrollers, null, 2)}`,
+    ).toEqual([]);
+
+    const reachability = await page.evaluate(() => {
+      const timelineHeading = Array.from(document.querySelectorAll<HTMLElement>('h3'))
+        .find((heading) => heading.textContent?.trim() === 'What happened');
+      const timelineTab = Array.from(document.querySelectorAll<HTMLElement>('button[role="tab"]'))
+        .find((tab) => tab.textContent?.trim() === 'Timeline');
+      const visible = (element: HTMLElement | undefined): boolean => {
+        if (!element) return false;
+        const rect = element.getBoundingClientRect();
+        const style = getComputedStyle(element);
+        return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+      };
+      return {
+        headingVisible: visible(timelineHeading),
+        tabVisible: visible(timelineTab),
+      };
+    });
+
+    expect(
+      reachability.headingVisible || reachability.tabVisible,
+      `timeline should be visible or reachable via visible tab: ${JSON.stringify(reachability)}`,
+    ).toBe(true);
+  });
+
   test('lifecycle stability @ mobile-floor (no reflow after engine starts)', async ({ page }) => {
     await page.setViewportSize({ width: 360, height: 780 });
     await page.goto('/');
