@@ -327,7 +327,7 @@ describe('Cloudflare remote vantage functions', () => {
     );
     const payload = await response.json();
 
-    expect(response.status).toBe(502);
+    expect(response.status).toBe(424);
     expect(payload.error).toBe('Cloudflare DNS-over-HTTPS lookup did not complete.');
     expect(payload.error).not.toContain('internal path');
   });
@@ -370,7 +370,10 @@ describe('Cloudflare remote vantage functions', () => {
     expect(fetcher).toHaveBeenNthCalledWith(
       1,
       'https://cloudflare-dns.com/dns-query?name=example.com&type=A',
-      expect.objectContaining({ method: 'GET' }),
+      expect.objectContaining({
+        method: 'GET',
+        headers: expect.objectContaining({ Accept: 'application/dns-json' }),
+      }),
     );
     expect(fetcher).toHaveBeenNthCalledWith(
       2,
@@ -409,6 +412,20 @@ describe('Cloudflare remote vantage functions', () => {
     expect(response.status).toBe(400);
     expect(payload.error).toBe('No public DNS A record was available for topology context.');
     expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns structured topology dependency failures without an edge 5xx status', async () => {
+    const response = await handleTopologyRequest(
+      new Request('https://chronoscope.dev/api/vantage/topology?hostname=example.com'),
+      {
+        fetcher: vi.fn(() => Promise.reject(new Error('raw topology source detail'))),
+      },
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(424);
+    expect(payload.error).toBe('Topology context lookup did not complete.');
+    expect(payload.error).not.toContain('raw topology source detail');
   });
 
   it('answers topology CORS preflight requests', async () => {

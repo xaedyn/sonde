@@ -376,7 +376,7 @@ async function runDohLookup(input: {
     const durationMs = Math.max(0, Math.round(input.performanceNow() - startedAt));
 
     if (!response.ok) {
-      return json(502, {
+      return json(424, {
         ok: false,
         error: `Cloudflare DNS-over-HTTPS returned HTTP ${response.status}.`,
       });
@@ -392,7 +392,7 @@ async function runDohLookup(input: {
       checkedAt: input.now(),
     });
   } catch {
-    return json(502, {
+    return json(424, {
       ok: false,
       error: 'Cloudflare DNS-over-HTTPS lookup did not complete.',
     });
@@ -457,11 +457,12 @@ async function fetchJson(input: {
   readonly url: string;
   readonly fetcher: typeof fetch;
   readonly signal: AbortSignal;
+  readonly accept?: string;
 }): Promise<unknown> {
   const response = await input.fetcher(input.url, {
     method: 'GET',
     signal: input.signal,
-    headers: { Accept: 'application/json' },
+    headers: { Accept: input.accept ?? 'application/json' },
     cf: {
       cacheTtl: 0,
       cacheEverything: false,
@@ -489,6 +490,7 @@ async function runTopologyLookup(input: {
       url: dnsEndpoint.toString(),
       fetcher: input.fetcher,
       signal: controller.signal,
+      accept: 'application/dns-json',
     });
     const ip = firstPublicARecord(dnsPayload);
     if (ip === null) {
@@ -527,7 +529,7 @@ async function runTopologyLookup(input: {
       checkedAt: input.now(),
     });
   } catch {
-    return json(502, {
+    return json(424, {
       ok: false,
       error: 'Topology context lookup did not complete.',
     });
