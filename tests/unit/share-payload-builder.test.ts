@@ -3,7 +3,13 @@ import {
   buildConfigSharePayload,
   buildResultsSharePayload,
 } from '../../src/lib/share/share-payload-builder';
-import type { Endpoint, MeasurementSample, MeasurementState, SampleBuffer } from '../../src/lib/types';
+import type {
+  Endpoint,
+  MeasurementSample,
+  MeasurementState,
+  SampleBuffer,
+  ShareLocalCompanionSnapshot,
+} from '../../src/lib/types';
 import { DEFAULT_SETTINGS } from '../../src/lib/types';
 
 function endpoint(id: string): Endpoint {
@@ -141,5 +147,55 @@ describe('share-payload-builder', () => {
 
     expect(built.payload.report?.keptSampleCount).toBe(12);
     expect(built.payload.report?.totalSampleCount).toBe(12);
+  });
+
+  it('does not include local companion proof in result shares by default', () => {
+    const ep = endpoint('api');
+    const built = buildResultsSharePayload(
+      [ep],
+      DEFAULT_SETTINGS,
+      measurementState(ep.id, [ok(1)]),
+      8000,
+      1778352000000,
+    );
+
+    expect(built.payload.localCompanion).toBeUndefined();
+  });
+
+  it('includes local companion proof only when a sanitized snapshot is explicitly passed', () => {
+    const ep = endpoint('api');
+    const localCompanion: ShareLocalCompanionSnapshot = {
+      generatedAt: 1778352000500,
+      targetHost: 'api.example.test',
+      summary: 'DNS, TLS, route, and WiFi completed.',
+      sections: [
+        {
+          name: 'wifi',
+          status: 'captured',
+          ok: true,
+          durationMs: 5,
+          detail: 'WiFi signal captured; private network names are redacted.',
+        },
+      ],
+      wifi: {
+        rssi: -51,
+        noise: -90,
+        ssid: 'redacted',
+        bssid: 'redacted',
+      },
+    };
+
+    const built = buildResultsSharePayload(
+      [ep],
+      DEFAULT_SETTINGS,
+      measurementState(ep.id, [ok(1)]),
+      8000,
+      1778352000000,
+      {},
+      null,
+      localCompanion,
+    );
+
+    expect(built.payload.localCompanion).toEqual(localCompanion);
   });
 });

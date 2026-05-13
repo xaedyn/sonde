@@ -2,6 +2,7 @@ import type { CompanionProbeResponse } from '../companion/protocol';
 import type { RemoteVantageProbeResponse } from '../remote-vantage/types';
 import type { CompanionStatus } from '../stores/companion';
 import type { RemoteVantageStatus } from '../stores/remote-vantage';
+import type { ShareLocalCompanionSnapshot } from '../types';
 import type { EvidenceTrailTone } from './evidence-trail';
 
 export type ProofKind = 'remote' | 'local';
@@ -91,6 +92,24 @@ export function summarizeLocalProof(probe: CompanionProbeResponse | null): Proof
     status: 'Captured',
     text: `${probe.targetHost}: ${probe.summary}`,
     tone: probe.ok ? 'good' : 'watch',
+  };
+}
+
+export function summarizeSharedLocalProof(probe: ShareLocalCompanionSnapshot | null): ProofSummary {
+  if (!probe) {
+    return {
+      status: 'Not run',
+      text: 'No local agent probe captured.',
+      tone: 'neutral',
+    };
+  }
+
+  const hasProblem = probe.sections.some((section) => section.status !== 'captured');
+  return {
+    status: 'Captured',
+    text: `${probe.targetHost}: ${probe.summary}`,
+    tone: hasProblem ? 'watch' : 'good',
+    detail: 'Shared report includes sanitized local-agent evidence only.',
   };
 }
 

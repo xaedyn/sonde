@@ -175,6 +175,7 @@ export function applySharePayload(payload: SharePayload): string[] {
     });
     uiStore.setSharedReportMode(false);
     uiStore.setSharedReportContext(null);
+    uiStore.setSharedLocalCompanion(null);
     return [];
   }
 
@@ -249,6 +250,7 @@ export function applySharePayload(payload: SharePayload): string[] {
     measurementStore.loadSnapshot(snapshot);
 
     uiStore.setSharedReportContext(buildSharedReportContext(payload));
+    uiStore.setSharedLocalCompanion(payload.localCompanion ?? null);
     uiStore.setSharedView(true);
     uiStore.setSharedReportMode(true);
     remoteVantageStore.setProbe(payload.remoteVantage ? { ...payload.remoteVantage, ok: true } : null);
@@ -256,6 +258,7 @@ export function applySharePayload(payload: SharePayload): string[] {
     uiStore.setSharedView(false);
     uiStore.setSharedReportMode(false);
     uiStore.setSharedReportContext(null);
+    uiStore.setSharedLocalCompanion(null);
     remoteVantageStore.setProbe(null);
   }
 

@@ -2,7 +2,7 @@ import { MAX_CAP } from '../limits';
 import type { SharePayload } from '../types';
 import { isSafeSharedUrl } from '../utils/url-safety';
 
-const ALLOWED_TOP_LEVEL = new Set(['v', 'mode', 'endpoints', 'settings', 'results', 'report', 'remoteVantage']);
+const ALLOWED_TOP_LEVEL = new Set(['v', 'mode', 'endpoints', 'settings', 'results', 'report', 'remoteVantage', 'localCompanion']);
 const ALLOWED_REPORT_KEYS = new Set([
   'reportKind',
   'createdAt',
@@ -29,6 +29,9 @@ const ALLOWED_REMOTE_RESULT_KEYS = new Set([
   'error',
 ]);
 const ALLOWED_REMOTE_HEADERS = new Set(['content-type', 'server', 'cache-control', 'cf-cache-status']);
+const ALLOWED_LOCAL_KEYS = new Set(['generatedAt', 'targetHost', 'summary', 'sections', 'wifi']);
+const ALLOWED_LOCAL_SECTION_KEYS = new Set(['name', 'status', 'ok', 'durationMs', 'detail']);
+const ALLOWED_LOCAL_WIFI_KEYS = new Set(['rssi', 'noise', 'ssid', 'bssid']);
 const ALLOWED_RESULT_KEYS = new Set(['samples']);
 const MAX_DELAY_MS = 60_000;
 
@@ -129,6 +132,67 @@ function validateRemoteVantage(remote: unknown, obj: Record<string, unknown>): b
   return true;
 }
 
+function allowedEndpointHosts(obj: Record<string, unknown>): Set<string> {
+  const hosts = new Set<string>();
+  const endpoints = obj['endpoints'];
+  if (!Array.isArray(endpoints)) return hosts;
+  for (const endpoint of endpoints) {
+    if (!isRecord(endpoint) || typeof endpoint['url'] !== 'string') continue;
+    try {
+      hosts.add(new URL(endpoint['url']).hostname);
+    } catch {
+      // endpoint validation reports the structural failure elsewhere.
+    }
+  }
+  return hosts;
+}
+
+function validateNullableSignal(value: unknown): boolean {
+  if (value === null) return true;
+  return isFiniteNumber(value) && (value as number) >= -150 && (value as number) <= 50;
+}
+
+function validateLocalWifi(wifi: unknown): boolean {
+  if (!isRecord(wifi)) return false;
+  if (!hasOnlyKeys(wifi, ALLOWED_LOCAL_WIFI_KEYS)) return false;
+  if (!validateNullableSignal(wifi['rssi'])) return false;
+  if (!validateNullableSignal(wifi['noise'])) return false;
+  if (wifi['ssid'] !== undefined && !isStringWithin(wifi['ssid'], 64)) return false;
+  return wifi['bssid'] === undefined || isStringWithin(wifi['bssid'], 64);
+}
+
+function validateLocalCompanion(local: unknown, obj: Record<string, unknown>): boolean {
+  if (obj['mode'] !== 'results' || obj['v'] !== 2) return false;
+  if (!isRecord(local)) return false;
+  if (!hasOnlyKeys(local, ALLOWED_LOCAL_KEYS)) return false;
+  if (!isNonNegativeFiniteNumber(local['generatedAt'])) return false;
+  if (!isStringWithin(local['targetHost'], 253, 1)) return false;
+  if (!allowedEndpointHosts(obj).has(local['targetHost'] as string)) return false;
+  if (!isStringWithin(local['summary'], 160, 1)) return false;
+  if (!Array.isArray(local['sections']) || local['sections'].length === 0 || local['sections'].length > 4) return false;
+
+  for (const section of local['sections']) {
+    if (!isRecord(section)) return false;
+    if (!hasOnlyKeys(section, ALLOWED_LOCAL_SECTION_KEYS)) return false;
+    if (
+      section['name'] !== 'dns' &&
+      section['name'] !== 'tls' &&
+      section['name'] !== 'route' &&
+      section['name'] !== 'wifi'
+    ) return false;
+    if (
+      section['status'] !== 'captured' &&
+      section['status'] !== 'failed' &&
+      section['status'] !== 'unavailable'
+    ) return false;
+    if (typeof section['ok'] !== 'boolean') return false;
+    if (!isNonNegativeFiniteNumber(section['durationMs']) || (section['durationMs'] as number) > 60_000) return false;
+    if (!isStringWithin(section['detail'], 180, 1)) return false;
+  }
+
+  return local['wifi'] === undefined || validateLocalWifi(local['wifi']);
+}
+
 export function validateSharePayload(data: unknown): SharePayload | null {
   if (!isRecord(data)) return null;
   const obj = data;
@@ -162,6 +226,7 @@ export function validateSharePayload(data: unknown): SharePayload | null {
 
   if (obj['report'] !== undefined && !validateReport(obj['report'], obj)) return null;
   if (obj['remoteVantage'] !== undefined && !validateRemoteVantage(obj['remoteVantage'], obj)) return null;
+  if (obj['localCompanion'] !== undefined && !validateLocalCompanion(obj['localCompanion'], obj)) return null;
 
   for (const key of Object.keys(obj)) {
     if (!ALLOWED_TOP_LEVEL.has(key)) return null;

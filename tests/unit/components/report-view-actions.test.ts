@@ -13,10 +13,12 @@ import type {
   SharePayload,
   SharedReportContext,
 } from '../../../src/lib/types';
+import type { CompanionState } from '../../../src/lib/stores/companion';
 import type { RemoteVantageState } from '../../../src/lib/stores/remote-vantage';
 
 const mocks = vi.hoisted(() => {
   const remoteSubscribers = new Set<(state: RemoteVantageState) => void>();
+  const companionSubscribers = new Set<(state: CompanionState) => void>();
   let remoteState = {
     status: 'idle',
     health: null,
@@ -25,12 +27,25 @@ const mocks = vi.hoisted(() => {
     hostedReportFallback: null,
     error: null,
   } as RemoteVantageState;
+  let companionState = {
+    baseUrl: 'http://127.0.0.1:47317',
+    hasSecret: false,
+    status: 'idle',
+    version: null,
+    capabilities: null,
+    lastProbe: null,
+    history: [],
+    error: null,
+  } as CompanionState;
   const remoteUnsubscribe = vi.fn();
+  const companionUnsubscribe = vi.fn();
 
   return {
     historyUnsubscribe: vi.fn(),
     remoteUnsubscribe,
+    companionUnsubscribe,
     runProbe: vi.fn(),
+    runCompanionProbe: vi.fn(),
     createHostedReport: vi.fn<(payload: SharePayload) => Promise<string | null>>().mockResolvedValue(null),
     get remoteState(): RemoteVantageState {
       return remoteState;
@@ -42,12 +57,37 @@ const mocks = vi.hoisted(() => {
       remoteState = { ...remoteState, ...update };
       for (const subscriber of remoteSubscribers) subscriber(remoteState);
     },
+    setCompanionState(update: Partial<CompanionState>): void {
+      companionState = { ...companionState, ...update };
+      for (const subscriber of companionSubscribers) subscriber(companionState);
+    },
+    resetCompanionState(): void {
+      companionState = {
+        baseUrl: 'http://127.0.0.1:47317',
+        hasSecret: false,
+        status: 'idle',
+        version: null,
+        capabilities: null,
+        lastProbe: null,
+        history: [],
+        error: null,
+      } as CompanionState;
+      for (const subscriber of companionSubscribers) subscriber(companionState);
+    },
     subscribeRemote(run: (state: RemoteVantageState) => void): () => void {
       remoteSubscribers.add(run);
       run(remoteState);
       return () => {
         remoteSubscribers.delete(run);
         remoteUnsubscribe();
+      };
+    },
+    subscribeCompanion(run: (state: CompanionState) => void): () => void {
+      companionSubscribers.add(run);
+      run(companionState);
+      return () => {
+        companionSubscribers.delete(run);
+        companionUnsubscribe();
       };
     },
   };
@@ -67,6 +107,17 @@ vi.mock('$lib/stores/remote-vantage', () => ({
     subscribe: mocks.subscribeRemote,
     runProbe: mocks.runProbe,
     createHostedReport: mocks.createHostedReport,
+  },
+}));
+
+vi.mock('$lib/stores/companion', () => ({
+  companionStore: {
+    subscribe: mocks.subscribeCompanion,
+    configure: vi.fn(),
+    checkHealth: vi.fn().mockResolvedValue(false),
+    runProbe: mocks.runCompanionProbe,
+    loadHistory: vi.fn().mockResolvedValue([]),
+    clearSecret: vi.fn(),
   },
 }));
 
@@ -216,6 +267,7 @@ describe('ReportView triage actions', () => {
       hostedReportFallback: null,
       error: null,
     });
+    mocks.resetCompanionState();
     Object.defineProperty(Element.prototype, 'scrollIntoView', {
       configurable: true,
       value: vi.fn(),
@@ -351,6 +403,53 @@ describe('ReportView triage actions', () => {
         expect.objectContaining({ endpointId: 'api', verdict: 'slow' }),
       ]),
     }));
+  });
+
+  it('keeps local proof out of copied report links until the sender opts in', async () => {
+    seedIsolatedReport();
+    mocks.setCompanionState({
+      status: 'connected',
+      lastProbe: {
+        ok: true,
+        id: 'probe-1',
+        targetHost: 'api.example.com',
+        createdAt: 1778352005000,
+        summary: 'WiFi completed.',
+        results: {
+          wifi: {
+            ok: true,
+            durationMs: 5,
+            value: {
+              ssid: 'HomeNetwork',
+              bssid: 'aa:bb:cc:dd:ee:ff',
+              rssi: -51,
+              noise: -90,
+            },
+          },
+        },
+      },
+    });
+    const { getByLabelText, getByRole } = render(ReportView);
+
+    await fireEvent.click(getByRole('button', { name: /copy report link/i }));
+    await waitFor(() => {
+      expect(mocks.createHostedReport).toHaveBeenCalledTimes(1);
+    });
+    expect(mocks.createHostedReport.mock.calls[0]?.[0].localCompanion).toBeUndefined();
+
+    mocks.createHostedReport.mockClear();
+    await fireEvent.click(getByLabelText(/include redacted local proof/i));
+    await fireEvent.click(getByRole('button', { name: /copy report link|link copied/i }));
+
+    await waitFor(() => {
+      expect(mocks.createHostedReport).toHaveBeenCalledTimes(1);
+    });
+    const payload = mocks.createHostedReport.mock.calls[0]?.[0];
+    expect(payload?.localCompanion).toMatchObject({
+      targetHost: 'api.example.com',
+      wifi: { ssid: 'redacted', bssid: 'redacted' },
+    });
+    expect(JSON.stringify(payload)).not.toContain('HomeNetwork');
   });
 
   it('marks an older outside proof action as stale against the current report', () => {

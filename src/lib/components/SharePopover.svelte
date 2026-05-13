@@ -8,7 +8,9 @@
   import { endpointStore } from '$lib/stores/endpoints';
   import { settingsStore } from '$lib/stores/settings';
   import { measurementStore } from '$lib/stores/measurements';
+  import { companionStore } from '$lib/stores/companion';
   import { remoteVantageStore } from '$lib/stores/remote-vantage';
+  import { sanitizeCompanionProbeForReport } from '$lib/companion/sanitize';
   import { buildShareURL } from '$lib/share/share-manager';
   import {
     buildConfigSharePayload,
@@ -28,6 +30,7 @@
   let reportNotice = $state<string | null>(null);
   let fallbackUrl: string | null = $state(null);
   let fallbackInputEl: HTMLInputElement | undefined = $state();
+  let includeLocalProofInReport = $state(false);
 
   let hasResults = $derived(
     Object.keys($measurementStore.endpoints).length > 0 &&
@@ -41,12 +44,18 @@
   let resultsPayload = $derived(builtResults?.payload ?? null);
   let hostedReportTruncated = $derived(builtHostedReport?.truncated ?? false);
   let resultsTruncated = $derived(builtResults?.truncated ?? false);
+  let localProofAvailable = $derived(Boolean($companionStore.lastProbe));
 
   function buildConfigPayload(): SharePayload {
     return buildConfigSharePayload(get(endpointStore), get(settingsStore));
   }
 
   function buildResultsPayload(maxChars = MAX_SHARE_URL_CHARS, reportKind: ReportKind = 'support') {
+    const companion = get(companionStore);
+    const localCompanion = reportKind === 'support' && includeLocalProofInReport && companion.lastProbe
+      ? sanitizeCompanionProbeForReport(companion.lastProbe, { includePrivateWifi: false })
+      : null;
+
     return buildResultsSharePayload(
       get(endpointStore),
       get(settingsStore),
@@ -55,6 +64,7 @@
       Date.now(),
       { reportKind },
       get(remoteVantageStore).lastProbe,
+      localCompanion,
     );
   }
 
@@ -223,6 +233,16 @@
       <div class="warning" role="note">
         Compact URL results are trimmed to fit browser URL limits. Newest rounds are kept.
       </div>
+    {/if}
+
+    {#if localProofAvailable}
+      <label class="privacy-option">
+        <input type="checkbox" bind:checked={includeLocalProofInReport} />
+        <span>
+          <strong>Include redacted local proof</strong>
+          <small>Shares local-agent status only. WiFi names and raw route details stay out.</small>
+        </span>
+      </label>
     {/if}
 
     <!-- Buttons -->
@@ -415,7 +435,8 @@
 
   /* ── Notices ───────────────────────────────────────────────────────────── */
   .notice,
-  .warning {
+  .warning,
+  .privacy-option {
     padding: var(--spacing-xs) var(--spacing-sm);
     border-radius: var(--btn-radius);
     font-family: var(--sans);
@@ -434,6 +455,36 @@
     background: rgba(255,140,0,.08);
     border: 1px solid rgba(255,140,0,.25);
     color: var(--t2);
+  }
+
+  .privacy-option {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    gap: var(--spacing-sm);
+    background: rgba(134,239,172,.055);
+    border: 1px solid rgba(134,239,172,.2);
+    color: var(--t2);
+  }
+  .privacy-option input {
+    margin-top: 2px;
+    accent-color: var(--accent-green);
+  }
+  .privacy-option span {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .privacy-option strong {
+    color: var(--t1);
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .privacy-option small {
+    color: var(--t3);
+    font-size: 11px;
+    line-height: 1.35;
   }
 
   /* ── Actions ───────────────────────────────────────────────────────────── */

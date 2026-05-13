@@ -32,6 +32,18 @@ WiFi SSID and BSSID are shown only when `Private WiFi` is selected; otherwise th
 
 Probe responses group evidence by section: `dns`, `tls`, `route`, and `wifi`. Each section uses the same timed envelope: `ok`, `durationMs`, optional `value`, optional `error`, and optional `unavailable`/`reason`. This lets the app explain which local proof was captured, which proof was unavailable, and how long each local check took without guessing from a generic blob.
 
+## Public Report Privacy
+
+Local-agent evidence stays local by default. Support reports and snapshot links do not include companion probe output unless the sender explicitly enables **Include redacted local proof**.
+
+When included, Chronoscope exports a sanitized local-proof summary only:
+
+- DNS, TLS, route, and WiFi section status, duration, and plain-language detail.
+- WiFi signal and noise values when available.
+- WiFi SSID and BSSID as `redacted` unless private WiFi was explicitly allowed for that sanitized export path.
+- Route/MTR hop counts only; raw hop lines, private gateway addresses, and local hostnames stay out of public reports.
+- No SQLite history entries are included in public reports by default.
+
 ## What Local Probes Can Prove
 
 - DNS shows what this computer resolved for the target host. It does not prove every resolver or network will resolve the same way.

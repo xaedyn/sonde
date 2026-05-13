@@ -1,7 +1,13 @@
 import type { CompanionState } from '../stores/companion';
 import type { RemoteVantageState } from '../stores/remote-vantage';
+import type { ShareLocalCompanionSnapshot } from '../types';
 import type { DiagnosticReport } from './diagnostic-report';
-import { proofFreshnessLabel, summarizeLocalProof, summarizeRemoteProof } from './proof-flow';
+import {
+  proofFreshnessLabel,
+  summarizeLocalProof,
+  summarizeRemoteProof,
+  summarizeSharedLocalProof,
+} from './proof-flow';
 
 export type EvidenceTrailTone = 'good' | 'watch' | 'bad' | 'neutral';
 
@@ -23,6 +29,7 @@ interface EvidenceTrailInput {
   readonly report: DiagnosticReport;
   readonly remoteVantage: Pick<RemoteVantageState, 'status' | 'lastProbe' | 'error'>;
   readonly companion: Pick<CompanionState, 'status' | 'lastProbe' | 'error' | 'hasSecret'>;
+  readonly sharedLocalCompanion?: ShareLocalCompanionSnapshot | null;
 }
 
 const MAX_FACT_LENGTH = 96;
@@ -135,7 +142,25 @@ function remoteTrail(
 function companionTrail(
   companion: EvidenceTrailInput['companion'],
   reportCreatedAt: number | null,
+  sharedLocalCompanion: ShareLocalCompanionSnapshot | null,
 ): EvidenceTrailItem {
+  if (!companion.lastProbe && sharedLocalCompanion) {
+    const summary = summarizeSharedLocalProof(sharedLocalCompanion);
+    const freshness = proofFreshnessLabel({
+      reportCreatedAt,
+      proofGeneratedAt: sharedLocalCompanion.generatedAt,
+    });
+    const stale = freshness === 'Stale';
+    return {
+      id: 'local-agent',
+      source: 'Local agent',
+      fact: truncateFact(summary.text),
+      status: stale ? freshness : summary.status,
+      tone: stale ? 'watch' : summary.tone,
+      detail: stale ? staleEvidenceDetail('local agent') : summary.detail,
+    };
+  }
+
   if (companion.lastProbe) {
     const summary = summarizeLocalProof(companion.lastProbe);
     const freshness = proofFreshnessLabel({
@@ -224,6 +249,6 @@ export function buildEvidenceTrail(input: EvidenceTrailInput): EvidenceTrailItem
       detail: truncateFact(report.diagnosis.timingVisibility.detail),
     },
     remoteTrail(input.remoteVantage, report.createdAt),
-    companionTrail(input.companion, report.createdAt),
+    companionTrail(input.companion, report.createdAt, input.sharedLocalCompanion ?? null),
   ];
 }

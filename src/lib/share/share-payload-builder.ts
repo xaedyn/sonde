@@ -7,6 +7,7 @@ import type {
   MeasurementState,
   Settings,
   SharePayload,
+  ShareLocalCompanionSnapshot,
   ShareRemoteVantageSnapshot,
   ShareReportMetadata,
 } from '../types';
@@ -85,6 +86,33 @@ function serializeRemoteVantage(
   };
 }
 
+function serializeLocalCompanion(
+  localCompanion: ShareLocalCompanionSnapshot | null | undefined,
+): ShareLocalCompanionSnapshot | undefined {
+  if (!localCompanion) return undefined;
+  if (localCompanion.sections.length === 0) return undefined;
+  return {
+    generatedAt: localCompanion.generatedAt,
+    targetHost: localCompanion.targetHost,
+    summary: localCompanion.summary,
+    sections: localCompanion.sections.slice(0, 4).map((section) => ({
+      name: section.name,
+      status: section.status,
+      ok: section.ok,
+      durationMs: section.durationMs,
+      detail: section.detail,
+    })),
+    ...(localCompanion.wifi ? {
+      wifi: {
+        rssi: localCompanion.wifi.rssi,
+        noise: localCompanion.wifi.noise,
+        ...(localCompanion.wifi.ssid ? { ssid: localCompanion.wifi.ssid } : {}),
+        ...(localCompanion.wifi.bssid ? { bssid: localCompanion.wifi.bssid } : {}),
+      },
+    } : {}),
+  };
+}
+
 export function buildResultsSharePayload(
   endpoints: readonly Endpoint[],
   settings: Settings,
@@ -93,6 +121,7 @@ export function buildResultsSharePayload(
   now = Date.now(),
   reportMetadata: Partial<ShareReportMetadata> = {},
   remoteVantage: ShareRemoteVantageSnapshot | null = null,
+  localCompanion: ShareLocalCompanionSnapshot | null = null,
 ): BuiltResultsSharePayload {
   const results = buildResults(endpoints, measurements);
   const keptSampleCount = countSamples(results);
@@ -112,6 +141,7 @@ export function buildResultsSharePayload(
     truncated: reportMetadata.truncated ?? false,
   };
   const serializedRemoteVantage = serializeRemoteVantage(remoteVantage);
+  const serializedLocalCompanion = serializeLocalCompanion(localCompanion);
 
   const basePayload: SharePayload = {
     v: 2,
@@ -120,6 +150,7 @@ export function buildResultsSharePayload(
     settings: toSharedSettings(settings),
     report: metadata,
     ...(serializedRemoteVantage ? { remoteVantage: serializedRemoteVantage } : {}),
+    ...(serializedLocalCompanion ? { localCompanion: serializedLocalCompanion } : {}),
     results,
   };
 

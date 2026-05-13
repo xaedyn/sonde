@@ -7,12 +7,54 @@ import { endpointStore } from '../../../src/lib/stores/endpoints';
 import { measurementStore } from '../../../src/lib/stores/measurements';
 import { settingsStore } from '../../../src/lib/stores/settings';
 import { uiStore } from '../../../src/lib/stores/ui';
+import type { CompanionState } from '../../../src/lib/stores/companion';
 import type { Endpoint, MeasurementSample, MeasurementState, SharePayload } from '../../../src/lib/types';
 
-const mocks = vi.hoisted(() => ({
-  remoteUnsubscribe: vi.fn(),
-  createHostedReport: vi.fn<(payload: SharePayload) => Promise<string | null>>(),
-}));
+const mocks = vi.hoisted(() => {
+  const companionSubscribers = new Set<(state: CompanionState) => void>();
+  const companionUnsubscribe = vi.fn();
+  let companionState = {
+    baseUrl: 'http://127.0.0.1:47317',
+    hasSecret: false,
+    status: 'idle',
+    version: null,
+    capabilities: null,
+    lastProbe: null,
+    history: [],
+    error: null,
+  } as CompanionState;
+
+  return {
+    remoteUnsubscribe: vi.fn(),
+    companionUnsubscribe,
+    createHostedReport: vi.fn<(payload: SharePayload) => Promise<string | null>>(),
+    setCompanionState(update: Partial<CompanionState>): void {
+      companionState = { ...companionState, ...update };
+      for (const subscriber of companionSubscribers) subscriber(companionState);
+    },
+    resetCompanionState(): void {
+      companionState = {
+        baseUrl: 'http://127.0.0.1:47317',
+        hasSecret: false,
+        status: 'idle',
+        version: null,
+        capabilities: null,
+        lastProbe: null,
+        history: [],
+        error: null,
+      } as CompanionState;
+      for (const subscriber of companionSubscribers) subscriber(companionState);
+    },
+    subscribeCompanion(run: (state: CompanionState) => void): () => void {
+      companionSubscribers.add(run);
+      run(companionState);
+      return () => {
+        companionSubscribers.delete(run);
+        companionUnsubscribe();
+      };
+    },
+  };
+});
 
 vi.mock('$lib/stores/remote-vantage', () => ({
   remoteVantageStore: {
@@ -21,6 +63,12 @@ vi.mock('$lib/stores/remote-vantage', () => ({
       return mocks.remoteUnsubscribe;
     },
     createHostedReport: mocks.createHostedReport,
+  },
+}));
+
+vi.mock('$lib/stores/companion', () => ({
+  companionStore: {
+    subscribe: mocks.subscribeCompanion,
   },
 }));
 
@@ -75,6 +123,7 @@ describe('SharePopover hosted support reports', () => {
     settingsStore.reset();
     uiStore.reset();
     uiStore.toggleShare();
+    mocks.resetCompanionState();
     Object.assign(navigator, {
       clipboard: {
         writeText: vi.fn().mockResolvedValue(),
@@ -101,6 +150,49 @@ describe('SharePopover hosted support reports', () => {
     expect(payload?.mode).toBe('results');
     expect(payload?.report?.reportKind).toBe('support');
     expect(payload?.results?.[0]?.samples).toHaveLength(4);
+    expect(payload?.localCompanion).toBeUndefined();
+  });
+
+  it('includes redacted local proof in support reports only after explicit opt-in', async () => {
+    seedResults();
+    mocks.createHostedReport.mockResolvedValue('https://chronoscope.dev/r/report_123');
+    mocks.setCompanionState({
+      status: 'connected',
+      lastProbe: {
+        ok: true,
+        id: 'probe-1',
+        targetHost: 'api.example.com',
+        createdAt: 1778352000000,
+        summary: 'DNS, TLS, route, and WiFi completed.',
+        results: {
+          wifi: {
+            ok: true,
+            durationMs: 5,
+            value: {
+              ssid: 'HomeNetwork',
+              bssid: 'aa:bb:cc:dd:ee:ff',
+              rssi: -51,
+              noise: -90,
+            },
+          },
+        },
+      },
+    });
+
+    const { getByLabelText, getByRole } = render(SharePopover);
+    await fireEvent.click(getByLabelText(/include redacted local proof/i));
+    await fireEvent.click(getByRole('button', { name: /create support report/i }));
+
+    await waitFor(() => {
+      expect(mocks.createHostedReport).toHaveBeenCalledTimes(1);
+    });
+    const payload = mocks.createHostedReport.mock.calls[0]?.[0];
+    expect(payload?.localCompanion).toMatchObject({
+      targetHost: 'api.example.com',
+      wifi: { ssid: 'redacted', bssid: 'redacted', rssi: -51, noise: -90 },
+    });
+    expect(JSON.stringify(payload)).not.toContain('HomeNetwork');
+    expect(JSON.stringify(payload)).not.toContain('aa:bb:cc:dd:ee:ff');
   });
 
   it('falls back to a compact results URL when hosted reports are unavailable', async () => {

@@ -258,6 +258,7 @@ export interface UIState {
   isSharedView: boolean;
   sharedReportMode: boolean;
   sharedReportContext: SharedReportContext | null;
+  sharedLocalCompanion: ShareLocalCompanionSnapshot | null;
   pendingShare: PendingShare | null;
   showEndpoints: boolean;
 
@@ -340,6 +341,32 @@ export interface ShareRemoteVantageSnapshot {
   readonly results: readonly ShareRemoteVantageResult[];
 }
 
+export type ShareLocalCompanionProbeName = 'dns' | 'tls' | 'route' | 'wifi';
+export type ShareLocalCompanionSectionStatus = 'captured' | 'failed' | 'unavailable';
+
+export interface ShareLocalCompanionSection {
+  readonly name: ShareLocalCompanionProbeName;
+  readonly status: ShareLocalCompanionSectionStatus;
+  readonly ok: boolean;
+  readonly durationMs: number;
+  readonly detail: string;
+}
+
+export interface ShareLocalCompanionWifi {
+  readonly rssi: number | null;
+  readonly noise: number | null;
+  readonly ssid?: string;
+  readonly bssid?: string;
+}
+
+export interface ShareLocalCompanionSnapshot {
+  readonly generatedAt: number;
+  readonly targetHost: string;
+  readonly summary: string;
+  readonly sections: readonly ShareLocalCompanionSection[];
+  readonly wifi?: ShareLocalCompanionWifi;
+}
+
 export interface SharePayload {
   readonly v: 1 | 2;
   readonly mode: 'config' | 'results';
@@ -354,6 +381,7 @@ export interface SharePayload {
   };
   readonly report?: ShareReportMetadata;
   readonly remoteVantage?: ShareRemoteVantageSnapshot;
+  readonly localCompanion?: ShareLocalCompanionSnapshot;
   readonly results?: readonly {
     readonly samples: readonly {
       readonly round: number;

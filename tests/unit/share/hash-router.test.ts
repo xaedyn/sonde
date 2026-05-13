@@ -465,6 +465,36 @@ describe('hash-router: results-mode application', () => {
     expect(get(uiStore).sharedReportContext?.reportKind).toBe('snapshot');
   });
 
+  it('stores sanitized local companion evidence from shared reports', () => {
+    applySharePayload({
+      ...reportPayload(),
+      localCompanion: {
+        generatedAt: 1778352000500,
+        targetHost: 'victim-target.example.com',
+        summary: 'DNS, TLS, route, and WiFi completed.',
+        sections: [{
+          name: 'route',
+          status: 'captured',
+          ok: true,
+          durationMs: 25,
+          detail: 'traceroute captured 3 hops; raw hop details stay local.',
+        }],
+        wifi: {
+          rssi: -51,
+          noise: -90,
+          ssid: 'redacted',
+          bssid: 'redacted',
+        },
+      },
+    });
+
+    expect(get(uiStore).sharedLocalCompanion).toMatchObject({
+      targetHost: 'victim-target.example.com',
+      sections: [{ name: 'route', status: 'captured' }],
+      wifi: { ssid: 'redacted', bssid: 'redacted' },
+    });
+  });
+
   it('infers legacy v1 report context from results without threshold metadata', () => {
     applySharePayload(resultsPayload());
     const context = get(uiStore).sharedReportContext;
