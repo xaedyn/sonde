@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render } from '@testing-library/svelte';
 import CausalVerdictStrip from '../../../src/lib/components/CausalVerdictStrip.svelte';
 import type { DiagnosticNarrative } from '../../../src/lib/utils/diagnostic-narrative';
+import type { ScoreExplanation } from '../../../src/lib/utils/score-explanation';
 import type { Endpoint } from '../../../src/lib/types';
 
 const collectingDiagnosis = {
@@ -93,6 +94,21 @@ const drillEndpoint: Endpoint = {
   label: 'API',
   enabled: true,
   color: '#67e8f9',
+};
+
+const scoreExplanation: ScoreExplanation = {
+  score: 80,
+  rawScore: 80,
+  verdict: 'good',
+  headline: 'Score 80 · Good',
+  summary: '2 sites clean; 2 have some slower checks.',
+  detail: 'Endpoint scores: Google 100: clean; Cloudflare 100: clean; AWS 60: some slower checks; API 60: some slower checks.',
+  contributions: [
+    { endpointId: 'google', label: 'Google', bucket: 'healthy', points: 100, reason: 'clean' },
+    { endpointId: 'cloudflare', label: 'Cloudflare', bucket: 'healthy', points: 100, reason: 'clean' },
+    { endpointId: 'aws', label: 'AWS', bucket: 'degraded', points: 60, reason: 'some slower checks' },
+    { endpointId: 'api', label: 'API', bucket: 'degraded', points: 60, reason: 'some slower checks' },
+  ],
 };
 
 function renderStrip(overrides: Partial<Record<string, unknown>> = {}) {
@@ -214,5 +230,30 @@ describe('CausalVerdictStrip start CTA', () => {
     expect(getByRole('heading', { name: /API is slower than the others/i })).toBeTruthy();
     expect(queryByText(/likely that site/i)).toBeNull();
     expect(getByText(/Compare this test from outside your network/i)).toBeTruthy();
+  });
+
+  it('renders compact score evidence without hiding the diagnostic answer', () => {
+    const { getByRole, getByText } = renderStrip({
+      diagnosis: {
+        ...degradedDiagnosis,
+        verdict: { tone: 'good', headline: 'All links within tolerance.' },
+        kind: 'healthy',
+        severity: 'healthy',
+        primaryAnswer: {
+          ...degradedDiagnosis.primaryAnswer,
+          id: 'healthy',
+          kind: 'measured',
+          text: 'Looks good, with minor variation.',
+        },
+        supportingSummary: 'Good browser-visible run with variation: no site is consistently slow; 40+ successful checks across 4 sites.',
+      },
+      scoreExplanation,
+    });
+
+    expect(getByRole('heading', { name: /Looks good, with minor variation/i })).toBeTruthy();
+    expect(getByText('Score 80 · Good')).toBeTruthy();
+    expect(getByText('2 sites clean; 2 have some slower checks.')).toBeTruthy();
+    expect(getByText('Google 100')).toBeTruthy();
+    expect(getByText('API 60')).toBeTruthy();
   });
 });

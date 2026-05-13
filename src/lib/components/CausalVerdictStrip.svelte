@@ -4,6 +4,7 @@
 <script lang="ts">
   import type { DiagnosticNarrative } from '$lib/utils/diagnostic-narrative';
   import type { HistoryBaselineInsight } from '$lib/utils/history-baseline';
+  import type { ScoreExplanation } from '$lib/utils/score-explanation';
   import type { AutoStartSuppressionReason, Endpoint } from '$lib/types';
 
   interface Props {
@@ -13,6 +14,7 @@
     avgLoss: number | null;
     drillEndpoint: Endpoint | null;
     baselineInsight?: HistoryBaselineInsight | null;
+    scoreExplanation?: ScoreExplanation | null;
     autoStartSuppressionReason?: AutoStartSuppressionReason | null;
     contextLine?: string | null;
     variant?: 'normal' | 'hero';
@@ -27,6 +29,7 @@
     avgLoss,
     drillEndpoint,
     baselineInsight = null,
+    scoreExplanation = null,
     autoStartSuppressionReason = null,
     contextLine = null,
     variant = 'normal',
@@ -76,6 +79,8 @@
     (autoStartSuppressionReason === 'local-endpoint' || autoStartSuppressionReason === 'pending-share'),
   );
   const showMetrics = $derived(suppressionMessage === null);
+  const scoreContributions = $derived(scoreExplanation?.contributions.slice(0, 4) ?? []);
+  const hiddenScoreContributions = $derived(Math.max(0, (scoreExplanation?.contributions.length ?? 0) - scoreContributions.length));
 
   const fmtInt = (n: number | null): string => (n == null ? '—' : String(Math.round(n)));
   const fmt1 = (n: number | null): string => (n == null ? '—' : n.toFixed(1));
@@ -115,7 +120,29 @@
     <p class="verdict-explanation verdict-suppression">{suppressionMessage}</p>
   {/if}
 
-  {#if contextLine}
+  {#if scoreExplanation}
+    <div
+      class="verdict-score-explainer"
+      title={scoreExplanation.detail}
+      aria-label={scoreExplanation.detail}
+    >
+      <span class="verdict-score-headline">{scoreExplanation.headline}</span>
+      <span class="verdict-score-summary">{scoreExplanation.summary}</span>
+      <span class="verdict-score-chips" aria-hidden="true">
+        {#each scoreContributions as contribution (contribution.endpointId)}
+          <span
+            class="verdict-score-chip"
+            class:healthy={contribution.bucket === 'healthy'}
+            class:degraded={contribution.bucket === 'degraded'}
+            class:unhealthy={contribution.bucket === 'unhealthy'}
+          >{contribution.label} {contribution.points}</span>
+        {/each}
+        {#if hiddenScoreContributions > 0}
+          <span class="verdict-score-chip muted">+{hiddenScoreContributions}</span>
+        {/if}
+      </span>
+    </div>
+  {:else if contextLine}
     <p class="verdict-context">{contextLine}</p>
   {/if}
 
@@ -321,6 +348,64 @@
     font-size: var(--ts-xs);
     letter-spacing: var(--tr-label);
   }
+  .verdict-score-explainer {
+    grid-column: 1 / -1;
+    margin: -6px 0 0 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--t2);
+    font-family: var(--mono);
+    font-size: var(--ts-xs);
+    letter-spacing: var(--tr-label);
+    white-space: nowrap;
+  }
+  .verdict-score-headline {
+    flex: 0 0 auto;
+    color: var(--t1);
+    font-weight: 600;
+  }
+  .verdict-score-summary {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .verdict-score-chips {
+    display: flex;
+    gap: 4px;
+    min-width: 0;
+    overflow: hidden;
+    flex: 0 1 auto;
+  }
+  .verdict-score-chip {
+    flex: 0 0 auto;
+    padding: 2px 5px;
+    border-radius: 999px;
+    border: 1px solid var(--border-mid);
+    color: var(--t3);
+    background: rgba(255, 255, 255, 0.03);
+    font-variant-numeric: tabular-nums;
+  }
+  .verdict-score-chip.healthy {
+    color: var(--accent-green);
+    border-color: rgba(134, 239, 172, 0.2);
+    background: rgba(134, 239, 172, 0.045);
+  }
+  .verdict-score-chip.degraded {
+    color: var(--accent-amber);
+    border-color: rgba(251, 191, 36, 0.22);
+    background: rgba(251, 191, 36, 0.05);
+  }
+  .verdict-score-chip.unhealthy {
+    color: var(--accent-pink);
+    border-color: rgba(249, 168, 212, 0.22);
+    background: rgba(249, 168, 212, 0.05);
+  }
+  .verdict-score-chip.muted {
+    color: var(--t4);
+  }
 
   .verdict-metrics {
     grid-column: 1;
@@ -453,6 +538,12 @@
       line-height: 1.25;
     }
     .verdict-context { margin-left: 0; }
+    .verdict-score-explainer {
+      margin-left: 0;
+      gap: 6px;
+      font-size: 10px;
+    }
+    .verdict-score-chips { display: none; }
     .verdict-metrics { flex-wrap: wrap; gap: 10px 14px; padding-top: 6px; }
     .verdict-metric-num { font-size: var(--ts-lg); }
     .verdict-extra { display: none; }
@@ -490,7 +581,8 @@
       font-size: var(--ts-lg);
     }
     .verdict.hero .verdict-explanation,
-    .verdict.hero .verdict-context {
+    .verdict.hero .verdict-context,
+    .verdict.hero .verdict-score-explainer {
       display: none;
     }
     .verdict-metrics {

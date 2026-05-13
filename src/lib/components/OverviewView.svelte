@@ -15,6 +15,7 @@
   import { networkQualityStore, monitoredEndpointsStore } from '$lib/stores/derived';
   import { buildDiagnosticNarrative, type DiagnosticNarrative } from '$lib/utils/diagnostic-narrative';
   import { diagnosticAlignedScore } from '$lib/utils/classify';
+  import { buildScoreExplanation } from '$lib/utils/score-explanation';
   import { buildHistoryBaselineInsight, type HistoryBaselineInsight } from '$lib/utils/history-baseline';
   import type { VerdictRow } from '$lib/utils/verdict';
   import { tokens } from '$lib/tokens';
@@ -226,6 +227,12 @@
     monitoredEndpointCount: monitored.length,
   }));
   const score = $derived(diagnosticAlignedScore(rawScore, diagnosticNarrative.severity));
+  const scoreExplanation = $derived(buildScoreExplanation({
+    rows: verdictRows,
+    threshold,
+    score,
+    rawScore,
+  }));
   // Score history ring buffer — one entry per round, max 60 entries. Driven by
   // roundCounter changes and aligned to the diagnostic narrative so the trace
   // never trends "healthy" while the answer says the run needs attention.
@@ -315,6 +322,7 @@
       {avgLoss}
       {drillEndpoint}
       baselineInsight={historyBaselineInsight}
+      {scoreExplanation}
       autoStartSuppressionReason={$uiStore.autoStartSuppressionReason}
       contextLine={runContextLine}
       onDrill={handleEnrichedDrill}
