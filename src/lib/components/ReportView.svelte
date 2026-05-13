@@ -11,6 +11,7 @@
   import { companionStore } from '$lib/stores/companion';
   import { remoteVantageStore } from '$lib/stores/remote-vantage';
   import LocalProofPanel from './LocalProofPanel.svelte';
+  import { sanitizeCompanionProbeForReport } from '$lib/companion/sanitize';
   import { buildShareURL } from '$lib/share/share-manager';
   import { buildResultsSharePayload, MAX_SHARE_URL_CHARS } from '$lib/share/share-payload-builder';
   import { buildDiagnosticReport, formatReportMetric } from '$lib/utils/diagnostic-report';
@@ -33,6 +34,7 @@
   const settings = $derived($settingsStore);
   const stats = $derived($statisticsStore);
   const context = $derived($uiStore.sharedReportContext);
+  const sharedLocalCompanion = $derived($uiStore.sharedLocalCompanion);
 
   const report = $derived(buildDiagnosticReport({
     endpoints,
@@ -59,6 +61,7 @@
     report,
     remoteVantage,
     companion,
+    sharedLocalCompanion,
   }));
   const remoteBusy = $derived(remoteVantage.status === 'checking' || remoteVantage.status === 'probing');
   const companionBusy = $derived(companion.status === 'checking' || companion.status === 'probing');
@@ -67,7 +70,9 @@
   let copiedLink = $state(false);
   let copyError = $state<'summary' | 'link' | null>(null);
   let localProofOpen = $state(false);
+  let includeLocalProofInReport = $state(false);
   let browserVisibilityPanel = $state<HTMLElement | null>(null);
+  const localProofExportAvailable = $derived(Boolean(companion.lastProbe));
 
   interface TriageOutcome {
     readonly label: string;
@@ -118,6 +123,10 @@
       totalSampleCount: report.totalSampleCount,
       truncated: report.truncated,
     };
+    const liveCompanion = get(companionStore);
+    const localCompanion = includeLocalProofInReport && liveCompanion.lastProbe
+      ? sanitizeCompanionProbeForReport(liveCompanion.lastProbe, { includePrivateWifi: false })
+      : null;
     const builtForHostedReport = buildResultsSharePayload(
       get(endpointStore),
       settingsForReport,
@@ -126,6 +135,7 @@
       Date.now(),
       metadata,
       get(remoteVantageStore).lastProbe,
+      localCompanion,
     );
     const hostedUrl = await remoteVantageStore.createHostedReport(builtForHostedReport.payload);
     const fallbackPayload = hostedUrl === null
@@ -137,6 +147,7 @@
           Date.now(),
           metadata,
           get(remoteVantageStore).lastProbe,
+          localCompanion,
         ).payload
       : null;
     copyText(hostedUrl ?? buildShareURL(fallbackPayload ?? builtForHostedReport.payload), () => {
@@ -314,6 +325,16 @@
         Run Your Own Test
       </button>
     </div>
+
+    {#if localProofExportAvailable}
+      <label class="local-proof-export">
+        <input type="checkbox" bind:checked={includeLocalProofInReport} />
+        <span>
+          <strong>Include redacted local proof</strong>
+          <small>Shares local-agent status only. WiFi names and raw route details stay out.</small>
+        </span>
+      </label>
+    {/if}
   </header>
 
   <section class="report-strip" aria-label="Report metadata">
@@ -604,6 +625,40 @@
     color: var(--accent-cyan);
     border-color: rgba(103,232,249,.35);
     background: rgba(103,232,249,.08);
+  }
+
+  .local-proof-export {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    gap: 10px;
+    max-width: 620px;
+    padding: 10px 12px;
+    border: 1px solid rgba(134,239,172,.22);
+    border-radius: 8px;
+    background: rgba(134,239,172,.055);
+    color: var(--t2);
+    font-size: var(--ts-sm);
+  }
+  .local-proof-export input {
+    margin-top: 2px;
+    accent-color: var(--accent-green);
+  }
+  .local-proof-export span {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .local-proof-export strong {
+    color: var(--t1);
+    font-size: var(--ts-sm);
+    font-weight: 600;
+  }
+  .local-proof-export small {
+    color: var(--t3);
+    font-size: var(--ts-xs);
+    line-height: 1.45;
   }
 
   .report-strip {

@@ -3,7 +3,14 @@
 // and panel visibility. No side effects; all state is local to this module.
 
 import { writable } from 'svelte/store';
-import type { LiveTimeRange, PendingShare, SharedReportContext, TerminalEventType, UIState } from '../types';
+import type {
+  LiveTimeRange,
+  PendingShare,
+  ShareLocalCompanionSnapshot,
+  SharedReportContext,
+  TerminalEventType,
+  UIState,
+} from '../types';
 
 function normalizeActiveView(view: UIState['activeView']): UIState['activeView'] {
   return view === 'strata' || view === 'terminal' ? 'overview' : view;
@@ -23,6 +30,7 @@ const initialState = (): UIState => ({
   isSharedView: false,
   sharedReportMode: false,
   sharedReportContext: null,
+  sharedLocalCompanion: null,
   pendingShare: null,
   showEndpoints: false,
   focusedEndpointId: null,
@@ -71,6 +79,7 @@ function createUiStore() {
         isSharedView: false,
         sharedReportMode: false,
         sharedReportContext: null,
+        sharedLocalCompanion: null,
       }));
     },
     setSharedReportMode(enabled: boolean): void {
@@ -78,6 +87,9 @@ function createUiStore() {
     },
     setSharedReportContext(context: SharedReportContext | null): void {
       update((s) => ({ ...s, sharedReportContext: context }));
+    },
+    setSharedLocalCompanion(localCompanion: ShareLocalCompanionSnapshot | null): void {
+      update((s) => ({ ...s, sharedLocalCompanion: localCompanion }));
     },
     setPendingShare(pending: PendingShare): void {
       update((s) => ({ ...s, pendingShare: pending }));

@@ -4,7 +4,7 @@
 // harvesting, prototype-pollution surface, future round-trip footgun) at both
 // the top level and per-entry level. The validator must reject any payload
 // that contains keys outside the declared allowlists:
-//   - Top-level:  { v, mode, endpoints, settings, results, report, remoteVantage }
+//   - Top-level:  { v, mode, endpoints, settings, results, report, remoteVantage, localCompanion }
 //   - Per-entry:  { url, enabled }
 //
 // Uses the encodeSharePayload / decodeSharePayload round-trip so the full
@@ -179,6 +179,47 @@ describe('validateSharePayload: top-level unknown key rejection', () => {
     expect(decodeSharePayload(encoded)).not.toBeNull();
   });
 
+  it('accepts a bounded sanitized local companion snapshot in v2 results mode', () => {
+    const payload: SharePayload = {
+      v: 2,
+      mode: 'results',
+      endpoints: [{ url: 'https://example.com', enabled: true }],
+      settings: { timeout: 5000, delay: 0, cap: MAX_CAP, corsMode: 'no-cors' },
+      report: {
+        reportKind: 'support',
+        createdAt: 1778352000000,
+        healthThreshold: 120,
+        corsMode: 'no-cors',
+        roundCount: 1,
+        totalSampleCount: 1,
+        keptSampleCount: 1,
+        truncated: false,
+      },
+      localCompanion: {
+        generatedAt: 1778352000500,
+        targetHost: 'example.com',
+        summary: 'DNS, TLS, route, and WiFi completed.',
+        sections: [{
+          name: 'wifi',
+          status: 'captured',
+          ok: true,
+          durationMs: 5,
+          detail: 'WiFi signal captured; private network names are redacted.',
+        }],
+        wifi: {
+          rssi: -51,
+          noise: -90,
+          ssid: 'redacted',
+          bssid: 'redacted',
+        },
+      },
+      results: [{ samples: [{ round: 0, latency: 42, status: 'ok' }] }],
+    };
+
+    const encoded = encodeSharePayload(payload);
+    expect(decodeSharePayload(encoded)).not.toBeNull();
+  });
+
   it('accepts a bounded reportKind in v2 report metadata', () => {
     const payload: SharePayload = {
       v: 2,
@@ -259,6 +300,74 @@ describe('validateSharePayload: top-level unknown key rejection', () => {
     };
     const encoded = encodeSharePayload(payload as never);
     expect(decodeSharePayload(encoded)).toBeNull();
+  });
+
+  it('rejects local companion payloads that include private history or unknown keys', () => {
+    const payload = {
+      v: 2,
+      mode: 'results',
+      endpoints: [{ url: 'https://example.com', enabled: true }],
+      settings: { timeout: 5000, delay: 0, cap: MAX_CAP, corsMode: 'no-cors' as const },
+      report: {
+        createdAt: 1778352000000,
+        healthThreshold: 120,
+        corsMode: 'no-cors' as const,
+        roundCount: 1,
+        totalSampleCount: 1,
+        keptSampleCount: 1,
+        truncated: false,
+      },
+      localCompanion: {
+        generatedAt: 1778352000500,
+        targetHost: 'example.com',
+        summary: 'DNS completed.',
+        history: [{ id: 'private-local-history' }],
+        sections: [{
+          name: 'dns',
+          status: 'captured',
+          ok: true,
+          durationMs: 5,
+          detail: 'DNS captured.',
+          raw: ['private raw data'],
+        }],
+      },
+      results: [{ samples: [{ round: 0, latency: 42, status: 'ok' as const }] }],
+    };
+
+    expect(decodeSharePayload(encodeSharePayload(payload as never))).toBeNull();
+  });
+
+  it('rejects local companion target hosts that are not shared endpoints', () => {
+    const payload = {
+      v: 2,
+      mode: 'results',
+      endpoints: [{ url: 'https://example.com', enabled: true }],
+      settings: { timeout: 5000, delay: 0, cap: MAX_CAP, corsMode: 'no-cors' as const },
+      report: {
+        createdAt: 1778352000000,
+        healthThreshold: 120,
+        corsMode: 'no-cors' as const,
+        roundCount: 1,
+        totalSampleCount: 1,
+        keptSampleCount: 1,
+        truncated: false,
+      },
+      localCompanion: {
+        generatedAt: 1778352000500,
+        targetHost: '192.168.1.1',
+        summary: 'Route completed.',
+        sections: [{
+          name: 'route',
+          status: 'captured',
+          ok: true,
+          durationMs: 5,
+          detail: 'traceroute captured 1 hop; raw hop details stay local.',
+        }],
+      },
+      results: [{ samples: [{ round: 0, latency: 42, status: 'ok' as const }] }],
+    };
+
+    expect(decodeSharePayload(encodeSharePayload(payload as never))).toBeNull();
   });
 });
 

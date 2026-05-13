@@ -298,4 +298,37 @@ describe('buildEvidenceTrail', () => {
       detail: 'This local agent was captured before the report snapshot. Run it again to refresh the evidence.',
     });
   });
+
+  it('summarizes sanitized local proof from a shared report payload', () => {
+    const trail = buildEvidenceTrail({
+      report: isolatedReport(),
+      remoteVantage: emptyRemote,
+      companion: emptyCompanion,
+      sharedLocalCompanion: {
+        generatedAt: 1778352000500,
+        targetHost: 'api.example.test',
+        summary: 'DNS, TLS, route, and WiFi completed.',
+        sections: [{
+          name: 'route',
+          status: 'captured',
+          ok: true,
+          durationMs: 25,
+          detail: 'traceroute captured 3 hops; raw hop details stay local.',
+        }],
+        wifi: {
+          rssi: -51,
+          noise: -90,
+          ssid: 'redacted',
+          bssid: 'redacted',
+        },
+      },
+    });
+
+    expect(trail.find((item) => item.id === 'local-agent')).toMatchObject({
+      status: 'Captured',
+      tone: 'good',
+      fact: 'api.example.test: DNS, TLS, route, and WiFi completed.',
+      detail: 'Shared report includes sanitized local-agent evidence only.',
+    });
+  });
 });
