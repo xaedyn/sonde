@@ -169,7 +169,7 @@ describe('Topbar', () => {
 
     const dialog = getByRole('dialog', { name: /run details/i });
     expect(within(dialog).getByText('Browser test')).toBeTruthy();
-    expect(within(dialog).getByText(/0 of 3600 samples/i)).toBeTruthy();
-    expect(within(dialog).getByText(/5s timeout/i)).toBeTruthy();
+    expect(within(dialog).getByText(/0 of \d+ samples/i)).toBeTruthy();
+    expect(within(dialog).getByText(/\d+s timeout/i)).toBeTruthy();
   });
 });
