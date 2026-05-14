@@ -20,6 +20,7 @@ const VIEWPORTS = [
   { name: 'desktop-2560',  width: 2560, height: 1440 },
 ] as const;
 
+const MIN_TOUCH_TARGET_PX = 24;
 const RUNNING_OR_STARTING_CONTROL = /^(?:Starting\.\.\.|Stop)$/i;
 
 interface VisibleEndpointTarget {
@@ -39,6 +40,8 @@ interface StatusLayoutMeasurement {
   readonly grid: LayoutBox | null;
   readonly dial: LayoutBox | null;
   readonly racing: LayoutBox | null;
+  readonly timeline: LayoutBox | null;
+  readonly detail: LayoutBox | null;
 }
 
 interface ScrollerReport {
@@ -160,8 +163,21 @@ const measureStatusLayout = async (page: Page): Promise<StatusLayoutMeasurement>
       grid: box('.overview-grid'),
       dial: box('svg.dial'),
       racing: box('#overview-panel-racing'),
+      timeline: box('#overview-panel-events'),
+      detail: box('.overview-right'),
     };
   });
+};
+
+const measureMinTimelineRowHeight = async (page: Page): Promise<number> => {
+  const timelineRows = page.locator('#overview-panel-events .story-row');
+  await expect(
+    timelineRows,
+    'Timeline should render endpoint rows before checking touch targets',
+  ).not.toHaveCount(0);
+  return await timelineRows.evaluateAll((rows) => (
+    Math.min(...rows.map((row) => row.getBoundingClientRect().height))
+  ));
 };
 
 test.describe('Status — no scroll on first visit', () => {
@@ -419,5 +435,87 @@ test.describe('Status — no scroll on first visit', () => {
       warning.racing!.bottom,
       `evidence bottom (${warning.racing!.bottom}) should stay within viewport (${page.viewportSize()?.height})`,
     ).toBeLessThanOrEqual(page.viewportSize()!.height);
+  });
+
+  test('warning timeline fits the mobile Status detail slot', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/');
+    await page.waitForSelector('#chronoscope-root');
+    await page.waitForTimeout(400);
+
+    await injectWarningSamples(page);
+    await page.getByRole('tab', { name: 'Timeline' }).click();
+    await expect(page.getByRole('heading', { name: 'What happened' })).toBeVisible();
+
+    const activeTabVisual = await page.evaluate(() => {
+      const tabs = Array.from(document.querySelectorAll<HTMLButtonElement>('button[role="tab"]'));
+      const timeline = tabs.find((tab) => tab.textContent?.trim() === 'Timeline');
+      const perEndpoint = tabs.find((tab) => tab.textContent?.trim() === 'Per-endpoint');
+      const bg = (tab: HTMLButtonElement | undefined): string | null => (
+        tab ? getComputedStyle(tab).backgroundColor : null
+      );
+      return {
+        timelineSelected: timeline?.getAttribute('aria-selected') === 'true',
+        perEndpointSelected: perEndpoint?.getAttribute('aria-selected') === 'true',
+        timelineBackground: bg(timeline),
+        perEndpointBackground: bg(perEndpoint),
+      };
+    });
+    expect(activeTabVisual.timelineSelected, 'Timeline tab should own the visible timeline panel').toBe(true);
+    expect(activeTabVisual.perEndpointSelected, 'Per-endpoint tab should not be selected while Timeline is visible').toBe(false);
+    expect(activeTabVisual.timelineBackground, 'Timeline tab should have a visible selected background').not.toBe('rgba(0, 0, 0, 0)');
+    expect(activeTabVisual.perEndpointBackground, 'Per-endpoint tab should remain visually inactive').toBe('rgba(0, 0, 0, 0)');
+
+    const minTimelineRowHeight = await measureMinTimelineRowHeight(page);
+    expect(
+      minTimelineRowHeight,
+      `Timeline endpoint rows should preserve the ${MIN_TOUCH_TARGET_PX}px touch-target floor`,
+    ).toBeGreaterThanOrEqual(MIN_TOUCH_TARGET_PX);
+
+    const warning = await measureStatusLayout(page);
+    expect(warning.detail).not.toBeNull();
+    expect(warning.timeline).not.toBeNull();
+
+    expect(
+      warning.timeline!.bottom,
+      `timeline bottom (${warning.timeline!.bottom}) should stay inside detail slot (${warning.detail!.bottom})`,
+    ).toBeLessThanOrEqual(warning.detail!.bottom);
+
+    const state = await scrollState(page);
+    expect(
+      state.overflowingScrollers,
+      `internal scrollers with hidden content: ${JSON.stringify(state.overflowingScrollers, null, 2)}`,
+    ).toEqual([]);
+  });
+
+  test('warning timeline preserves touch targets on iPhone SE', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 667 });
+    await page.goto('/');
+    await page.waitForSelector('#chronoscope-root');
+    await page.waitForTimeout(400);
+
+    await injectWarningSamples(page);
+    await page.getByRole('tab', { name: 'Timeline' }).click();
+    await expect(page.getByRole('heading', { name: 'What happened' })).toBeVisible();
+
+    const minTimelineRowHeight = await measureMinTimelineRowHeight(page);
+    expect(
+      minTimelineRowHeight,
+      `Timeline endpoint rows should preserve the ${MIN_TOUCH_TARGET_PX}px touch-target floor`,
+    ).toBeGreaterThanOrEqual(MIN_TOUCH_TARGET_PX);
+
+    const warning = await measureStatusLayout(page);
+    expect(warning.detail).not.toBeNull();
+    expect(warning.timeline).not.toBeNull();
+    expect(
+      warning.timeline!.bottom,
+      `timeline bottom (${warning.timeline!.bottom}) should stay inside detail slot (${warning.detail!.bottom})`,
+    ).toBeLessThanOrEqual(warning.detail!.bottom);
+
+    const state = await scrollState(page);
+    expect(
+      state.overflowingScrollers,
+      `internal scrollers with hidden content: ${JSON.stringify(state.overflowingScrollers, null, 2)}`,
+    ).toEqual([]);
   });
 });

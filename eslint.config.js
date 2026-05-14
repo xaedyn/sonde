@@ -5,7 +5,7 @@ import noRawVisualValues from './eslint-rules/no-raw-visual-values.js';
 
 export default tseslint.config(
   {
-    ignores: ['dist/**', 'node_modules/**', '*.min.js'],
+    ignores: ['dist/**', 'node_modules/**', 'tests/**', '*.min.js'],
   },
   ...tseslint.configs.strict,
   ...sveltePlugin.configs['flat/recommended'],
