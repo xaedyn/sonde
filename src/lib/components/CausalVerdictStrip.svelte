@@ -574,11 +574,17 @@
 
   @media (max-width: 767px) and (max-height: 860px) {
     .verdict.hero {
-      padding: 8px 10px;
-      gap: 6px;
+      padding: 6px 10px;
+      gap: 4px;
     }
+    .verdict-main { gap: 6px; }
     .verdict.hero .verdict-headline {
       font-size: var(--ts-lg);
+    }
+    .verdict-confidence,
+    .verdict-baseline-chip {
+      padding: 1px 5px;
+      font-size: 9px;
     }
     .verdict.hero .verdict-explanation,
     .verdict.hero .verdict-context,
@@ -591,6 +597,9 @@
     }
     .verdict-metric-num {
       font-size: var(--ts-md);
+    }
+    .verdict-drill {
+      padding: 5px 8px;
     }
   }
 </style>

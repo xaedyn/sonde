@@ -405,6 +405,10 @@
     min-width: 0;
     min-height: 0;
   }
+  .card-slot {
+    min-width: 0;
+    min-height: 0;
+  }
   /* Desktop: both racing and events live side-by-side in the right column
      (the 2-col grid above stacks them vertically). The subtab strip is
      hidden — it only exists as a mobile affordance. */
@@ -422,6 +426,10 @@
     }
     .overview-right {
       height: var(--status-mobile-detail-row-h);
+      overflow: hidden;
+    }
+    .card-slot {
+      flex: 1 1 0;
       overflow: hidden;
     }
     /* Narrow viewports: expose the subtab strip and render only the active

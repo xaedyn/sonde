@@ -67,8 +67,77 @@ describe('RunStorylineCard', () => {
     });
 
     expect(getByRole('heading', { name: 'What happened' })).toBeTruthy();
-    expect(getByText('Recent run timeline')).toBeTruthy();
+    expect(getByText('Last 60s · newest on right')).toBeTruthy();
     expect(getByText('AWS slowed briefly; the other paths stayed clean.')).toBeTruthy();
+  });
+
+  it('renders readable time labels and a status legend', () => {
+    const { getAllByText, getByText } = render(RunStorylineCard, {
+      props: {
+        storyline: storyline(),
+        onDrill: vi.fn(),
+      },
+    });
+
+    expect(getByText('60s ago')).toBeTruthy();
+    expect(getByText('45s')).toBeTruthy();
+    expect(getByText('30s')).toBeTruthy();
+    expect(getByText('15s')).toBeTruthy();
+    expect(getByText('now')).toBeTruthy();
+    expect(getAllByText('steady').length).toBeGreaterThan(0);
+    expect(getByText('elevated')).toBeTruthy();
+    expect(getByText('slow')).toBeTruthy();
+    expect(getByText('failed')).toBeTruthy();
+  });
+
+  it('uses fewer axis ticks for very short runs so time remains readable', () => {
+    const { getByText, queryByText } = render(RunStorylineCard, {
+      props: {
+        storyline: storyline({
+          windowEnd: BASE + 7_000,
+          phases: [{ start: BASE, end: BASE + 7_000, label: 'collecting', kind: 'collecting' }],
+          markers: [],
+        }),
+        onDrill: vi.fn(),
+      },
+    });
+
+    expect(getByText('Last 7s · newest on right')).toBeTruthy();
+    expect(getByText('7s ago')).toBeTruthy();
+    expect(getByText('4s')).toBeTruthy();
+    expect(getByText('now')).toBeTruthy();
+    expect(queryByText('5s')).toBeNull();
+    expect(queryByText('2s')).toBeNull();
+  });
+
+  it('does not render a confusing 0s interior tick while a run is just starting', () => {
+    const { getByText, queryByText } = render(RunStorylineCard, {
+      props: {
+        storyline: storyline({
+          windowEnd: BASE + 800,
+          phases: [{ start: BASE, end: BASE + 800, label: 'collecting', kind: 'collecting' }],
+          markers: [],
+        }),
+        onDrill: vi.fn(),
+      },
+    });
+
+    expect(getByText('1s ago')).toBeTruthy();
+    expect(getByText('now')).toBeTruthy();
+    expect(queryByText('0s')).toBeNull();
+  });
+
+  it('renders per-row time summaries so each trace has temporal meaning', () => {
+    const { getByText, getByRole } = render(RunStorylineCard, {
+      props: {
+        storyline: storyline(),
+        onDrill: vi.fn(),
+      },
+    });
+
+    expect(getByText('Steady for 60s')).toBeTruthy();
+    expect(getByText('Slow 30s ago')).toBeTruthy();
+    expect(getByRole('button', { name: /AWS, Slow 30s ago, AWS crossed the trigger/i })).toBeTruthy();
   });
 
   it('renders endpoint rows with accessible status labels', () => {
@@ -79,8 +148,8 @@ describe('RunStorylineCard', () => {
       },
     });
 
-    expect(getByRole('button', { name: /Google, Google stayed clean/i })).toBeTruthy();
-    expect(getByRole('button', { name: /AWS, AWS crossed the trigger/i })).toBeTruthy();
+    expect(getByRole('button', { name: /Google, Steady for 60s, Google stayed clean/i })).toBeTruthy();
+    expect(getByRole('button', { name: /AWS, Slow 30s ago, AWS crossed the trigger/i })).toBeTruthy();
   });
 
   it('renders overflow text when extra endpoints are hidden', () => {
@@ -108,7 +177,7 @@ describe('RunStorylineCard', () => {
       },
     });
 
-    await fireEvent.click(getByRole('button', { name: /AWS, AWS crossed the trigger/i }));
+    await fireEvent.click(getByRole('button', { name: /AWS, Slow 30s ago, AWS crossed the trigger/i }));
 
     expect(onDrill).toHaveBeenCalledWith('aws');
   });
@@ -122,7 +191,7 @@ describe('RunStorylineCard', () => {
       },
     });
 
-    await fireEvent.click(getByRole('button', { name: /AWS slow, AWS had 2 of the last 3 samples/i }));
+    await fireEvent.click(getByRole('button', { name: /AWS slow, 30s ago, AWS had 2 of the last 3 samples/i }));
 
     expect(onDrill).toHaveBeenCalledWith('aws');
   });

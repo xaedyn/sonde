@@ -64,6 +64,7 @@
   button[role="tab"] {
     background: transparent;
     border: none;
+    border-radius: 7px 7px 0 0;
     color: var(--t3);
     font-family: var(--sans);
     font-size: var(--ts-sm);
@@ -71,7 +72,7 @@
     padding: 8px 12px 10px;
     cursor: pointer;
     position: relative;
-    transition: color 140ms ease;
+    transition: color 120ms ease;
   }
   button[role="tab"]::after {
     content: '';
@@ -79,12 +80,15 @@
     left: 8px; right: 8px; bottom: -1px;
     height: 2px;
     background: transparent;
-    transition: background 140ms ease;
   }
-  button[role="tab"].active {
+  button[role="tab"].active,
+  button[role="tab"][aria-selected="true"] {
+    background: rgba(103, 232, 249, 0.08);
+    box-shadow: inset 0 0 0 1px rgba(103, 232, 249, 0.18);
     color: var(--t1);
   }
-  button[role="tab"].active::after {
+  button[role="tab"].active::after,
+  button[role="tab"][aria-selected="true"]::after {
     background: var(--accent-cyan);
   }
   button[role="tab"]:focus-visible {

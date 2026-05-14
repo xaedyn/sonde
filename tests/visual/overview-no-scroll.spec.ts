@@ -39,6 +39,8 @@ interface StatusLayoutMeasurement {
   readonly grid: LayoutBox | null;
   readonly dial: LayoutBox | null;
   readonly racing: LayoutBox | null;
+  readonly timeline: LayoutBox | null;
+  readonly detail: LayoutBox | null;
 }
 
 interface ScrollerReport {
@@ -160,6 +162,8 @@ const measureStatusLayout = async (page: Page): Promise<StatusLayoutMeasurement>
       grid: box('.overview-grid'),
       dial: box('svg.dial'),
       racing: box('#overview-panel-racing'),
+      timeline: box('#overview-panel-events'),
+      detail: box('.overview-right'),
     };
   });
 };
@@ -419,5 +423,50 @@ test.describe('Status — no scroll on first visit', () => {
       warning.racing!.bottom,
       `evidence bottom (${warning.racing!.bottom}) should stay within viewport (${page.viewportSize()?.height})`,
     ).toBeLessThanOrEqual(page.viewportSize()!.height);
+  });
+
+  test('warning timeline fits the mobile Status detail slot', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/');
+    await page.waitForSelector('#chronoscope-root');
+    await page.waitForTimeout(400);
+
+    await injectWarningSamples(page);
+    await page.getByRole('tab', { name: 'Timeline' }).click();
+    await expect(page.getByRole('heading', { name: 'What happened' })).toBeVisible();
+
+    const activeTabVisual = await page.evaluate(() => {
+      const tabs = Array.from(document.querySelectorAll<HTMLButtonElement>('button[role="tab"]'));
+      const timeline = tabs.find((tab) => tab.textContent?.trim() === 'Timeline');
+      const perEndpoint = tabs.find((tab) => tab.textContent?.trim() === 'Per-endpoint');
+      const bg = (tab: HTMLButtonElement | undefined): string | null => (
+        tab ? getComputedStyle(tab).backgroundColor : null
+      );
+      return {
+        timelineSelected: timeline?.getAttribute('aria-selected') === 'true',
+        perEndpointSelected: perEndpoint?.getAttribute('aria-selected') === 'true',
+        timelineBackground: bg(timeline),
+        perEndpointBackground: bg(perEndpoint),
+      };
+    });
+    expect(activeTabVisual.timelineSelected, 'Timeline tab should own the visible timeline panel').toBe(true);
+    expect(activeTabVisual.perEndpointSelected, 'Per-endpoint tab should not be selected while Timeline is visible').toBe(false);
+    expect(activeTabVisual.timelineBackground, 'Timeline tab should have a visible selected background').not.toBe('rgba(0, 0, 0, 0)');
+    expect(activeTabVisual.perEndpointBackground, 'Per-endpoint tab should remain visually inactive').toBe('rgba(0, 0, 0, 0)');
+
+    const warning = await measureStatusLayout(page);
+    expect(warning.detail).not.toBeNull();
+    expect(warning.timeline).not.toBeNull();
+
+    expect(
+      warning.timeline!.bottom,
+      `timeline bottom (${warning.timeline!.bottom}) should stay inside detail slot (${warning.detail!.bottom})`,
+    ).toBeLessThanOrEqual(warning.detail!.bottom);
+
+    const state = await scrollState(page);
+    expect(
+      state.overflowingScrollers,
+      `internal scrollers with hidden content: ${JSON.stringify(state.overflowingScrollers, null, 2)}`,
+    ).toEqual([]);
   });
 });
