@@ -454,10 +454,45 @@ test.describe('Status — no scroll on first visit', () => {
     expect(activeTabVisual.timelineBackground, 'Timeline tab should have a visible selected background').not.toBe('rgba(0, 0, 0, 0)');
     expect(activeTabVisual.perEndpointBackground, 'Per-endpoint tab should remain visually inactive').toBe('rgba(0, 0, 0, 0)');
 
+    const minTimelineRowHeight = await page.locator('#overview-panel-events .story-row').evaluateAll((rows) => (
+      Math.min(...rows.map((row) => row.getBoundingClientRect().height))
+    ));
+    expect(minTimelineRowHeight, 'Timeline endpoint rows should preserve the 24px touch-target floor').toBeGreaterThanOrEqual(24);
+
     const warning = await measureStatusLayout(page);
     expect(warning.detail).not.toBeNull();
     expect(warning.timeline).not.toBeNull();
 
+    expect(
+      warning.timeline!.bottom,
+      `timeline bottom (${warning.timeline!.bottom}) should stay inside detail slot (${warning.detail!.bottom})`,
+    ).toBeLessThanOrEqual(warning.detail!.bottom);
+
+    const state = await scrollState(page);
+    expect(
+      state.overflowingScrollers,
+      `internal scrollers with hidden content: ${JSON.stringify(state.overflowingScrollers, null, 2)}`,
+    ).toEqual([]);
+  });
+
+  test('warning timeline preserves touch targets on iPhone SE', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 667 });
+    await page.goto('/');
+    await page.waitForSelector('#chronoscope-root');
+    await page.waitForTimeout(400);
+
+    await injectWarningSamples(page);
+    await page.getByRole('tab', { name: 'Timeline' }).click();
+    await expect(page.getByRole('heading', { name: 'What happened' })).toBeVisible();
+
+    const minTimelineRowHeight = await page.locator('#overview-panel-events .story-row').evaluateAll((rows) => (
+      Math.min(...rows.map((row) => row.getBoundingClientRect().height))
+    ));
+    expect(minTimelineRowHeight, 'Timeline endpoint rows should preserve the 24px touch-target floor').toBeGreaterThanOrEqual(24);
+
+    const warning = await measureStatusLayout(page);
+    expect(warning.detail).not.toBeNull();
+    expect(warning.timeline).not.toBeNull();
     expect(
       warning.timeline!.bottom,
       `timeline bottom (${warning.timeline!.bottom}) should stay inside detail slot (${warning.detail!.bottom})`,

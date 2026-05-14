@@ -703,24 +703,7 @@
     }
 
     .story-axis {
-      display: block;
-      height: 10px;
-    }
-
-    .story-axis-title {
       display: none;
-    }
-
-    .story-axis-track {
-      height: 10px;
-    }
-
-    .story-axis-track::before {
-      top: 5px;
-    }
-
-    .story-axis-tick {
-      font-size: 8px;
     }
 
     .story-rows {
@@ -729,7 +712,7 @@
     }
 
     .story-row {
-      --row-h: 20px;
+      --row-h: 24px;
       height: var(--row-h);
       grid-template-columns: var(--story-label-w) minmax(0, 1fr);
       gap: 6px;
@@ -779,30 +762,30 @@
   @media (max-width: 767px) and (max-height: 760px) {
     .storyline {
       --story-label-w: 82px;
-      padding: 4px 7px;
-      gap: 2px;
+      padding: 1px 7px;
+      gap: 1px;
+    }
+
+    .storyline-header {
+      line-height: 1;
     }
 
     .storyline-title {
-      font-size: 11px;
+      font-size: 10px;
+      line-height: 1;
     }
 
-    .storyline-sub,
-    .story-axis-tick {
+    .storyline-sub {
       font-size: 7px;
+      line-height: 1;
     }
 
-    .story-axis,
-    .story-axis-track {
-      height: 9px;
-    }
-
-    .story-axis-track::before {
-      top: 4px;
+    .story-rows {
+      gap: 0;
     }
 
     .story-row {
-      --row-h: 17px;
+      --row-h: 24px;
       gap: 5px;
     }
 
