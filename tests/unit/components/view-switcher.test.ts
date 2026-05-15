@@ -65,4 +65,11 @@ describe('ViewSwitcher', () => {
     expect(status.getAttribute('aria-current')).toBe('page');
     expect(status.getAttribute('aria-pressed')).toBe('true');
   });
+
+  it('does not expose Report as a primary tab in PR 1 shared chrome', () => {
+    const { queryByText, getAllByRole } = render(ViewSwitcher);
+
+    expect(getAllByRole('button')).toHaveLength(3);
+    expect(queryByText('Report')).toBeNull();
+  });
 });
