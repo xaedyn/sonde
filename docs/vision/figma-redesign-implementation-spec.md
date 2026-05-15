@@ -2,7 +2,7 @@
 
 **Status:** Draft implementation contract
 **Created:** 2026-05-15
-**Reference artifact:** `/Users/shane/claude/chronoscope-redesign-figma/`
+**Reference artifact:** local-only Figma export. If needed, place the export at `docs/artifacts/chronoscope-redesign-figma/` before re-inspection.
 **Decision:** Use the Figma concept as the visual north star. Do not import the generated React code.
 
 ---
@@ -806,4 +806,4 @@ Recommended defaults:
 
 Use this prompt after context compaction:
 
-> Read `docs/vision/figma-redesign-implementation-spec.md`, inspect `/Users/shane/claude/chronoscope-redesign-figma/`, then continue with the next unimplemented PR slice. Preserve Chronoscope's evidence gates and do not import the generated React code.
+> Read `docs/vision/figma-redesign-implementation-spec.md`, inspect the local Figma export at `docs/artifacts/chronoscope-redesign-figma/` if it is available, then continue with the next unimplemented PR slice. Preserve Chronoscope's evidence gates and do not import the generated React code.

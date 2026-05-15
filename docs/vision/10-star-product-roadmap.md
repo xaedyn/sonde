@@ -378,6 +378,6 @@ The assistant should then:
 
 ### 2026-05-15
 
-- Evaluated the generated Figma redesign prototype at `/Users/shane/claude/chronoscope-redesign-figma/`.
+- Evaluated the generated Figma redesign prototype as a local-only reference artifact. Future sessions should place that artifact at `docs/artifacts/chronoscope-redesign-figma/` if the prototype needs to be re-inspected.
 - Decided to use the Figma concept as the visual north star, but not as production code.
 - Created `docs/vision/figma-redesign-implementation-spec.md` to define the redesign contract: visual system, trust-copy rules, data mapping, screen requirements, PR sequence, accessibility requirements, and performance constraints.
