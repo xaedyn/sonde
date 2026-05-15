@@ -56,15 +56,14 @@
 
 <style>
   .view-switcher {
+    height: var(--shell-nav-height);
     display: flex;
-    gap: 3px;
-    padding: 10px 18px 0;
+    gap: 6px;
+    padding: 7px 18px 0;
     align-items: stretch;
-    border-bottom: 1px solid var(--border-mid);
-    background: rgba(10, 9, 18, 0.3);
+    border-bottom: 1px solid var(--shell-border);
+    background: linear-gradient(180deg, var(--shell-panel), var(--shell-bg));
     flex-shrink: 0;
-    /* Enable horizontal scroll with snap at any width where the tabs need more
-       room. Desktop fits comfortably; the overflow path is the mobile answer. */
     overflow-x: auto;
     scroll-snap-type: x proximity;
     scrollbar-width: none;
@@ -73,14 +72,14 @@
   .view-tab { scroll-snap-align: start; }
   .view-tab {
     background: transparent;
-    border: none;
-    padding: 8px 10px 12px 8px;
+    border: 1px solid transparent;
+    padding: 6px 11px 9px 8px;
     display: flex;
     align-items: center;
     gap: 8px;
-    border-radius: 6px 6px 0 0;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
     position: relative;
-    transition: background 160ms ease, color 160ms ease;
+    transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
     color: var(--t3);
     font-family: var(--sans);
     cursor: pointer;
@@ -91,19 +90,22 @@
     content: '';
     position: absolute;
     bottom: -1px;
-    left: 0;
-    right: 0;
+    left: 8px;
+    right: 8px;
     height: 2px;
+    border-radius: 999px;
     background: transparent;
     transition: background 200ms ease, box-shadow 200ms ease;
   }
   .view-tab:hover {
     color: var(--t1);
-    background: rgba(255, 255, 255, 0.02);
+    background: var(--shell-panel-hover);
+    border-color: var(--shell-border);
   }
   .view-tab.active {
     color: var(--t1);
-    background: rgba(103, 232, 249, 0.05);
+    background: var(--shell-panel-active);
+    border-color: var(--shell-border);
   }
   .view-tab.active::after {
     background: var(--accent-cyan);
@@ -120,16 +122,17 @@
     height: 22px;
     display: grid;
     place-items: center;
-    border-radius: 4px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--border-mid);
+    border-radius: var(--radius-xs);
+    background: var(--shell-panel-raised);
+    border: 1px solid var(--shell-border);
     font-family: var(--mono);
     font-size: var(--ts-xs);
     color: var(--t3);
+    flex-shrink: 0;
   }
   .view-tab.active .view-tab-key {
-    background: rgba(103, 232, 249, 0.15);
-    border-color: rgba(103, 232, 249, 0.3);
+    background: var(--shell-panel-active);
+    border-color: var(--shell-border-strong);
     color: var(--accent-cyan);
   }
 
@@ -142,7 +145,7 @@
   }
   .view-tab-label {
     font-size: var(--ts-md);
-    font-weight: 500;
+    font-weight: 600;
     white-space: nowrap;
   }
   .view-tab-sub {
@@ -178,9 +181,9 @@
   /* Mobile: drop the keyboard-shortcut kicker (keyboard isn't reachable
      anyway) and hide the tab sub-label so tabs pack tighter. */
   @media (max-width: 767px) {
-    .view-switcher { padding: 8px 12px 0; gap: 2px; }
+    .view-switcher { padding: 7px 12px 0; gap: 4px; }
     .view-switcher-trailing { display: none; }
-    .view-tab { padding: 6px 8px 10px 6px; }
+    .view-tab { padding: 6px 8px 9px 6px; }
     .view-tab-sub { display: none; }
     .view-tab-key { width: 18px; height: 18px; }
   }
