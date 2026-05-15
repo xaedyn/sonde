@@ -111,6 +111,10 @@
     root.style.setProperty('--border-bright',       tokens.color.surface.border.bright);
     root.style.setProperty('--surface-topbar-bg',   tokens.color.surface.overlayDeep);
     root.style.setProperty('--shell-topbar-height', `${tokens.shell.topbarHeight}px`);
+    root.style.setProperty('--shell-popover-width', `${tokens.shell.popoverWidth}px`);
+    root.style.setProperty('--shell-topbar-backdrop', tokens.shell.topbarBackdropFilter);
+    root.style.setProperty('--shell-popover-backdrop', tokens.shell.popoverBackdropFilter);
+    root.style.setProperty('--shell-brand-highlight-shadow', tokens.shell.brandHighlightShadow);
     root.style.setProperty('--shell-nav-height', `${tokens.shell.navHeight}px`);
     root.style.setProperty('--shell-control-size', `${tokens.shell.controlSize}px`);
     root.style.setProperty('--shell-mobile-control-size', `${tokens.shell.mobileControlSize}px`);

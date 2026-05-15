@@ -1,7 +1,7 @@
 // tests/unit/components/topbar.test.ts
-// Tests Topbar component logic — label derivation, button state, and UX polish.
-// We test the derived logic directly since @testing-library/svelte is not installed
-// and the project tests store/component logic this way (see controls.test.ts).
+// Tests Topbar component logic, store-derived labels, and shared chrome DOM.
+// DOM checks cover accessible controls while direct utility assertions keep
+// lifecycle label expectations compact and explicit.
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { fireEvent, render, within } from '@testing-library/svelte';

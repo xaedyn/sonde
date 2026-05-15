@@ -306,6 +306,13 @@ describe('figma redesign shell tokens (PR 1)', () => {
     expect(tokens.shell.contentMaxWidth).toBe(2200);
   });
 
+  it('exports shell chrome effects used by the redesigned topbar', () => {
+    expect(tokens.shell.popoverWidth).toBe(280);
+    expect(tokens.shell.topbarBackdropFilter).toBe('blur(18px) saturate(1.22)');
+    expect(tokens.shell.popoverBackdropFilter).toBe('blur(18px) saturate(1.2)');
+    expect(tokens.shell.brandHighlightShadow).toBe('inset 0 1px 0 rgba(255,255,255,.12)');
+  });
+
   it('exports a redesigned popover shadow token', () => {
     expect(tokens.shadow.popover).toBe('0 18px 60px rgba(0,0,0,.42)');
   });

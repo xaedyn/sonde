@@ -233,8 +233,8 @@
     gap: 12px;
     flex-shrink: 0;
     background: linear-gradient(180deg, var(--shell-backdrop), var(--shell-panel));
-    backdrop-filter: blur(18px) saturate(1.22);
-    -webkit-backdrop-filter: blur(18px) saturate(1.22);
+    backdrop-filter: var(--shell-topbar-backdrop);
+    -webkit-backdrop-filter: var(--shell-topbar-backdrop);
     border-bottom: 1px solid var(--shell-border);
     color: var(--t1);
   }
@@ -248,7 +248,7 @@
     display: grid; place-items: center;
     color: var(--accent-cyan);
     flex-shrink: 0;
-    box-shadow: inset 0 1px 0 var(--glass-highlight);
+    box-shadow: var(--shell-brand-highlight-shadow);
   }
   .brand-meta { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
   .brand-name {
@@ -329,14 +329,14 @@
     right: 0;
     top: calc(100% + 8px);
     z-index: 80;
-    width: 280px;
+    width: var(--shell-popover-width);
     padding: 12px;
     border-radius: var(--radius-md);
     border: 1px solid var(--shell-border-strong);
     background: var(--shell-popover);
     box-shadow: var(--shadow-popover);
-    backdrop-filter: blur(18px) saturate(1.2);
-    -webkit-backdrop-filter: blur(18px) saturate(1.2);
+    backdrop-filter: var(--shell-popover-backdrop);
+    -webkit-backdrop-filter: var(--shell-popover-backdrop);
   }
   .run-details-title {
     margin: 0 0 9px;

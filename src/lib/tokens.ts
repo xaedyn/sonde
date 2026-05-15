@@ -440,6 +440,10 @@ export const tokens = {
 
   shell: {
     topbarHeight: 60,
+    popoverWidth: 280,
+    topbarBackdropFilter: 'blur(18px) saturate(1.22)',
+    popoverBackdropFilter: 'blur(18px) saturate(1.2)',
+    brandHighlightShadow: 'inset 0 1px 0 rgba(255,255,255,.12)',
     navHeight: 48,
     controlSize: 40,
     mobileControlSize: 38,
