@@ -351,7 +351,7 @@
 
   @media (max-width: 767px) and (max-height: 860px) {
     .racing { padding: 5px 8px; }
-    .racing-header { margin-bottom: 2px; }
+    .racing-header { display: none; }
     .racing-title { font-size: var(--ts-md); }
     .racing-axis { display: none; }
     .racing-row {

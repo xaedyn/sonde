@@ -57,7 +57,14 @@
 
 <a href="#main-content" class="skip-link">Skip to main content</a>
 
-<div class="bg" aria-hidden="true"></div>
+<div
+  class="bg"
+  aria-hidden="true"
+  style:--bg-base={tokens.color.surface.base}
+  style:--shell-bg={tokens.color.shell.base}
+  style:--shell-bg-cyan={tokens.color.shell.bgCyan}
+  style:--shell-bg-amber={tokens.color.shell.bgAmber}
+></div>
 
 <div
   class="app"
