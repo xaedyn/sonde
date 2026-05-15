@@ -67,7 +67,7 @@ describe('RunStorylineCard', () => {
     });
 
     expect(getByRole('heading', { name: 'What happened' })).toBeTruthy();
-    expect(getByText('Last 60s · newest on right')).toBeTruthy();
+    expect(getByText('Last 60s · Now on right')).toBeTruthy();
     expect(getByText('AWS slowed briefly; the other paths stayed clean.')).toBeTruthy();
   });
 
@@ -79,11 +79,11 @@ describe('RunStorylineCard', () => {
       },
     });
 
-    expect(getByText('60s ago')).toBeTruthy();
-    expect(getByText('45s')).toBeTruthy();
-    expect(getByText('30s')).toBeTruthy();
-    expect(getByText('15s')).toBeTruthy();
-    expect(getByText('now')).toBeTruthy();
+    expect(getByText('-60s')).toBeTruthy();
+    expect(getByText('-45s')).toBeTruthy();
+    expect(getByText('-30s')).toBeTruthy();
+    expect(getByText('-15s')).toBeTruthy();
+    expect(getByText('Now')).toBeTruthy();
     const legend = within(getByRole('list', { name: 'Timeline status legend' }));
     expect(legend.getByText('steady')).toBeTruthy();
     expect(legend.getByText('elevated')).toBeTruthy();
@@ -138,10 +138,10 @@ describe('RunStorylineCard', () => {
       },
     });
 
-    expect(getByText('Last 7s · newest on right')).toBeTruthy();
-    expect(getByText('7s ago')).toBeTruthy();
-    expect(getByText('4s')).toBeTruthy();
-    expect(getByText('now')).toBeTruthy();
+    expect(getByText('Last 7s · Now on right')).toBeTruthy();
+    expect(getByText('-7s')).toBeTruthy();
+    expect(getByText('-4s')).toBeTruthy();
+    expect(getByText('Now')).toBeTruthy();
     expect(queryByText('5s')).toBeNull();
     expect(queryByText('2s')).toBeNull();
   });
@@ -158,8 +158,8 @@ describe('RunStorylineCard', () => {
       },
     });
 
-    expect(getByText('1s ago')).toBeTruthy();
-    expect(getByText('now')).toBeTruthy();
+    expect(getByText('-1s')).toBeTruthy();
+    expect(getByText('Now')).toBeTruthy();
     expect(queryByText('0s')).toBeNull();
   });
 

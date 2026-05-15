@@ -28,7 +28,7 @@
 
   let { storyline, onDrill }: Props = $props();
 
-  let windowLabel = $derived(`Last ${durationLabel(windowSpan())} · newest on right`);
+  let windowLabel = $derived(`Last ${durationLabel(windowSpan())} · Now on right`);
   let axisTicks = $derived(buildAxisTicks(storyline.windowStart, storyline.windowEnd));
 
   function windowSpan(): number {
@@ -65,9 +65,8 @@
   }
 
   function axisTickLabel(position: number, age: number): string {
-    if (position === 1) return 'now';
-    if (position === 0) return `${durationLabel(age)} ago`;
-    return durationLabel(age);
+    if (position === 1) return 'Now';
+    return `-${durationLabel(age)}`;
   }
 
   function pct(t: number): number {

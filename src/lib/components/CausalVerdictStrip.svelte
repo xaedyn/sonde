@@ -43,6 +43,12 @@
   const primaryTriageAction = $derived(triageActions[0] ?? null);
   const primaryLimitation = $derived(diagnosis.limitations[0] ?? null);
   const primaryNextStep = $derived(primaryTriageAction?.action ?? primaryAction?.reason ?? diagnosis.nextSteps[0] ?? null);
+  const statusLabel = $derived.by(() => {
+    if (diagnosis.kind === 'collecting') return 'Collecting';
+    if (verdict.tone === 'good') return 'Good';
+    if (diagnosis.severity === 'degraded') return 'Needs attention';
+    return 'Watch';
+  });
   const drillActionLabel = $derived(primaryAction?.endpointId === drillEndpoint?.id
     ? (primaryAction.id === 'run-remote-check' ? 'Open Investigate' : primaryAction.label)
     : 'Investigate');
@@ -94,9 +100,13 @@
   class:collecting={diagnosis.kind === 'collecting'}
   aria-live="polite"
   aria-atomic="true"
+  aria-label="Status answer"
 >
   <div class="verdict-main">
-    <span class="verdict-dot" aria-hidden="true"></span>
+    <span class="verdict-status-pill">
+      <span class="verdict-dot" aria-hidden="true"></span>
+      {statusLabel}
+    </span>
     <h2 class="verdict-headline">{primaryHeadline}</h2>
     <span
       class="verdict-confidence"
@@ -120,34 +130,9 @@
     <p class="verdict-explanation verdict-suppression">{suppressionMessage}</p>
   {/if}
 
-  {#if scoreExplanation}
-    <div
-      class="verdict-score-explainer"
-      title={scoreExplanation.detail}
-      aria-label={scoreExplanation.detail}
-    >
-      <span class="verdict-score-headline">{scoreExplanation.headline}</span>
-      <span class="verdict-score-summary">{scoreExplanation.summary}</span>
-      <span class="verdict-score-chips" aria-hidden="true">
-        {#each scoreContributions as contribution (contribution.endpointId)}
-          <span
-            class="verdict-score-chip"
-            class:healthy={contribution.bucket === 'healthy'}
-            class:degraded={contribution.bucket === 'degraded'}
-            class:unhealthy={contribution.bucket === 'unhealthy'}
-          >{contribution.label} {contribution.points}</span>
-        {/each}
-        {#if hiddenScoreContributions > 0}
-          <span class="verdict-score-chip muted">+{hiddenScoreContributions}</span>
-        {/if}
-      </span>
-    </div>
-  {:else if contextLine}
-    <p class="verdict-context">{contextLine}</p>
-  {/if}
-
   {#if showMetrics}
-    <dl class="verdict-metrics">
+    <dl class="verdict-facts verdict-metrics" aria-label="Measured facts">
+      <div class="verdict-facts-heading" aria-hidden="true">Measured facts</div>
       <div class="verdict-metric">
         <dt class="verdict-metric-label">Median</dt>
         <dd class="verdict-metric-value">
@@ -159,7 +144,7 @@
         <dt class="verdict-metric-label">Jitter</dt>
         <dd class="verdict-metric-value">
           <span class="verdict-metric-num">{fmt1(avgJitter)}</span>
-          <span class="verdict-metric-unit">σ</span>
+          <span class="verdict-metric-unit">ms</span>
         </dd>
       </div>
       <div class="verdict-metric">
@@ -185,31 +170,58 @@
     </button>
   {/if}
 
-  {#if canStartSuppressedRun}
-    <button type="button" class="verdict-drill verdict-start" onclick={() => onStart?.()}>
-      <span class="verdict-drill-text">Start Measuring</span>
-      <span class="verdict-drill-arrow" aria-hidden="true">→</span>
-    </button>
-  {/if}
-
   {#if diagnosis.kind !== 'collecting'}
-    <div class="verdict-extra">
+    <div class="verdict-extra verdict-proof-rows">
       {#if primaryLimitation}
-        <p class="verdict-limit">
-          <span class="verdict-extra-label">Limit</span>
+        <p class="verdict-limit" aria-label="Browser limitation">
+          <span class="verdict-extra-label">Browser limit</span>
           <span>{primaryLimitation.headline}</span>
         </p>
       {/if}
       {#if primaryNextStep}
         <p
           class="verdict-next"
+          aria-label="Next useful check"
           title={primaryTriageAction ? `${primaryTriageAction.why} ${primaryTriageAction.watchFor}` : undefined}
         >
-          <span class="verdict-extra-label">Next</span>
+          <span class="verdict-extra-label">Next check</span>
           <span>{primaryNextStep}</span>
         </p>
       {/if}
     </div>
+  {/if}
+
+  {#if scoreExplanation}
+    <div
+      class="verdict-score-explainer"
+      title={scoreExplanation.detail}
+      aria-label="Quality score explanation"
+    >
+      <span class="verdict-score-headline">{scoreExplanation.headline}</span>
+      <span class="verdict-score-summary">{scoreExplanation.summary}</span>
+      <span class="verdict-score-chips" aria-hidden="true">
+        {#each scoreContributions as contribution (contribution.endpointId)}
+          <span
+            class="verdict-score-chip"
+            class:healthy={contribution.bucket === 'healthy'}
+            class:degraded={contribution.bucket === 'degraded'}
+            class:unhealthy={contribution.bucket === 'unhealthy'}
+          >{contribution.label} {contribution.points}</span>
+        {/each}
+        {#if hiddenScoreContributions > 0}
+          <span class="verdict-score-chip muted">+{hiddenScoreContributions}</span>
+        {/if}
+      </span>
+    </div>
+  {:else if contextLine}
+    <p class="verdict-context">{contextLine}</p>
+  {/if}
+
+  {#if canStartSuppressedRun}
+    <button type="button" class="verdict-drill verdict-start" onclick={() => onStart?.()}>
+      <span class="verdict-drill-text">Start Measuring</span>
+      <span class="verdict-drill-arrow" aria-hidden="true">→</span>
+    </button>
   {/if}
 </section>
 
@@ -217,12 +229,12 @@
   .verdict {
     display: grid;
     grid-template-columns: 1fr auto;
-    gap: 14px 22px;
+    gap: 8px 18px;
     align-items: center;
     background: var(--glass-bg-rail-hover);
     border: 1px solid var(--border-mid);
-    border-radius: 14px;
-    padding: 14px 18px;
+    border-radius: 12px;
+    padding: 12px 16px;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
   }
@@ -236,7 +248,7 @@
   .verdict.good { border-color: rgba(134, 239, 172, 0.25); }
   .verdict.hero {
     grid-template-columns: minmax(0, 1fr) auto;
-    padding: 16px 20px;
+    padding: 11px 16px;
     border-radius: 12px;
   }
   .verdict.hero .verdict-headline {
@@ -250,11 +262,37 @@
     grid-column: 1 / -1;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     flex-wrap: wrap;
   }
+  .verdict-status-pill {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    border: 1px solid var(--border-mid);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--t2);
+    font-family: var(--mono);
+    font-size: var(--ts-xs);
+    letter-spacing: var(--tr-kicker);
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .verdict.good .verdict-status-pill {
+    color: var(--accent-green);
+    border-color: rgba(134, 239, 172, 0.24);
+    background: rgba(134, 239, 172, 0.055);
+  }
+  .verdict.warn .verdict-status-pill {
+    color: var(--accent-amber);
+    border-color: rgba(251, 191, 36, 0.26);
+    background: rgba(251, 191, 36, 0.065);
+  }
   .verdict-dot {
-    width: 8px; height: 8px;
+    width: 7px; height: 7px;
     border-radius: 50%;
     flex-shrink: 0;
   }
@@ -335,14 +373,17 @@
   }
   .verdict-explanation {
     grid-column: 1 / -1;
-    margin: -4px 0 0 18px;
+    margin: -2px 0 0;
     color: var(--t3);
     font-size: var(--ts-sm);
-    line-height: 1.35;
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .verdict-context {
     grid-column: 1 / -1;
-    margin: -6px 0 0 18px;
+    margin: 0;
     color: var(--t2);
     font-family: var(--mono);
     font-size: var(--ts-xs);
@@ -350,7 +391,9 @@
   }
   .verdict-score-explainer {
     grid-column: 1 / -1;
-    margin: -6px 0 0 18px;
+    margin: 0;
+    padding-top: 6px;
+    border-top: 1px solid var(--border-mid);
     display: flex;
     align-items: center;
     gap: 8px;
@@ -410,16 +453,26 @@
   .verdict-metrics {
     grid-column: 1;
     margin: 0;
-    padding-top: 10px;
+    padding-top: 7px;
     border-top: 1px solid var(--border-mid);
     display: flex;
-    gap: 22px;
-    align-items: baseline;
+    gap: 14px;
+    align-items: center;
+    min-width: 0;
+  }
+  .verdict-facts-heading {
+    flex: 0 0 auto;
+    color: var(--t4);
+    font-family: var(--mono);
+    font-size: var(--ts-xs);
+    letter-spacing: var(--tr-kicker);
+    text-transform: uppercase;
   }
   .verdict-metric {
     display: flex;
-    flex-direction: column;
-    gap: 2px;
+    align-items: baseline;
+    gap: 5px;
+    min-width: 0;
   }
   .verdict-metric-label {
     font-family: var(--mono);
@@ -438,13 +491,13 @@
     font-variant-numeric: tabular-nums;
   }
   .verdict-metric-num {
-    font-size: var(--ts-xl);
-    font-weight: 300;
+    font-size: var(--ts-md);
+    font-weight: 500;
     color: var(--t1);
     letter-spacing: var(--tr-tight);
   }
   .verdict-metric-unit {
-    font-size: var(--ts-sm);
+    font-size: var(--ts-xs);
     color: var(--t3);
     letter-spacing: var(--tr-label);
   }
@@ -454,7 +507,7 @@
      signals "act on this specific endpoint" without shouting. */
   .verdict-drill {
     grid-column: 2;
-    grid-row: 2;
+    grid-row: 3;
     align-self: center;
     justify-self: end;
     display: inline-flex;
@@ -487,20 +540,21 @@
     white-space: nowrap;
   }
   .verdict:not(.collecting) .verdict-drill:not(.verdict-start) {
-    grid-row: 4;
+    grid-row: 3;
   }
 
   .verdict-extra {
     grid-column: 1 / -1;
     display: flex;
-    flex-direction: column;
-    gap: 4px;
+    gap: 8px 14px;
+    align-items: center;
     min-width: 0;
-    padding-top: 9px;
+    padding-top: 6px;
     border-top: 1px solid var(--border-mid);
   }
   .verdict-limit,
   .verdict-next {
+    flex: 1 1 0;
     margin: 0;
     display: flex;
     align-items: baseline;
@@ -508,7 +562,7 @@
     min-width: 0;
     color: var(--t3);
     font-size: var(--ts-xs);
-    line-height: 1.35;
+    line-height: 1.25;
   }
   .verdict-limit span:last-child,
   .verdict-next span:last-child {
@@ -516,9 +570,6 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-  .verdict.hero .verdict-extra {
-    display: none;
   }
   .verdict-extra-label {
     flex: 0 0 auto;
@@ -529,9 +580,13 @@
   }
 
   @media (max-width: 767px) {
-    .verdict { grid-template-columns: 1fr; padding: 10px 12px; gap: 8px 14px; }
-    .verdict-main { gap: 8px; }
-    .verdict-confidence { padding: 2px 6px; }
+    .verdict { grid-template-columns: 1fr; padding: 8px 10px; gap: 5px 12px; }
+    .verdict-main { gap: 6px; }
+    .verdict-status-pill,
+    .verdict-confidence {
+      padding: 2px 6px;
+      font-size: 9px;
+    }
     .verdict-explanation {
       margin-left: 0;
       font-size: var(--ts-xs);
@@ -544,8 +599,12 @@
       font-size: 10px;
     }
     .verdict-score-chips { display: none; }
-    .verdict-metrics { flex-wrap: wrap; gap: 10px 14px; padding-top: 6px; }
-    .verdict-metric-num { font-size: var(--ts-lg); }
+    .verdict-metrics { flex-wrap: nowrap; gap: 8px; padding-top: 5px; overflow: hidden; }
+    .verdict-facts-heading { display: none; }
+    .verdict-metric { gap: 3px; }
+    .verdict-metric-label,
+    .verdict-metric-unit { font-size: 9px; }
+    .verdict-metric-num { font-size: var(--ts-sm); }
     .verdict-extra { display: none; }
     .verdict-drill {
       /* Reset the desktop placement (grid-column: 2; grid-row: 2;
@@ -561,14 +620,18 @@
 
   @media (max-height: 900px) and (min-width: 768px) {
     .verdict.hero {
-      padding: 12px 18px;
-      gap: 10px 18px;
-    }
-    .verdict.hero .verdict-extra {
-      display: none;
+      padding: 9px 14px;
+      gap: 6px 14px;
     }
     .verdict.hero .verdict-metrics {
-      padding-top: 8px;
+      padding-top: 5px;
+    }
+    .verdict.hero .verdict-extra,
+    .verdict.hero .verdict-score-explainer {
+      padding-top: 5px;
+    }
+    .verdict.hero .verdict-score-chips {
+      display: none;
     }
   }
 

@@ -256,4 +256,55 @@ describe('CausalVerdictStrip start CTA', () => {
     expect(getByText('Google 100')).toBeTruthy();
     expect(getByText('API 60')).toBeTruthy();
   });
+
+  it('orders the status answer as verdict, facts, limitation, next check, then score', () => {
+    const diagnosis = {
+      ...degradedDiagnosis,
+      supportingSummary: 'API is slower than the others in this browser-visible run; total timing is available.',
+      limitations: [{
+        id: 'timing-visibility',
+        headline: 'Browser timing does not expose every network phase for this site.',
+        detail: 'Chronoscope can compare total time, but DNS, TCP, TLS, server, and transfer timing may be hidden.',
+      }],
+      triageActions: [{
+        id: 'open-investigate',
+        label: 'Open Investigate',
+        action: 'Compare API from another vantage point before assigning cause.',
+        why: 'A browser-only test can show which endpoint is slower, but not every upstream cause.',
+        watchFor: 'If the remote check is also slow, the API path or service is more likely than this device.',
+        requiredEvidence: ['remote-vantage'],
+        endpointId: 'api',
+      }],
+      nextSteps: ['Compare API from another vantage point before assigning cause.'],
+    } as unknown as DiagnosticNarrative;
+
+    const { getByLabelText } = renderStrip({
+      diagnosis,
+      avgP50: 84,
+      avgJitter: 7.2,
+      avgLoss: 0,
+      drillEndpoint,
+      scoreExplanation,
+    });
+
+    const statusAnswer = getByLabelText('Status answer');
+    const measuredFacts = getByLabelText('Measured facts');
+    const limitation = getByLabelText('Browser limitation');
+    const nextCheck = getByLabelText('Next useful check');
+    const qualityScore = getByLabelText('Quality score explanation');
+
+    expect(measuredFacts.textContent).toContain('Median');
+    expect(measuredFacts.textContent).toContain('84');
+    expect(measuredFacts.textContent).toContain('Jitter');
+    expect(measuredFacts.textContent).toContain('7.2');
+    expect(limitation.textContent).toContain('Browser timing does not expose every network phase');
+    expect(nextCheck.textContent).toContain('Compare API from another vantage point');
+    expect(qualityScore.textContent).toContain('Score 80 · Good');
+
+    const text = statusAnswer.textContent ?? '';
+    expect(text.indexOf('API is slower than the others')).toBeLessThan(text.indexOf('Measured facts'));
+    expect(text.indexOf('Measured facts')).toBeLessThan(text.indexOf('Browser limit'));
+    expect(text.indexOf('Browser limit')).toBeLessThan(text.indexOf('Next check'));
+    expect(text.indexOf('Next check')).toBeLessThan(text.indexOf('Score 80 · Good'));
+  });
 });
