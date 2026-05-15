@@ -271,3 +271,40 @@ describe('v2 foundation tokens (Phase 0)', () => {
     expect(tokens.timing.pulseDialGlow).toBeGreaterThan(tokens.timing.pulseRim);
   });
 });
+
+describe('figma redesign shell tokens (PR 1)', () => {
+  it('exports graphite shell surfaces with a near-black base', () => {
+    expect(tokens.color.shell.base).toBe('#070b12');
+    expect(tokens.color.shell.panel).toBe('#0b111b');
+    expect(tokens.color.shell.panelRaised).toBe('#101722');
+    expect(tokens.color.shell.popover).toBe('rgba(8,12,19,.96)');
+  });
+
+  it('exports shell interaction and atmosphere tokens', () => {
+    expect(tokens.color.shell.panelHover).toBe('rgba(255,255,255,.055)');
+    expect(tokens.color.shell.panelActive).toBe('rgba(103,232,249,.095)');
+    expect(tokens.color.shell.border).toBe('rgba(255,255,255,.085)');
+    expect(tokens.color.shell.borderStrong).toBe('rgba(255,255,255,.145)');
+    expect(tokens.color.shell.bgCyan).toBe('rgba(103,232,249,.045)');
+    expect(tokens.color.shell.bgAmber).toBe('rgba(251,191,36,.028)');
+  });
+
+  it('exports shell intent surfaces for start and stop controls', () => {
+    expect(tokens.color.shell.successBg).toBe('rgba(134,239,172,.115)');
+    expect(tokens.color.shell.successBorder).toBe('rgba(134,239,172,.32)');
+    expect(tokens.color.shell.stopBg).toBe('rgba(249,168,212,.10)');
+    expect(tokens.color.shell.stopBorder).toBe('rgba(249,168,212,.28)');
+  });
+
+  it('exports compact shell dimensions used by shared chrome', () => {
+    expect(tokens.shell.topbarHeight).toBe(60);
+    expect(tokens.shell.navHeight).toBe(48);
+    expect(tokens.shell.controlSize).toBe(40);
+    expect(tokens.shell.mobileControlSize).toBe(38);
+    expect(tokens.shell.contentMaxWidth).toBe(2200);
+  });
+
+  it('exports a redesigned popover shadow token', () => {
+    expect(tokens.shadow.popover).toBe('0 18px 60px rgba(0,0,0,.42)');
+  });
+});

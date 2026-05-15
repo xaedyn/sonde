@@ -11,6 +11,24 @@ const primitive = {
   bgMid:  '#100e1e',
   bgDeep: '#0e0c18',
 
+  // Figma redesign shell foundation (PR 1)
+  shellBase: '#070b12',
+  shellPanel: '#0b111b',
+  shellPanelRaised: '#101722',
+  shellPanelHover: 'rgba(255,255,255,.055)',
+  shellPanelActive: 'rgba(103,232,249,.095)',
+  shellBorder: 'rgba(255,255,255,.085)',
+  shellBorderStrong: 'rgba(255,255,255,.145)',
+  shellDivider: 'rgba(255,255,255,.06)',
+  shellBackdrop: 'rgba(7,11,18,.78)',
+  shellPopover: 'rgba(8,12,19,.96)',
+  shellBgCyan: 'rgba(103,232,249,.045)',
+  shellBgAmber: 'rgba(251,191,36,.028)',
+  shellSuccessBg: 'rgba(134,239,172,.115)',
+  shellSuccessBorder: 'rgba(134,239,172,.32)',
+  shellStopBg: 'rgba(249,168,212,.10)',
+  shellStopBorder: 'rgba(249,168,212,.28)',
+
   // Text opacity layers (rgba white)
   t1: 'rgba(255,255,255,.94)',
   t2: 'rgba(255,255,255,.58)',
@@ -149,6 +167,25 @@ export const tokens = {
         mid:    primitive.borderMid,
         bright: primitive.borderBright,
       },
+    },
+
+    shell: {
+      base: primitive.shellBase,
+      panel: primitive.shellPanel,
+      panelRaised: primitive.shellPanelRaised,
+      panelHover: primitive.shellPanelHover,
+      panelActive: primitive.shellPanelActive,
+      border: primitive.shellBorder,
+      borderStrong: primitive.shellBorderStrong,
+      divider: primitive.shellDivider,
+      backdrop: primitive.shellBackdrop,
+      popover: primitive.shellPopover,
+      bgCyan: primitive.shellBgCyan,
+      bgAmber: primitive.shellBgAmber,
+      successBg: primitive.shellSuccessBg,
+      successBorder: primitive.shellSuccessBorder,
+      stopBg: primitive.shellStopBg,
+      stopBorder: primitive.shellStopBorder,
     },
 
     bg: {
@@ -398,6 +435,15 @@ export const tokens = {
   shadow: {
     low:  '0 2px 8px rgba(0,0,0,.4)',
     high: '0 8px 32px rgba(0,0,0,.6)',
+    popover: '0 18px 60px rgba(0,0,0,.42)',
+  },
+
+  shell: {
+    topbarHeight: 60,
+    navHeight: 48,
+    controlSize: 40,
+    mobileControlSize: 38,
+    contentMaxWidth: 2200,
   },
 
   // Shell + sliding window constants. Phase 7 retired the Lanes family and
