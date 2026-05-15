@@ -29,7 +29,7 @@ describe('reportModeCopy', () => {
       kicker: 'Support report',
       primaryActionLabel: 'Copy Support Summary',
     });
-    expect(copy.lede).toContain('One site is slower than the others.');
+    expect(copy.lede).toContain('Evidence package:');
     expect(copy.lede).toContain('Medium confidence.');
     expect(copy.lede).toContain('105 samples across 3 endpoints');
     expect(copy.lede).toContain('Some timing details are hidden by the browser.');
@@ -50,7 +50,7 @@ describe('reportModeCopy', () => {
       kicker: 'Performance snapshot',
       primaryActionLabel: 'Copy Snapshot Summary',
     });
-    expect(copy.lede).toContain('All measured sites look healthy.');
+    expect(copy.lede).toContain('Shareable performance snapshot:');
     expect(copy.lede).toContain('180 samples across 4 endpoints');
     expect(copy.lede).toContain('Detailed timing visible.');
     expect(copy.lede).not.toMatch(/guaranteed|perfect|fastest|beats/i);

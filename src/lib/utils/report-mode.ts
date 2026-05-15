@@ -19,19 +19,23 @@ function countLabel(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? '' : 's'}`;
 }
 
+function sentenceStart(value: string): string {
+  return value.length === 0 ? value : `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
+}
+
 export function reportModeCopy(input: ReportModeCopyInput): ReportModeCopy {
   const evidence = `${countLabel(input.sampleCount, 'sample')} across ${countLabel(input.endpointCount, 'endpoint')}`;
   if (input.reportKind === 'snapshot') {
     return {
       kicker: 'Performance snapshot',
-      lede: `${input.primaryAnswer} Evidence: ${evidence}. ${input.timingHeadline}.`,
+      lede: `Shareable performance snapshot: ${evidence}. ${input.timingHeadline}.`,
       primaryActionLabel: 'Copy Snapshot Summary',
     };
   }
 
   return {
     kicker: 'Support report',
-    lede: `${input.primaryAnswer} ${input.confidenceLabel}. Evidence includes ${evidence}. ${input.timingHeadline}.`,
+    lede: `Evidence package: ${evidence}. ${sentenceStart(input.confidenceLabel)}. ${input.timingHeadline}.`,
     primaryActionLabel: 'Copy Support Summary',
   };
 }

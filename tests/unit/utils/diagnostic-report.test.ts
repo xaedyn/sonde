@@ -49,7 +49,7 @@ function ok(round: number, latency = 50): MeasurementSample {
     round,
     latency,
     status: 'ok',
-    timestamp: 0,
+    timestamp: round * 1000,
   };
 }
 
@@ -135,7 +135,8 @@ describe('buildDiagnosticReport', () => {
     expect(report.corsMode).toBe('no-cors');
     expect(report.reportKind).toBe('support');
     expect(report.modeKicker).toBe('Support report');
-    expect(report.modeLede).toContain(report.diagnosis.primaryAnswer.text);
+    expect(report.modeLede).toContain('Evidence package');
+    expect(report.modeLede).toContain('90 samples across 3 endpoints');
     expect(report.copySummaryLabel).toBe('Copy Support Summary');
     expect(report.diagnosis.kind).toBe('isolated-endpoint');
     expect(report.endpointRows.find((row) => row.endpointId === 'api')?.implicated).toBe(true);
@@ -144,6 +145,9 @@ describe('buildDiagnosticReport', () => {
     expect(report.copySummary).toContain('API (240 ms median)');
     expect(report.copySummary).toContain('Chronoscope support report:');
     expect(report.copySummary).toContain('threshold 120 ms');
+    expect(report.timelineSummary).toContain('API');
+    expect(report.timelineEvents.length).toBeGreaterThan(0);
+    expect(report.copySummary).toContain(`Timeline: ${report.timelineSummary}`);
     expect(report.copySummary).not.toMatch(/\bp50\b/i);
     expect(report.copySummary).not.toMatch(/likely (affected|source|site|network|your network)/i);
     expect(report.copySummary).not.toContain(report.diagnosis.verdict.headline);
@@ -198,7 +202,8 @@ describe('buildDiagnosticReport', () => {
     expect(report.reportKind).toBe('snapshot');
     expect(report.modeKicker).toBe('Performance snapshot');
     expect(report.copySummaryLabel).toBe('Copy Snapshot Summary');
-    expect(report.modeLede).toContain(report.diagnosis.primaryAnswer.text);
+    expect(report.modeLede).toContain('Shareable performance snapshot');
+    expect(report.modeLede).toContain('90 samples across 3 endpoints');
     expect(report.copySummary).toContain('Chronoscope performance snapshot:');
     expect(report.copySummary).not.toMatch(/guaranteed|perfect|will fix|your ISP is/i);
   });

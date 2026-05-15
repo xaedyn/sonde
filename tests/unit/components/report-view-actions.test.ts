@@ -289,6 +289,8 @@ describe('ReportView triage actions', () => {
 
     expect(getByText('Support report')).toBeTruthy();
     expect(queryByText('Shared diagnostic report')).toBeNull();
+    expect(getByRole('region', { name: /Timeline summary/i }).textContent).toMatch(/API/i);
+    expect(getByRole('region', { name: /Compact endpoint comparison/i }).textContent).toMatch(/Median/i);
     expect(getByRole('button', { name: /copy support summary/i })).toBeTruthy();
   });
 

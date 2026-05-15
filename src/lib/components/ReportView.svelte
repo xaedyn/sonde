@@ -297,44 +297,57 @@
   style:--accent-amber={tokens.color.accent.amber}
   style:--accent-pink={tokens.color.accent.pink}
 >
-  <header class="report-hero">
-    <div class="report-kicker">{report.modeKicker}</div>
-    <div class="report-title-row">
-      <h1>{report.diagnosis.primaryAnswer.text}</h1>
-      <span
-        class="confidence"
-        class:low={report.diagnosis.confidence === 'low'}
-        class:medium={report.diagnosis.confidence === 'medium'}
-        class:high={report.diagnosis.confidence === 'high'}
-        title={report.diagnosis.confidenceReason}
-      >{report.diagnosis.confidenceLabel}</span>
-    </div>
-    <p class="report-lede">{report.modeLede}</p>
+  <header class="report-hero" data-report-kind={report.reportKind}>
+    <div class="report-hero-grid">
+      <div class="report-copy">
+        <div class="report-kicker">{report.modeKicker}</div>
+        <div class="report-title-row">
+          <h1>{report.diagnosis.primaryAnswer.text}</h1>
+          <span
+            class="confidence"
+            class:low={report.diagnosis.confidence === 'low'}
+            class:medium={report.diagnosis.confidence === 'medium'}
+            class:high={report.diagnosis.confidence === 'high'}
+            title={report.diagnosis.confidenceReason}
+          >{report.diagnosis.confidenceLabel}</span>
+        </div>
+        <p class="report-lede">{report.modeLede}</p>
 
-    <div class="report-actions" aria-label="Report actions">
-      <button type="button" class="action action-primary" onclick={handleInteractive}>
-        Open Interactive Analysis
-      </button>
-      <button type="button" class="action" onclick={handleCopySummary}>
-        {copyError === 'summary' ? 'Copy Failed' : copiedSummary ? 'Summary Copied' : report.copySummaryLabel}
-      </button>
-      <button type="button" class="action" onclick={handleCopyLink}>
-        {copyError === 'link' ? 'Copy Failed' : copiedLink ? 'Link Copied' : 'Copy Report Link'}
-      </button>
-      <button type="button" class="action" onclick={handleRunOwn}>
-        Run Your Own Test
-      </button>
-    </div>
+        <div class="report-actions" aria-label="Report actions">
+          <button type="button" class="action action-primary" onclick={handleInteractive}>
+            Open Interactive Analysis
+          </button>
+          <button type="button" class="action" onclick={handleCopySummary}>
+            {copyError === 'summary' ? 'Copy Failed' : copiedSummary ? 'Summary Copied' : report.copySummaryLabel}
+          </button>
+          <button type="button" class="action" onclick={handleCopyLink}>
+            {copyError === 'link' ? 'Copy Failed' : copiedLink ? 'Link Copied' : 'Copy Report Link'}
+          </button>
+          <button type="button" class="action" onclick={handleRunOwn}>
+            Run Your Own Test
+          </button>
+        </div>
 
-    {#if localProofExportAvailable}
-      <label class="local-proof-export">
-        <input type="checkbox" bind:checked={includeLocalProofInReport} />
-        <span>
-          <strong>Include redacted local proof</strong>
-          <small>Shares local-agent status only. WiFi names and raw route details stay out.</small>
-        </span>
-      </label>
-    {/if}
+        {#if localProofExportAvailable}
+          <label class="local-proof-export">
+            <input type="checkbox" bind:checked={includeLocalProofInReport} />
+            <span>
+              <strong>Include redacted local proof</strong>
+              <small>Shares local-agent status only. WiFi names and raw route details stay out.</small>
+            </span>
+          </label>
+        {/if}
+      </div>
+
+      <aside class="report-fact-card" aria-label="Report evidence summary">
+        <span>Measured facts</span>
+        <strong>{report.keptSampleCount} samples</strong>
+        <p>{report.endpointRows.length} endpoints, {report.roundCount} rounds, threshold {Math.round(report.threshold)} ms.</p>
+        <div class="fact-card-divider"></div>
+        <span>Browser visibility</span>
+        <p>{report.diagnosis.timingVisibility.headline}</p>
+      </aside>
+    </div>
   </header>
 
   <section class="report-strip" aria-label="Report metadata">
@@ -370,6 +383,29 @@
         </article>
       {/each}
     </div>
+  </section>
+
+  <section class="report-panel timeline-panel" aria-label="Timeline summary">
+    <div class="section-kicker">Timeline summary</div>
+    <h2>{report.timelineSummary}</h2>
+    {#if report.timelineEvents.length > 0}
+      <div class="timeline-events">
+        {#each report.timelineEvents as event (event.id)}
+          <article
+            class="timeline-event"
+            class:good={event.severity === 'good'}
+            class:watch={event.severity === 'watch'}
+            class:bad={event.severity === 'bad'}
+          >
+            <span>{event.timeLabel}</span>
+            <strong>{event.label}</strong>
+            <p>{event.detail}</p>
+          </article>
+        {/each}
+      </div>
+    {:else}
+      <p>No distinct event marker appeared in the captured window. Keep the run active if you need a stronger before-and-after timeline.</p>
+    {/if}
   </section>
 
   <section class="next-steps" aria-label="Recommended next steps">
@@ -493,12 +529,48 @@
 
   <section class="report-panel endpoint-panel" aria-label="Endpoint comparison">
     <div class="section-kicker">Endpoint comparison</div>
+    <div class="endpoint-cards" role="region" aria-label="Compact endpoint comparison">
+      {#each report.endpointRows as row (row.endpointId)}
+        <article class="endpoint-card" class:implicated={row.implicated}>
+          <header>
+            <span class="endpoint-name compact">
+              <i style:background={row.color || tokens.color.endpoint[0]} aria-hidden="true"></i>
+              <span>
+                <strong>{row.label}</strong>
+                <small>{row.url}</small>
+              </span>
+            </span>
+            <span class="status-pill" class:ok={row.status === 'ok'} class:slow={row.status === 'slow'} class:loss={row.status === 'loss'} class:muted={row.status === 'unready' || row.status === 'disabled'}>
+              {row.statusLabel}
+            </span>
+          </header>
+          <div class="endpoint-card-metrics">
+            <span>
+              <small>Median</small>
+              <strong>{formatReportMetric(row.p50)}</strong>
+            </span>
+            <span>
+              <small>95% under</small>
+              <strong>{formatReportMetric(row.p95)}</strong>
+            </span>
+            <span>
+              <small>Failed</small>
+              <strong>{formatReportMetric(row.lossPercent, '%')}</strong>
+            </span>
+            <span>
+              <small>Success</small>
+              <strong>{row.okCount}/{row.sampleCount}</strong>
+            </span>
+          </div>
+        </article>
+      {/each}
+    </div>
     <div class="endpoint-table" role="table" aria-label="Endpoint report table">
       <div class="endpoint-head" role="row">
         <span role="columnheader">Endpoint</span>
         <span role="columnheader">Status</span>
-        <span role="columnheader">p50</span>
-        <span role="columnheader">p95</span>
+        <span role="columnheader">Median</span>
+        <span role="columnheader">95% under</span>
         <span role="columnheader">Loss</span>
         <span role="columnheader">Samples</span>
       </div>
@@ -536,11 +608,34 @@
   }
 
   .report-hero {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--border-mid);
+    border-radius: 8px;
+    background:
+      linear-gradient(135deg, rgba(103,232,249,.085), transparent 32%),
+      linear-gradient(145deg, rgba(16,23,34,.88), rgba(8,12,19,.82));
+    box-shadow: 0 24px 80px rgba(0,0,0,.22);
+  }
+  .report-hero::after {
+    content: "";
+    position: absolute;
+    inset: auto 0 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(103,232,249,.42), transparent);
+  }
+  .report-hero-grid {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
+    gap: 24px;
+    padding: 28px;
+  }
+  .report-copy {
+    min-width: 0;
     display: flex;
     flex-direction: column;
     gap: 14px;
-    padding: 4px 0 18px;
-    border-bottom: 1px solid var(--border-mid);
   }
 
   .report-kicker,
@@ -557,8 +652,8 @@
   .report-title-row {
     display: flex;
     align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
+    gap: 14px;
+    flex-wrap: wrap;
   }
 
   h1 {
@@ -581,6 +676,41 @@
     color: var(--t2);
     font-size: var(--ts-lg);
     line-height: 1.55;
+  }
+
+  .report-fact-card {
+    align-self: stretch;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px;
+    border: 1px solid rgba(103,232,249,.18);
+    border-radius: 8px;
+    background: rgba(7,11,18,.62);
+  }
+  .report-fact-card span {
+    font-family: var(--mono);
+    font-size: var(--ts-xs);
+    color: var(--t3);
+    text-transform: uppercase;
+    letter-spacing: var(--tr-label);
+  }
+  .report-fact-card strong {
+    font-size: 30px;
+    line-height: 1;
+    color: var(--t1);
+    font-variant-numeric: tabular-nums;
+  }
+  .report-fact-card p {
+    margin: 0;
+    color: var(--t2);
+    line-height: 1.45;
+  }
+  .fact-card-divider {
+    height: 1px;
+    margin: 4px 0;
+    background: rgba(255,255,255,.08);
   }
 
   .confidence,
@@ -690,6 +820,53 @@
     border-radius: 8px;
     background: rgba(12,10,20,.58);
     padding: 14px;
+  }
+
+  .timeline-panel {
+    margin-bottom: 18px;
+  }
+  .timeline-events {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .timeline-event {
+    min-width: 0;
+    padding: 12px;
+    border: 1px solid rgba(255,255,255,.07);
+    border-radius: 7px;
+    background: rgba(255,255,255,.035);
+  }
+  .timeline-event.good {
+    border-color: rgba(74,222,128,.2);
+    background: rgba(74,222,128,.055);
+  }
+  .timeline-event.watch {
+    border-color: rgba(251,191,36,.2);
+    background: rgba(251,191,36,.055);
+  }
+  .timeline-event.bad {
+    border-color: rgba(249,168,212,.22);
+    background: rgba(249,168,212,.065);
+  }
+  .timeline-event span {
+    color: var(--t3);
+    font-family: var(--mono);
+    font-size: var(--ts-xs);
+    text-transform: uppercase;
+  }
+  .timeline-event strong {
+    display: block;
+    margin-top: 6px;
+    color: var(--t1);
+    font-size: var(--ts-base);
+  }
+  .timeline-event p {
+    margin: 6px 0 0;
+    color: var(--t3);
+    font-size: var(--ts-sm);
+    line-height: 1.4;
   }
   .trail-list {
     display: grid;
@@ -879,8 +1056,61 @@
   .endpoint-panel {
     margin-bottom: 18px;
   }
-  .endpoint-table {
+  .endpoint-cards {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
     margin-top: 12px;
+  }
+  .endpoint-card {
+    min-width: 0;
+    padding: 12px;
+    border: 1px solid rgba(255,255,255,.07);
+    border-radius: 7px;
+    background: rgba(255,255,255,.035);
+  }
+  .endpoint-card.implicated {
+    border-color: rgba(249,168,212,.23);
+    background:
+      linear-gradient(135deg, rgba(249,168,212,.08), transparent 58%),
+      rgba(255,255,255,.035);
+  }
+  .endpoint-card header {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  .endpoint-name.compact {
+    flex: 1 1 auto;
+  }
+  .endpoint-card-metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .endpoint-card-metrics span {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255,255,255,.06);
+  }
+  .endpoint-card-metrics small {
+    color: var(--t3);
+    font-family: var(--mono);
+    font-size: var(--ts-xs);
+    text-transform: uppercase;
+  }
+  .endpoint-card-metrics strong {
+    color: var(--t1);
+    font-size: var(--ts-base);
+    font-variant-numeric: tabular-nums;
+  }
+  .endpoint-table {
+    margin-top: 14px;
     display: flex;
     flex-direction: column;
     border: 1px solid rgba(255,255,255,.06);
@@ -1064,6 +1294,10 @@
       max-width: calc(100vw - 24px);
       padding-top: 16px;
     }
+    .report-hero-grid {
+      grid-template-columns: 1fr;
+      padding: 20px;
+    }
     .report-title-row {
       flex-direction: column;
     }
@@ -1073,6 +1307,10 @@
     }
     .trail-list {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .timeline-events,
+    .endpoint-cards {
+      grid-template-columns: 1fr;
     }
     .evidence-grid {
       grid-template-columns: 1fr;
@@ -1084,15 +1322,14 @@
       grid-template-columns: 1fr;
     }
     .endpoint-table {
-      overflow-x: auto;
-    }
-    .endpoint-head,
-    .endpoint-row {
-      min-width: 760px;
+      display: none;
     }
   }
 
   @media (max-width: 520px) {
+    .report-hero-grid {
+      padding: 16px;
+    }
     .report-actions {
       flex-direction: column;
     }

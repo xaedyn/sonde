@@ -14,6 +14,7 @@ import type {
 } from '../types';
 import { buildDiagnosticNarrative, type DiagnosticNarrative } from './diagnostic-narrative';
 import { reportModeCopy } from './report-mode';
+import { buildRunStoryline, type RunStoryline, type StoryBeat } from './run-storyline';
 import type { VerdictRow } from './verdict';
 
 export interface ReportEndpointRow {
@@ -35,6 +36,14 @@ export interface ReportEndpointRow {
   readonly implicated: boolean;
 }
 
+export interface ReportTimelineEvent {
+  readonly id: string;
+  readonly label: string;
+  readonly detail: string;
+  readonly severity: 'info' | 'watch' | 'bad' | 'good';
+  readonly timeLabel: string;
+}
+
 export interface DiagnosticReport {
   readonly reportKind: ReportKind;
   readonly modeKicker: string;
@@ -52,6 +61,8 @@ export interface DiagnosticReport {
   readonly truncated: boolean;
   readonly createdAt: number | null;
   readonly createdLabel: string;
+  readonly timelineSummary: string;
+  readonly timelineEvents: readonly ReportTimelineEvent[];
   readonly copySummary: string;
 }
 
@@ -179,11 +190,31 @@ function buildCopySummary(report: Omit<DiagnosticReport, 'copySummary'>): string
     `${reportLabel}: ${report.diagnosis.primaryAnswer.text} (${report.diagnosis.confidenceLabel}).`,
     `Trust: ${report.diagnosis.supportingSummary}`,
     slowLine,
+    `Timeline: ${report.timelineSummary}`,
     `Evidence: ${report.keptSampleCount} samples kept across ${report.endpointRows.length} endpoints; threshold ${fmtMs(report.threshold)}; browser visibility: ${visibility.headline}.`,
     limitation ? `Caveat: ${limitation.detail}` : '',
     validationLine,
     firstTriageAction ? `Watch for: ${firstTriageAction.watchFor}` : '',
   ].filter(Boolean).join('\n');
+}
+
+function timelineTimeLabel(beat: StoryBeat, storyline: RunStoryline): string {
+  const secondsBeforeEnd = Math.max(0, Math.round((storyline.windowEnd - beat.t) / 1000));
+  if (secondsBeforeEnd <= 0) return 'latest';
+  if (secondsBeforeEnd < 60) return `${secondsBeforeEnd}s before end`;
+  const minutes = Math.floor(secondsBeforeEnd / 60);
+  const seconds = secondsBeforeEnd % 60;
+  return seconds === 0 ? `${minutes}m before end` : `${minutes}m ${seconds}s before end`;
+}
+
+function timelineEventsFor(storyline: RunStoryline): ReportTimelineEvent[] {
+  return storyline.beats.slice(-4).map((beat) => ({
+    id: beat.id,
+    label: beat.label,
+    detail: beat.evidence,
+    severity: beat.severity,
+    timeLabel: timelineTimeLabel(beat, storyline),
+  }));
 }
 
 export function buildDiagnosticReport(input: DiagnosticReportInput): DiagnosticReport {
@@ -213,6 +244,14 @@ export function buildDiagnosticReport(input: DiagnosticReportInput): DiagnosticR
     corsMode,
     samplesByEndpoint,
     monitoredEndpointCount: monitored.length,
+  });
+  const storyline = buildRunStoryline({
+    endpoints: input.endpoints,
+    samplesByEndpoint,
+    threshold,
+    runStart: input.measurements.startedAt,
+    focusedEndpointId: diagnosis.verdict.worstEpId,
+    maxVisibleRows: Math.min(4, Math.max(1, input.endpoints.length)),
   });
 
   const fallbackSampleCount = sumSamples(samplesByEndpoint);
@@ -249,6 +288,8 @@ export function buildDiagnosticReport(input: DiagnosticReportInput): DiagnosticR
     truncated: input.context?.truncated ?? false,
     createdAt: input.context?.createdAt ?? null,
     createdLabel: defaultCreatedLabel(input.context?.createdAt ?? null),
+    timelineSummary: storyline.summary,
+    timelineEvents: timelineEventsFor(storyline),
   };
 
   return {
