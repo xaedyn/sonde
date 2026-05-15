@@ -7,6 +7,7 @@
 <script lang="ts">
   import { monitoredEndpointsStore } from '$lib/stores/derived';
   import IntelligencePanel from '$lib/components/IntelligencePanel.svelte';
+  import LocalProofPanel from '$lib/components/LocalProofPanel.svelte';
   import { bufferbloatStore } from '$lib/stores/bufferbloat';
   import { measurementStore } from '$lib/stores/measurements';
   import { networkContextStore } from '$lib/stores/network-context';
@@ -86,6 +87,7 @@
 
   // ── Mode toggle ──────────────────────────────────────────────────────────
   let mode = $state<'p50' | 'p95'>('p50');
+  let localProofOpen = $state(false);
 
   // ── Phase breakdown (adapt EndpointStatistics field names → Diagnose phase
   // vocabulary). P50 uses tier2Averages (means); P95 uses tier2P95.
@@ -186,8 +188,8 @@
 
   // ── Cross-endpoint correlation grid ─────────────────────────────────────
   // For each enabled endpoint, build a per-round comparison so the user can
-  // see whether the focused endpoint's spikes are isolated (likely the site)
-  // or shared with others (likely the network).
+  // see whether focused-endpoint spikes are limited to this browser-visible
+  // row or occur at the same time as comparison endpoints.
   const correlation = $derived.by(() => {
     if (!focusedEndpoint) return null;
     const others = monitored
@@ -223,6 +225,14 @@
     if (comparatorCount < 2) return `Only ${comparatorCount} comparison endpoint${comparatorCount === 1 ? '' : 's'} enabled.`;
     return `${distroStats.n} focused samples with ${comparatorCount} comparison endpoints.`;
   });
+  const browserFactSummary = $derived.by(() => {
+    if (!focusedEndpoint) return 'Select an endpoint to see browser-measured facts.';
+    if (!distroStats) return 'Chronoscope is waiting for successful browser samples on this endpoint.';
+    return `Browser median is ${fmt(distroStats.p50)} ms and p95 is ${fmt(distroStats.p95)} ms over ${distroStats.n} successful sample${distroStats.n === 1 ? '' : 's'}.`;
+  });
+  const browserInterpretation = $derived(
+    correlation?.verdict.headline ?? 'Collecting comparison data before interpreting this endpoint.',
+  );
 
   interface SampleRow { round: number; total: number; segs: { phase: Tier2Phase; pctWidth: number; color: string; }[]; status: 'ok' | 'timeout' | 'error' | 'phase-unavailable'; }
   const sampleRows: readonly SampleRow[] = $derived.by(() => {
@@ -282,6 +292,18 @@
   async function handleNetworkContextCheck(): Promise<void> {
     if (!focusedEndpoint) return;
     await networkContextStore.run(focusedEndpoint);
+  }
+
+  function handleOpenLocalProof(): void {
+    localProofOpen = true;
+  }
+
+  function handleCloseLocalProof(): void {
+    localProofOpen = false;
+  }
+
+  function handleOpenSettings(): void {
+    uiStore.toggleSettings();
   }
 
   function hostnameFromUrl(url: string): string | null {
@@ -344,385 +366,418 @@
       <p class="diagnose-empty-title">Choosing the best endpoint to investigate...</p>
     </div>
   {:else}
-    <section class="diagnose-answer" aria-label="Diagnostic answer">
-      <div class="diagnose-section-kicker">Diagnostic answer</div>
-      <div class="diagnose-answer-top">
-        <span
-          class="diagnose-confidence"
-          class:low={diagnoseConfidence === 'low'}
-          class:medium={diagnoseConfidence === 'medium'}
-          class:high={diagnoseConfidence === 'high'}
-          title={diagnoseConfidenceReason}
-        >{diagnoseConfidence} confidence</span>
-        <p class="diagnose-answer-headline">
-          {correlation?.verdict.headline ?? 'Collecting comparison data for this endpoint.'}
-        </p>
+    <section class="diagnose-answer diagnose-brief" aria-label="Diagnostic answer">
+      <div class="diagnose-brief-score" aria-hidden="true">
+        <span class="diagnose-brief-score-value">{distroStats ? fmt(distroStats.p50) : '—'}</span>
+        <span class="diagnose-brief-score-label">ms p50</span>
       </div>
-      <dl class="diagnose-answer-evidence">
-        <div>
-          <dt>Samples</dt>
-          <dd>{distroStats?.n ?? 0}</dd>
+      <div class="diagnose-brief-copy">
+        <div class="diagnose-section-kicker">Diagnostic answer</div>
+        <div class="diagnose-answer-top">
+          <span
+            class="diagnose-confidence"
+            class:low={diagnoseConfidence === 'low'}
+            class:medium={diagnoseConfidence === 'medium'}
+            class:high={diagnoseConfidence === 'high'}
+            title={diagnoseConfidenceReason}
+          >{diagnoseConfidence} confidence</span>
+          <p class="diagnose-answer-headline">{browserInterpretation}</p>
         </div>
-        <div>
-          <dt>Comparators</dt>
-          <dd>{Math.max(0, monitored.length - 1)}</dd>
-        </div>
-        <div>
-          <dt>Visibility</dt>
-          <dd>{timingVisibility.headline}</dd>
-        </div>
-      </dl>
+        <p class="diagnose-answer-fact"><strong>Measured fact:</strong> {browserFactSummary}</p>
+        <p class="diagnose-answer-interpretation"><strong>Interpretation:</strong> {browserInterpretation}</p>
+        <dl class="diagnose-answer-evidence">
+          <div>
+            <dt>Samples</dt>
+            <dd>{distroStats?.n ?? 0}</dd>
+          </div>
+          <div>
+            <dt>Comparators</dt>
+            <dd>{Math.max(0, monitored.length - 1)}</dd>
+          </div>
+          <div>
+            <dt>Visibility</dt>
+            <dd>{timingVisibility.headline}</dd>
+          </div>
+        </dl>
+      </div>
     </section>
 
-    <!-- Distribution histogram — answers "what's this endpoint's typical latency,
-         and how much does it vary?" -->
-    <section class="diagnose-distro" aria-label="Latency distribution">
-      <div class="diagnose-section-kicker">Distribution</div>
-      {#if distroStats && histogram.bins.length > 0}
-        <div class="distro-stats">
-          <span class="distro-stat"><span class="distro-stat-label">p50</span> {fmt(distroStats.p50)} ms</span>
-          <span class="distro-stat"><span class="distro-stat-label">p95</span> {fmt(distroStats.p95)} ms</span>
-          <span class="distro-stat"><span class="distro-stat-label">spread</span> {distroStats.spread.toFixed(1)}×</span>
-          <span class="distro-stat-meta">over last {distroStats.n} samples</span>
+    <div class="diagnose-evidence-layout">
+      <section class="diagnose-facts-stack" aria-label="Measured browser facts">
+        <div class="diagnose-column-head">
+          <div class="diagnose-section-kicker">Measured browser facts</div>
+          <p>Facts Chronoscope can directly measure in this browser session.</p>
         </div>
-        <div
-          class="distro-chart"
-          role="img"
-          aria-label="Latency histogram (log scale) across last {distroStats.n} samples"
-        >
-          {#each histogram.bins as bin, i (i)}
-            <div
-              class="distro-bin"
-              title="{binLabel(bin)} · {bin.count} sample{bin.count === 1 ? '' : 's'}"
-            >
-              <div
-                class="distro-bar"
-                style:height="{histogram.maxCount > 0 ? (bin.count / histogram.maxCount) * 100 : 0}%"
-              ></div>
+
+        <section class="diagnose-distro" aria-label="Latency distribution">
+          <div class="diagnose-section-kicker">Distribution</div>
+          {#if distroStats && histogram.bins.length > 0}
+            <div class="distro-stats">
+              <span class="distro-stat"><span class="distro-stat-label">p50</span> {fmt(distroStats.p50)} ms</span>
+              <span class="distro-stat"><span class="distro-stat-label">p95</span> {fmt(distroStats.p95)} ms</span>
+              <span class="distro-stat"><span class="distro-stat-label">spread</span> {distroStats.spread.toFixed(1)}×</span>
+              <span class="distro-stat-meta">over last {distroStats.n} samples</span>
             </div>
-          {/each}
-        </div>
-        <div class="distro-axis" aria-hidden="true">
-          {#if histogram.bins.length > 0}
-            {@const firstBin = histogram.bins[0]}
-            {@const lastBin = histogram.bins[histogram.bins.length - 1]}
-            <span>
-              {#if firstBin && firstBin.fromMs <= 0}
-                &lt;{axisEdgeLabel(firstBin.toMs)}
-              {:else if firstBin}
-                {axisEdgeLabel(firstBin.fromMs)}
+            <div
+              class="distro-chart"
+              role="img"
+              aria-label="Latency histogram (log scale) across last {distroStats.n} samples"
+            >
+              {#each histogram.bins as bin, i (i)}
+                <div
+                  class="distro-bin"
+                  title="{binLabel(bin)} · {bin.count} sample{bin.count === 1 ? '' : 's'}"
+                >
+                  <div
+                    class="distro-bar"
+                    style:height="{histogram.maxCount > 0 ? (bin.count / histogram.maxCount) * 100 : 0}%"
+                  ></div>
+                </div>
+              {/each}
+            </div>
+            <div class="distro-axis" aria-hidden="true">
+              {#if histogram.bins.length > 0}
+                {@const firstBin = histogram.bins[0]}
+                {@const lastBin = histogram.bins[histogram.bins.length - 1]}
+                <span>
+                  {#if firstBin && firstBin.fromMs <= 0}
+                    &lt;{axisEdgeLabel(firstBin.toMs)}
+                  {:else if firstBin}
+                    {axisEdgeLabel(firstBin.fromMs)}
+                  {/if}
+                </span>
+                <span>
+                  {#if lastBin && !Number.isFinite(lastBin.toMs)}
+                    ≥{axisEdgeLabel(lastBin.fromMs)}
+                  {:else if lastBin}
+                    {axisEdgeLabel(lastBin.toMs)}
+                  {/if}
+                </span>
               {/if}
-            </span>
-            <span>
-              {#if lastBin && !Number.isFinite(lastBin.toMs)}
-                ≥{axisEdgeLabel(lastBin.fromMs)}
-              {:else if lastBin}
-                {axisEdgeLabel(lastBin.toMs)}
-              {/if}
-            </span>
+            </div>
+          {:else}
+            <p class="distro-empty">{distributionEmptyMessage}</p>
           {/if}
-        </div>
-      {:else}
-        <p class="distro-empty">{distributionEmptyMessage}</p>
-      {/if}
-    </section>
+        </section>
 
-    <section class="diagnose-visibility" aria-label="Browser visibility">
-      <div class="diagnose-section-kicker">Browser visibility</div>
-      <p class="visibility-headline">{timingVisibility.headline}</p>
-      <p class="visibility-detail">{timingVisibility.detail}</p>
-      {#if timingVisibility.action}
-        <p class="visibility-action">{timingVisibility.action}</p>
-      {/if}
-    </section>
+        <section class="diagnose-visibility" aria-label="Browser visibility">
+          <div class="diagnose-section-kicker">Browser visibility</div>
+          <p class="visibility-headline">{timingVisibility.headline}</p>
+          <p class="visibility-detail">{timingVisibility.detail}</p>
+          {#if timingVisibility.action}
+            <p class="visibility-action">{timingVisibility.action}</p>
+          {/if}
+        </section>
 
-    <section
-      class="diagnose-remote"
-      class:local-path={remoteInsight.status === 'local-path'}
-      class:remote-confirms={remoteInsight.status === 'remote-confirms' || remoteInsight.status === 'remote-error'}
-      aria-label="Remote vantage"
-    >
-      <div class="remote-head">
-        <div>
-          <div class="diagnose-section-kicker">Remote vantage</div>
-          <p class="remote-headline">{remoteInsight.headline}</p>
-        </div>
-        <button
-          type="button"
-          class="diagnose-chip diagnose-chip-action"
-          disabled={remoteBusy}
-          aria-disabled={remoteBusy}
-          onclick={handleRemoteCheck}
-        >
-          {remoteBusy ? 'Checking…' : 'Check from Cloudflare'}
-        </button>
-      </div>
-      <p class="remote-detail">{remoteInsight.detail}</p>
-      <dl class="remote-evidence">
-        <div>
-          <dt>Edge</dt>
-          <dd>{remoteInsight.edgeLabel}</dd>
-        </div>
-        <div>
-          <dt>Status</dt>
-          <dd>{remoteInsight.result?.status ?? '—'}</dd>
-        </div>
-        <div>
-          <dt>Remote time</dt>
-          <dd>{remoteInsight.result ? `${fmt(remoteInsight.result.durationMs)} ms` : '—'}</dd>
-        </div>
-      </dl>
-      {#if remoteVantage.error}
-        <p class="remote-error">{remoteVantage.error}</p>
-      {:else}
-        <p class="remote-action">{remoteInsight.action}</p>
-      {/if}
-    </section>
-
-    <section
-      class="diagnose-loaded"
-      class:clean={bufferbloat.grade.grade === 'clean'}
-      class:watch={bufferbloat.grade.grade === 'watch'}
-      class:high={bufferbloat.grade.grade === 'loaded-latency-high'}
-      aria-label="Loaded latency"
-    >
-      <div class="loaded-head">
-        <div>
-          <div class="diagnose-section-kicker">Loaded latency</div>
-          <p class="loaded-headline">Browser latency while the connection is busy</p>
-        </div>
-        {#if bufferbloatBusy}
-          <button
-            type="button"
-            class="diagnose-chip diagnose-chip-action"
-            onclick={handleLoadedLatencyStop}
-          >Stop loaded check</button>
-        {:else}
-          <button
-            type="button"
-            class="diagnose-chip diagnose-chip-action"
-            disabled={!distroStats}
-            aria-disabled={!distroStats}
-            onclick={handleLoadedLatencyCheck}
-          >Run loaded check</button>
+        {#if correlation}
+          <section class="diagnose-correlation" aria-label="Cross-endpoint comparison">
+            <div class="diagnose-section-kicker">Compare with other endpoints</div>
+            <p class="correlation-headline">{correlation.verdict.headline}</p>
+            {#if correlation.rows[0]?.cells.length > 0}
+              <div class="correlation-grid" role="table" aria-label="Per-round latency across endpoints">
+                {#each correlation.rows as row, rowIdx (row.endpointId)}
+                  <div class="correlation-row" class:focused={rowIdx === 0} role="row">
+                    <span class="correlation-label" role="rowheader">{row.label}</span>
+                    <div class="correlation-cells">
+                      {#each row.cells as cell (cell.round)}
+                        <span
+                          class="correlation-cell"
+                          class:spike={cell.isSpike}
+                          class:missing={cell.latencyMs === null}
+                          title="R{cell.round}{cell.latencyMs !== null ? ` · ${fmt(cell.latencyMs)} ms${cell.isSpike ? ' (spike)' : ''}` : ' · no data'}"
+                          role="cell"
+                        ></span>
+                      {/each}
+                    </div>
+                  </div>
+                {/each}
+              </div>
+              <p class="correlation-legend" aria-hidden="true">
+                <span class="correlation-legend-swatch correlation-legend-normal"></span> normal
+                <span class="correlation-legend-swatch correlation-legend-spike"></span> spike (>1.5× this endpoint's median)
+                <span class="correlation-legend-swatch correlation-legend-missing"></span> no data
+              </p>
+            {/if}
+          </section>
         {/if}
-      </div>
-      <p class="loaded-detail">
-        This measures browser-visible latency while a download is running. It is loaded-latency evidence, not packet-level proof.
-      </p>
-      <dl class="loaded-evidence">
-        <div>
-          <dt>Idle median</dt>
-          <dd>{loadedLatencyMetric(bufferbloat.idleMedianMs)}</dd>
-        </div>
-        <div>
-          <dt>Loaded median</dt>
-          <dd>{loadedLatencyMetric(bufferbloat.loadedMedianMs)}</dd>
-        </div>
-        <div>
-          <dt>Status</dt>
-          <dd>{bufferbloatStatusLabel}</dd>
-        </div>
-      </dl>
-      {#if bufferbloat.error}
-        <p class="loaded-error">{bufferbloat.error}</p>
-      {:else if bufferbloat.status === 'running'}
-        <p class="loaded-action">Downloading a bounded Cloudflare response and timing this endpoint from the browser.</p>
-      {:else}
-        <p class="loaded-action">{bufferbloat.grade.summary}</p>
-      {/if}
-    </section>
 
-    <section class="diagnose-network-context" aria-label="Network context">
-      <div class="network-context-head">
-        <div>
-          <div class="diagnose-section-kicker">Network context</div>
-          <p class="network-context-headline">Outside resolver and public topology context</p>
-        </div>
-        <button
-          type="button"
-          class="diagnose-chip diagnose-chip-action"
-          disabled={networkContextBusy}
-          aria-disabled={networkContextBusy}
-          onclick={handleNetworkContextCheck}
-        >
-          {networkContextBusy ? 'Checking…' : 'Run context check'}
-        </button>
-      </div>
-      <p class="network-context-detail">
-        This asks Cloudflare DNS-over-HTTPS and RIPEstat for the focused hostname{focusedHostname ? `, ${focusedHostname}` : ''}. It is not your local DNS path or active route proof.
-      </p>
-      <dl class="network-context-evidence">
-        <div>
-          <dt>Outside resolver</dt>
-          <dd>{networkContextDnsInsight?.headline ?? networkContextDnsError ?? 'Not run'}</dd>
-          {#if networkContextDnsInsight?.detail}
-            <p>{networkContextDnsInsight.detail}</p>
-          {/if}
-        </div>
-        <div>
-          <dt>Public topology</dt>
-          <dd>{networkContextTopologyInsight ?? networkContextTopologyError ?? 'Not run'}</dd>
-        </div>
-      </dl>
-      {#if networkContextError}
-        <p class="network-context-error">{networkContextError}</p>
-      {:else if networkContext.status === 'complete' && networkContextMatchesFocus}
-        <p class="network-context-action">Use this as context only; confirm path or resolver problems with local-agent evidence when needed.</p>
-      {:else}
-        <p class="network-context-action">No context captured for this endpoint yet.</p>
-      {/if}
-    </section>
-
-    <!-- Cross-endpoint correlation — answers "is this slowness specific to this
-         site, or shared across multiple sites at once (likely my network)?" -->
-    {#if correlation}
-      <section class="diagnose-correlation" aria-label="Cross-endpoint comparison">
-        <div class="diagnose-section-kicker">Compare with other endpoints</div>
-        <p class="correlation-headline">{correlation.verdict.headline}</p>
-        {#if correlation.rows[0]?.cells.length > 0}
-          <div class="correlation-grid" role="table" aria-label="Per-round latency across endpoints">
-            {#each correlation.rows as row, rowIdx (row.endpointId)}
-              <div class="correlation-row" class:focused={rowIdx === 0} role="row">
-                <span class="correlation-label" role="rowheader">{row.label}</span>
-                <div class="correlation-cells">
-                  {#each row.cells as cell (cell.round)}
-                    <span
-                      class="correlation-cell"
-                      class:spike={cell.isSpike}
-                      class:missing={cell.latencyMs === null}
-                      title="R{cell.round}{cell.latencyMs !== null ? ` · ${fmt(cell.latencyMs)} ms${cell.isSpike ? ' (spike)' : ''}` : ' · no data'}"
-                      role="cell"
-                    ></span>
+        {#if phases !== null}
+          <details class="diagnose-phases">
+            <summary>
+              <span class="diagnose-section-kicker">Phase breakdown (advanced)</span>
+              <span class="phases-summary-hint">DNS · TCP · TLS · Server · Transfer</span>
+            </summary>
+            <div class="diagnose-segment" role="group" aria-label="Percentile mode">
+              <button
+                type="button" class="diagnose-chip"
+                class:on={mode === 'p50'} aria-pressed={mode === 'p50'}
+                onclick={() => handleSelectMode('p50')}
+              >P50</button>
+              <button
+                type="button" class="diagnose-chip"
+                class:on={mode === 'p95'} aria-pressed={mode === 'p95'}
+                onclick={() => handleSelectMode('p95')}
+              >P95</button>
+            </div>
+            {#if hasVisiblePhases}
+              <div class="diagnose-waterfall" role="img" aria-label={heroAria}>
+                <div class="diagnose-bar">
+                  {#each segments as seg (seg.phase)}
+                    <div
+                      class="diagnose-bar-seg"
+                      class:dominant={seg.dominant}
+                      style:width="{seg.pctWidth}%"
+                      style:background={seg.color}
+                    >
+                      {#if seg.pctWidth >= 8}
+                        <span class="diagnose-bar-label" style:color={tokens.color.tier2.labelText}>
+                          {seg.short} · {fmt(seg.ms)}<span class="diagnose-bar-ms">ms</span>
+                        </span>
+                      {/if}
+                    </div>
+                  {/each}
+                </div>
+                <div class="diagnose-bar-scale">
+                  {#each segments as seg (seg.phase)}
+                    <span class="diagnose-bar-tick" style:flex="{seg.pctWidth}">
+                      <span class="diagnose-bar-tick-label">{seg.short}</span>
+                    </span>
                   {/each}
                 </div>
               </div>
-            {/each}
-          </div>
-          <p class="correlation-legend" aria-hidden="true">
-            <span class="correlation-legend-swatch correlation-legend-normal"></span> normal
-            <span class="correlation-legend-swatch correlation-legend-spike"></span> spike (>1.5× this endpoint's median)
-            <span class="correlation-legend-swatch correlation-legend-missing"></span> no data
-          </p>
+            {:else}
+              <div class="phase-unavailable-card" role="note" aria-label="Phase timing unavailable">
+                <p class="phase-unavailable-title">Phase timing unavailable</p>
+                <p class="phase-unavailable-detail">{timingVisibility.detail}</p>
+                {#if timingVisibility.action}
+                  <p class="phase-unavailable-action">{timingVisibility.action}</p>
+                {/if}
+              </div>
+            {/if}
+            {#if hypothesis && hasVisiblePhases}
+              <ul class="diagnose-evidence">
+                {#each segments as seg (seg.phase)}
+                  <li class="diagnose-evidence-row" class:dominant={seg.dominant}>
+                    <span class="diagnose-evidence-pip" style:background={seg.color} aria-hidden="true"></span>
+                    <span class="diagnose-evidence-name">{PHASE_LABELS[seg.phase]}</span>
+                    <span class="diagnose-evidence-ms">{fmt(seg.ms)} ms</span>
+                    <span class="diagnose-evidence-bar" aria-hidden="true">
+                      <span class="diagnose-evidence-fill" style:width="{seg.pctWidth}%" style:background={seg.color}></span>
+                    </span>
+                    <span class="diagnose-evidence-pct">{Math.round(seg.pct * 100)}%</span>
+                  </li>
+                {/each}
+              </ul>
+              <p class="phases-caveat">
+                On warm-connection samples the browser reports zero for DNS/TCP/TLS — only TTFB and Transfer reflect per-request work. Cross-origin endpoints without <code>Timing-Allow-Origin</code> headers report only the total.
+              </p>
+            {/if}
+          </details>
+        {/if}
+
+        {#if recentSamples.length > 0}
+          <section class="diagnose-samples" aria-label="Recent samples">
+            <div class="diagnose-hypothesis-kicker">Last {recentSamples.length} sample{recentSamples.length === 1 ? '' : 's'}</div>
+            <table class="diagnose-sample-table">
+              <thead class="sr-only">
+                <tr><th>Round</th><th>Phase breakdown</th><th>Total</th></tr>
+              </thead>
+              <tbody>
+                {#each sampleRows as row (row.round)}
+                  <tr class="diagnose-sample-row">
+                    <td class="diagnose-sample-round">R{row.round}</td>
+                    <td class="diagnose-sample-bar-cell">
+                      <div class="diagnose-sample-bar">
+                        {#if row.status === 'ok' && row.segs.length > 0}
+                          {#each row.segs as seg (seg.phase)}
+                            <span class="diagnose-sample-seg" style:width="{seg.pctWidth}%" style:background={seg.color} aria-hidden="true"></span>
+                          {/each}
+                        {:else if row.status === 'phase-unavailable'}
+                          <span class="diagnose-sample-neutral diagnose-sample-total-only" aria-label="Phase timing unavailable">TOTAL ONLY</span>
+                        {:else if row.status === 'timeout'}
+                          <span class="diagnose-sample-timeout" aria-label="Timeout">TIMEOUT</span>
+                        {:else}
+                          <span class="diagnose-sample-timeout" aria-label="Error">ERROR</span>
+                        {/if}
+                      </div>
+                    </td>
+                    <td class="diagnose-sample-total">{fmt(row.total)} ms</td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </section>
         {/if}
       </section>
-    {/if}
 
-    <!-- Phase breakdown — only meaningful for endpoints that send Timing-Allow-Origin
-         (or are same-origin). Collapsed by default since it's frequently empty
-         for cross-origin endpoints and can be tautological for same-origin
-         endpoints over warm QUIC connections. -->
-    {#if phases !== null}
-      <details class="diagnose-phases">
-        <summary>
-          <span class="diagnose-section-kicker">Phase breakdown (advanced)</span>
-          <span class="phases-summary-hint">DNS · TCP · TLS · Server · Transfer</span>
-        </summary>
-        <!-- Percentile toggle lives inside the details so it only appears when the
-             section is expanded (it has no effect on Distribution or Correlation
-             panels — only on this waterfall). -->
-        <div class="diagnose-segment" role="group" aria-label="Percentile mode">
-          <button
-            type="button" class="diagnose-chip"
-            class:on={mode === 'p50'} aria-pressed={mode === 'p50'}
-            onclick={() => handleSelectMode('p50')}
-          >P50</button>
-          <button
-            type="button" class="diagnose-chip"
-            class:on={mode === 'p95'} aria-pressed={mode === 'p95'}
-            onclick={() => handleSelectMode('p95')}
-          >P95</button>
+      <section class="diagnose-proof-stack" aria-label="Next proof actions">
+        <div class="diagnose-column-head">
+          <div class="diagnose-section-kicker">Next proof actions</div>
+          <p>Checks that reduce uncertainty without changing the browser facts.</p>
         </div>
-        {#if hasVisiblePhases}
-          <div class="diagnose-waterfall" role="img" aria-label={heroAria}>
-            <div class="diagnose-bar">
-              {#each segments as seg (seg.phase)}
-                <div
-                  class="diagnose-bar-seg"
-                  class:dominant={seg.dominant}
-                  style:width="{seg.pctWidth}%"
-                  style:background={seg.color}
-                >
-                  {#if seg.pctWidth >= 8}
-                    <span class="diagnose-bar-label" style:color={tokens.color.tier2.labelText}>
-                      {seg.short} · {fmt(seg.ms)}<span class="diagnose-bar-ms">ms</span>
-                    </span>
-                  {/if}
-                </div>
-              {/each}
+
+        <section
+          class="diagnose-remote"
+          class:local-path={remoteInsight.status === 'local-path'}
+          class:remote-confirms={remoteInsight.status === 'remote-confirms' || remoteInsight.status === 'remote-error'}
+          aria-label="Remote vantage"
+        >
+          <div class="remote-head">
+            <div>
+              <div class="diagnose-section-kicker">Remote vantage</div>
+              <p class="remote-headline">{remoteInsight.headline}</p>
             </div>
-            <div class="diagnose-bar-scale">
-              {#each segments as seg (seg.phase)}
-                <span class="diagnose-bar-tick" style:flex="{seg.pctWidth}">
-                  <span class="diagnose-bar-tick-label">{seg.short}</span>
-                </span>
-              {/each}
-            </div>
+            <button
+              type="button"
+              class="diagnose-chip diagnose-chip-action"
+              disabled={remoteBusy}
+              aria-disabled={remoteBusy}
+              onclick={handleRemoteCheck}
+            >
+              {remoteBusy ? 'Checking…' : 'Check from Cloudflare'}
+            </button>
           </div>
-        {:else}
-          <div class="phase-unavailable-card" role="note" aria-label="Phase timing unavailable">
-            <p class="phase-unavailable-title">Phase timing unavailable</p>
-            <p class="phase-unavailable-detail">{timingVisibility.detail}</p>
-            {#if timingVisibility.action}
-              <p class="phase-unavailable-action">{timingVisibility.action}</p>
+          <p class="remote-detail">{remoteInsight.detail}</p>
+          <dl class="remote-evidence">
+            <div>
+              <dt>Edge</dt>
+              <dd>{remoteInsight.edgeLabel}</dd>
+            </div>
+            <div>
+              <dt>Status</dt>
+              <dd>{remoteInsight.result?.status ?? '—'}</dd>
+            </div>
+            <div>
+              <dt>Remote time</dt>
+              <dd>{remoteInsight.result ? `${fmt(remoteInsight.result.durationMs)} ms` : '—'}</dd>
+            </div>
+          </dl>
+          {#if remoteVantage.error}
+            <p class="remote-error">{remoteVantage.error}</p>
+          {:else}
+            <p class="remote-action">{remoteInsight.action}</p>
+          {/if}
+        </section>
+
+        <section
+          class="diagnose-loaded"
+          class:clean={bufferbloat.grade.grade === 'clean'}
+          class:watch={bufferbloat.grade.grade === 'watch'}
+          class:high={bufferbloat.grade.grade === 'loaded-latency-high'}
+          aria-label="Loaded latency"
+        >
+          <div class="loaded-head">
+            <div>
+              <div class="diagnose-section-kicker">Loaded latency</div>
+              <p class="loaded-headline">Browser latency while the connection is busy</p>
+            </div>
+            {#if bufferbloatBusy}
+              <button
+                type="button"
+                class="diagnose-chip diagnose-chip-action"
+                onclick={handleLoadedLatencyStop}
+              >Stop loaded check</button>
+            {:else}
+              <button
+                type="button"
+                class="diagnose-chip diagnose-chip-action"
+                disabled={!distroStats}
+                aria-disabled={!distroStats}
+                onclick={handleLoadedLatencyCheck}
+              >Run loaded check</button>
             {/if}
           </div>
-        {/if}
-        {#if hypothesis && hasVisiblePhases}
-          <ul class="diagnose-evidence">
-            {#each segments as seg (seg.phase)}
-              <li class="diagnose-evidence-row" class:dominant={seg.dominant}>
-                <span class="diagnose-evidence-pip" style:background={seg.color} aria-hidden="true"></span>
-                <span class="diagnose-evidence-name">{PHASE_LABELS[seg.phase]}</span>
-                <span class="diagnose-evidence-ms">{fmt(seg.ms)} ms</span>
-                <span class="diagnose-evidence-bar" aria-hidden="true">
-                  <span class="diagnose-evidence-fill" style:width="{seg.pctWidth}%" style:background={seg.color}></span>
-                </span>
-                <span class="diagnose-evidence-pct">{Math.round(seg.pct * 100)}%</span>
-              </li>
-            {/each}
-          </ul>
-          <p class="phases-caveat">
-            On warm-connection samples the browser reports zero for DNS/TCP/TLS — only TTFB and Transfer reflect per-request work. Cross-origin endpoints without <code>Timing-Allow-Origin</code> headers report only the total.
+          <p class="loaded-detail">
+            This measures browser-visible latency while a download is running. It is loaded-latency evidence, not packet-level proof.
           </p>
-        {/if}
-      </details>
-    {/if}
+          <dl class="loaded-evidence">
+            <div>
+              <dt>Idle median</dt>
+              <dd>{loadedLatencyMetric(bufferbloat.idleMedianMs)}</dd>
+            </div>
+            <div>
+              <dt>Loaded median</dt>
+              <dd>{loadedLatencyMetric(bufferbloat.loadedMedianMs)}</dd>
+            </div>
+            <div>
+              <dt>Status</dt>
+              <dd>{bufferbloatStatusLabel}</dd>
+            </div>
+          </dl>
+          {#if bufferbloat.error}
+            <p class="loaded-error">{bufferbloat.error}</p>
+          {:else if bufferbloat.status === 'running'}
+            <p class="loaded-action">Downloading a bounded Cloudflare response and timing this endpoint from the browser.</p>
+          {:else}
+            <p class="loaded-action">{bufferbloat.grade.summary}</p>
+          {/if}
+        </section>
 
-    <!-- Sample strip -->
-    {#if recentSamples.length > 0}
-      <section class="diagnose-samples" aria-label="Recent samples">
-        <div class="diagnose-hypothesis-kicker">Last {recentSamples.length} sample{recentSamples.length === 1 ? '' : 's'}</div>
-        <table class="diagnose-sample-table">
-          <thead class="sr-only">
-            <tr><th>Round</th><th>Phase breakdown</th><th>Total</th></tr>
-          </thead>
-          <tbody>
-            {#each sampleRows as row (row.round)}
-              <tr class="diagnose-sample-row">
-                <td class="diagnose-sample-round">R{row.round}</td>
-                <td class="diagnose-sample-bar-cell">
-                  <div class="diagnose-sample-bar">
-                    {#if row.status === 'ok' && row.segs.length > 0}
-                      {#each row.segs as seg (seg.phase)}
-                        <span class="diagnose-sample-seg" style:width="{seg.pctWidth}%" style:background={seg.color} aria-hidden="true"></span>
-                      {/each}
-                    {:else if row.status === 'phase-unavailable'}
-                      <span class="diagnose-sample-neutral diagnose-sample-total-only" aria-label="Phase timing unavailable">TOTAL ONLY</span>
-                    {:else if row.status === 'timeout'}
-                      <span class="diagnose-sample-timeout" aria-label="Timeout">TIMEOUT</span>
-                    {:else}
-                      <span class="diagnose-sample-timeout" aria-label="Error">ERROR</span>
-                    {/if}
-                  </div>
-                </td>
-                <td class="diagnose-sample-total">{fmt(row.total)} ms</td>
-              </tr>
-            {/each}
-          </tbody>
-        </table>
+        <section class="diagnose-network-context" aria-label="Network context">
+          <div class="network-context-head">
+            <div>
+              <div class="diagnose-section-kicker">Network context</div>
+              <p class="network-context-headline">Outside resolver and public topology context</p>
+            </div>
+            <button
+              type="button"
+              class="diagnose-chip diagnose-chip-action"
+              disabled={networkContextBusy}
+              aria-disabled={networkContextBusy}
+              onclick={handleNetworkContextCheck}
+            >
+              {networkContextBusy ? 'Checking…' : 'Run context check'}
+            </button>
+          </div>
+          <p class="network-context-detail">
+            This asks Cloudflare DNS-over-HTTPS and RIPEstat for the focused hostname{focusedHostname ? `, ${focusedHostname}` : ''}. It is not your local DNS path or active route proof.
+          </p>
+          <dl class="network-context-evidence">
+            <div>
+              <dt>Outside resolver</dt>
+              <dd>{networkContextDnsInsight?.headline ?? networkContextDnsError ?? 'Not run'}</dd>
+              {#if networkContextDnsInsight?.detail}
+                <p>{networkContextDnsInsight.detail}</p>
+              {/if}
+            </div>
+            <div>
+              <dt>Public topology</dt>
+              <dd>{networkContextTopologyInsight ?? networkContextTopologyError ?? 'Not run'}</dd>
+            </div>
+          </dl>
+          {#if networkContextError}
+            <p class="network-context-error">{networkContextError}</p>
+          {:else if networkContext.status === 'complete' && networkContextMatchesFocus}
+            <p class="network-context-action">Use this as context only; confirm path or resolver problems with local-agent evidence when needed.</p>
+          {:else}
+            <p class="network-context-action">No context captured for this endpoint yet.</p>
+          {/if}
+        </section>
+
+        <section class="diagnose-local-proof" aria-label="Local companion proof">
+          <div class="local-proof-cta-head">
+            <div>
+              <div class="diagnose-section-kicker">Local companion</div>
+              <p class="local-proof-headline">DNS, route, TLS, and Wi-Fi evidence from this computer</p>
+            </div>
+            <button
+              type="button"
+              class="diagnose-chip diagnose-chip-action"
+              aria-expanded={localProofOpen}
+              onclick={localProofOpen ? handleCloseLocalProof : handleOpenLocalProof}
+            >{localProofOpen ? 'Hide local companion' : 'Open local companion'}</button>
+          </div>
+          <p class="local-proof-detail">
+            Local-only checks can capture DNS, route/MTR, TLS, and Wi-Fi evidence from this computer. Chronoscope talks to 127.0.0.1 with a signed pairing token; private Wi-Fi fields stay redacted unless enabled for a run.
+          </p>
+          {#if localProofOpen}
+            <div class="local-proof-embed">
+              <LocalProofPanel onOpenSettings={handleOpenSettings} onClose={handleCloseLocalProof} />
+            </div>
+          {/if}
+        </section>
       </section>
-    {/if}
+    </div>
 
     <IntelligencePanel />
   {/if}
@@ -838,7 +893,8 @@
   .diagnose-visibility,
   .diagnose-remote,
   .diagnose-loaded,
-  .diagnose-network-context {
+  .diagnose-network-context,
+  .diagnose-local-proof {
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -846,6 +902,96 @@
     background: rgba(255, 255, 255, 0.025);
     border: 1px solid var(--border-mid);
     border-radius: 10px;
+  }
+  .diagnose-brief {
+    display: grid;
+    grid-template-columns: minmax(138px, 0.18fr) minmax(0, 1fr);
+    align-items: center;
+    gap: clamp(18px, 3vw, 34px);
+    padding: clamp(20px, 3vw, 30px);
+    min-height: 220px;
+    background:
+      linear-gradient(135deg, rgba(103, 232, 249, 0.07), rgba(37, 99, 235, 0.035) 42%, rgba(255, 255, 255, 0.022)),
+      rgba(255, 255, 255, 0.026);
+    border-color: color-mix(in srgb, var(--accent-cyan) 18%, var(--border-mid));
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.24);
+  }
+  .diagnose-brief-score {
+    width: clamp(112px, 12vw, 148px);
+    aspect-ratio: 1;
+    justify-self: center;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 4px;
+    color: var(--accent-cyan);
+    background: rgba(103, 232, 249, 0.08);
+    border: 2px solid color-mix(in srgb, var(--accent-cyan) 68%, transparent);
+    box-shadow: inset 0 0 0 12px rgba(3, 7, 18, 0.88), 0 0 34px rgba(103, 232, 249, 0.16);
+  }
+  .diagnose-brief-score-value {
+    color: var(--t1);
+    font-family: var(--mono);
+    font-size: 2.625rem;
+    line-height: 0.95;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .diagnose-brief-score-label {
+    font-family: var(--mono);
+    font-size: var(--ts-xs);
+    color: var(--accent-cyan);
+    letter-spacing: var(--tr-label);
+    text-transform: uppercase;
+  }
+  .diagnose-brief-copy {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .diagnose-answer-fact,
+  .diagnose-answer-interpretation {
+    margin: 0;
+    color: var(--t2);
+    font-size: var(--ts-base);
+    line-height: 1.55;
+  }
+  .diagnose-answer-fact strong,
+  .diagnose-answer-interpretation strong {
+    color: var(--t1);
+    font-weight: 650;
+  }
+  .diagnose-evidence-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.22fr) minmax(320px, 0.78fr);
+    gap: 18px;
+    align-items: start;
+  }
+  .diagnose-facts-stack,
+  .diagnose-proof-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-width: 0;
+  }
+  .diagnose-column-head {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-bottom: 2px;
+  }
+  .diagnose-column-head .diagnose-section-kicker {
+    margin-bottom: 0;
+    color: var(--accent-cyan);
+  }
+  .diagnose-column-head p {
+    margin: 0;
+    color: var(--t3);
+    font-size: var(--ts-sm);
+    line-height: 1.45;
   }
   .diagnose-answer-top {
     display: flex;
@@ -1133,6 +1279,36 @@
   }
   .network-context-evidence p {
     margin: 4px 0 0;
+  }
+
+  .local-proof-cta-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .local-proof-headline,
+  .local-proof-detail {
+    margin: 0;
+  }
+  .local-proof-headline {
+    color: var(--t1);
+    font-size: var(--ts-md);
+    line-height: 1.4;
+  }
+  .local-proof-detail {
+    color: var(--t3);
+    font-size: var(--ts-sm);
+    line-height: 1.45;
+  }
+  .local-proof-embed {
+    margin-top: 4px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-mid);
+  }
+  .local-proof-embed :global(.local-proof-panel) {
+    margin: 0;
   }
 
   /* ── Cross-endpoint correlation ────────────────────────────────────────── */
@@ -1583,7 +1759,30 @@
   @media (max-width: 767px) {
     .diagnose { padding: 12px; gap: 12px; }
     .diagnose-header { flex-direction: column; align-items: flex-start; }
+    .diagnose-brief {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      grid-template-columns: none;
+      min-height: 350px;
+      height: max-content;
+      padding: 16px;
+    }
+    .diagnose-brief-score {
+      display: none;
+    }
+    .diagnose-brief-copy {
+      display: block;
+    }
+    .diagnose-brief-copy > * + * {
+      margin-top: 10px;
+    }
+    .diagnose-brief .diagnose-answer-headline {
+      display: none;
+    }
+    .diagnose-evidence-layout { grid-template-columns: 1fr; }
     .diagnose-answer-evidence { grid-template-columns: 1fr; }
+    .remote-evidence { grid-template-columns: 1fr; }
     .loaded-evidence { grid-template-columns: 1fr; }
     .network-context-evidence { grid-template-columns: 1fr; }
     .diagnose-evidence-row { grid-template-columns: 10px 110px 70px 1fr 40px; }

@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, waitFor } from '@testing-library/svelte';
+import { cleanup, fireEvent, render, waitFor, within } from '@testing-library/svelte';
 import { get } from 'svelte/store';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import DiagnoseView from '../../../src/lib/components/DiagnoseView.svelte';
@@ -202,6 +202,49 @@ describe('DiagnoseView investigation focus', () => {
     await waitFor(() => {
       expect(runProbe).toHaveBeenCalledWith([api]);
     });
+  });
+
+  it('separates measured browser facts from proof actions with uncertainty-safe copy', () => {
+    endpointStore.setEndpoints([endpoint('api', 'API'), endpoint('cdn', 'CDN'), endpoint('app', 'App')]);
+    seedReadySamples({ api: 260, cdn: 45, app: 55 });
+    uiStore.setActiveView('diagnose');
+    uiStore.setFocusedEndpoint('api');
+
+    const { getByRole, getByText } = render(DiagnoseView);
+
+    const browserFacts = getByRole('region', { name: /measured browser facts/i });
+    expect(within(browserFacts).getByText(/facts chronoscope can directly measure in this browser session/i)).toBeTruthy();
+    expect(within(browserFacts).getByRole('region', { name: /latency distribution/i })).toBeTruthy();
+    expect(within(browserFacts).getByRole('region', { name: /browser visibility/i })).toBeTruthy();
+    expect(within(browserFacts).getByRole('region', { name: /cross-endpoint comparison/i })).toBeTruthy();
+
+    const proofActions = getByRole('region', { name: /next proof actions/i });
+    expect(within(proofActions).getByText(/checks that reduce uncertainty without changing the browser facts/i)).toBeTruthy();
+    expect(within(proofActions).getByRole('region', { name: /remote vantage/i })).toBeTruthy();
+    expect(within(proofActions).getByRole('region', { name: /loaded latency/i })).toBeTruthy();
+    expect(within(proofActions).getByRole('region', { name: /network context/i })).toBeTruthy();
+    expect(within(proofActions).getByRole('region', { name: /local companion proof/i })).toBeTruthy();
+    expect(within(proofActions).getAllByText(/compare another vantage|reduce uncertainty/i).length).toBeGreaterThan(0);
+    expect(getByText(/measured fact:/i)).toBeTruthy();
+    expect(getByText(/interpretation:/i)).toBeTruthy();
+  });
+
+  it('opens local companion proof with local-only and privacy boundaries', async () => {
+    const api = endpoint('api', 'API');
+    endpointStore.setEndpoints([api]);
+    seedReadySamples({ api: 80 });
+    uiStore.setActiveView('diagnose');
+    uiStore.setFocusedEndpoint('api');
+
+    const { getByRole, getByText } = render(DiagnoseView);
+
+    await fireEvent.click(getByRole('button', { name: /open local companion/i }));
+
+    expect(getByRole('region', { name: /focused local proof/i })).toBeTruthy();
+    expect(getByText(/local-only: chronoscope talks to 127\.0\.0\.1/i)).toBeTruthy();
+    expect(getByText(/signed probes use the token/i)).toBeTruthy();
+    expect(getByText(/private wifi is off by default/i)).toBeTruthy();
+    expect(getByText(/ssid and bssid stay redacted/i)).toBeTruthy();
   });
 
   it('runs a loaded latency check from Investigate with proof-scoped copy', async () => {

@@ -71,7 +71,7 @@ describe('buildRemoteVantageInsight', () => {
     expect(insight.status).toBe('local-path');
     expect(insight.headline).toContain('outside check reached API within threshold');
     expect(insight.detail).toContain('browser median measured');
-    expect(insight.action).toBe('Run the local agent or compare another network to test whether the slowdown follows this connection.');
+    expect(insight.action).toBe('Run the local agent or compare another vantage to test whether the slowdown follows this connection.');
     expect(insight.detail).not.toMatch(/ISP|VPN|WiFi|local network/i);
     expect(insightCopy(insight)).not.toMatch(/local-path evidence|cause|likely/i);
   });
@@ -100,7 +100,7 @@ describe('buildRemoteVantageInsight', () => {
 
     expect(insight.status).toBe('remote-slow-only');
     expect(insight.detail).toContain('Only the outside check was above the threshold');
-    expect(insight.action).toBe('Run the outside check again, or compare another outside vantage, before choosing the next test.');
+    expect(insight.action).toBe('Run the outside check again, or compare another vantage, before choosing the next test.');
     expect(insight.action).not.toMatch(/blaming|likely/i);
   });
 
@@ -113,7 +113,7 @@ describe('buildRemoteVantageInsight', () => {
     });
 
     expect(insight.status).toBe('unavailable');
-    expect(insight.action).toContain('Run a remote check');
+    expect(insight.action).toContain('compare another vantage');
   });
 
   it('keeps remote errors framed as outside-vantage evidence, not root cause', () => {
@@ -168,6 +168,51 @@ describe('buildRemoteVantageInsight', () => {
       expect(insightCopy(insight)).not.toMatch(/\bp50\b|elevated latency/i);
       expect(insightCopy(insight)).not.toMatch(/reaches .* normally/i);
       expect(insightCopy(insight)).not.toMatch(/outside edge path/i);
+    }
+  });
+
+  it('frames every outside-check action as a way to compare another vantage or reduce uncertainty', () => {
+    const states = [
+      buildRemoteVantageInsight({
+        endpoint,
+        stats: slowStats,
+        threshold: 120,
+        probe: null,
+      }),
+      buildRemoteVantageInsight({
+        endpoint,
+        stats: slowStats,
+        threshold: 120,
+        probe: remote({ durationMs: 48, verdict: 'reachable' }),
+      }),
+      buildRemoteVantageInsight({
+        endpoint,
+        stats: slowStats,
+        threshold: 120,
+        probe: remote({ durationMs: 410, verdict: 'slow' }),
+      }),
+      buildRemoteVantageInsight({
+        endpoint,
+        stats: { ...slowStats, p50: 80 },
+        threshold: 120,
+        probe: remote({ durationMs: 410, verdict: 'slow' }),
+      }),
+      buildRemoteVantageInsight({
+        endpoint,
+        stats: { ...slowStats, p50: 80 },
+        threshold: 120,
+        probe: remote({ durationMs: 48, verdict: 'reachable' }),
+      }),
+      buildRemoteVantageInsight({
+        endpoint,
+        stats: slowStats,
+        threshold: 120,
+        probe: remote({ ok: false, status: null, verdict: 'unreachable', durationMs: 5000 }),
+      }),
+    ];
+
+    for (const insight of states) {
+      expect(insight.action).toMatch(/compare another vantage|reduce uncertainty/i);
     }
   });
 });

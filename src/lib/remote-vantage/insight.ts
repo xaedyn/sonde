@@ -50,7 +50,7 @@ export function buildRemoteVantageInsight(input: RemoteVantageInsightInput): Rem
       status: 'unavailable',
       headline: 'Remote vantage not checked yet',
       detail: 'Chronoscope can ask Cloudflare to fetch the same endpoint from outside your network.',
-      action: 'Run a remote check to compare your browser path against a Cloudflare edge.',
+      action: 'Run a remote check to compare another vantage against your browser path.',
       edgeLabel: edge,
       result: null,
     };
@@ -67,7 +67,7 @@ export function buildRemoteVantageInsight(input: RemoteVantageInsightInput): Rem
       detail: result.status === null
         ? `The remote probe failed after ${fmtMs(result.durationMs)}.`
         : `The remote probe got HTTP ${result.status} in ${fmtMs(result.durationMs)}.`,
-      action: 'Compare from your browser and another network; repeated failures become outside-vantage evidence to share with the service owner.',
+      action: 'Compare another vantage before escalating this; repeated failures become outside-vantage evidence to share with the service owner.',
       edgeLabel: edge,
       result,
     };
@@ -78,7 +78,7 @@ export function buildRemoteVantageInsight(input: RemoteVantageInsightInput): Rem
       status: 'local-path',
       headline: `This outside check reached ${label} within threshold`,
       detail: `${edge} measured ${fmtMs(result.durationMs)} while your browser median measured ${fmtMs(browserMedian ?? 0)}.`,
-      action: 'Run the local agent or compare another network to test whether the slowdown follows this connection.',
+      action: 'Run the local agent or compare another vantage to test whether the slowdown follows this connection.',
       edgeLabel: edge,
       result,
     };
@@ -89,7 +89,7 @@ export function buildRemoteVantageInsight(input: RemoteVantageInsightInput): Rem
       status: 'remote-confirms',
       headline: `${label} was also slow from Cloudflare`,
       detail: `${edge} took ${fmtMs(result.durationMs)} and your browser median is ${fmtMs(browserMedian ?? 0)}; both checks measured this endpoint above the threshold.`,
-      action: 'Share the report with the service owner; it now contains outside-vantage evidence.',
+      action: 'Share the report with the service owner, or compare another vantage if the result is intermittent.',
       edgeLabel: edge,
       result,
     };
@@ -100,7 +100,7 @@ export function buildRemoteVantageInsight(input: RemoteVantageInsightInput): Rem
       status: 'remote-slow-only',
       headline: `${label} is slow from ${edge}, but not your browser`,
       detail: `Only the outside check was above the threshold in this snapshot${browserMedian !== null ? `; your browser median measured ${fmtMs(browserMedian)}` : ''}.`,
-      action: 'Run the outside check again, or compare another outside vantage, before choosing the next test.',
+      action: 'Run the outside check again, or compare another vantage, before choosing the next test.',
       edgeLabel: edge,
       result,
     };
@@ -110,7 +110,7 @@ export function buildRemoteVantageInsight(input: RemoteVantageInsightInput): Rem
     status: 'remote-normal',
     headline: `This outside check reached ${label} in ${fmtMs(result.durationMs)}`,
     detail: 'This outside check was within threshold for this endpoint.',
-    action: 'Keep the check available for intermittent issues or include it in a support report.',
+    action: 'Keep the check available to reduce uncertainty during intermittent issues or include it in a support report.',
     edgeLabel: edge,
     result,
   };
