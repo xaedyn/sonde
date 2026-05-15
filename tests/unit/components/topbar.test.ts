@@ -6,6 +6,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { fireEvent, render, within } from '@testing-library/svelte';
 import { measurementStore } from '../../../src/lib/stores/measurements';
+import { endpointStore } from '../../../src/lib/stores/endpoints';
+import { settingsStore } from '../../../src/lib/stores/settings';
+import { uiStore } from '../../../src/lib/stores/ui';
 import { get } from 'svelte/store';
 import { tokens } from '../../../src/lib/tokens';
 import Topbar from '../../../src/lib/components/Topbar.svelte';
@@ -31,6 +34,9 @@ function getStartStopClasses(lifecycle: TestLifecycleState): { start: boolean; s
 describe('Topbar', () => {
   beforeEach(() => {
     measurementStore.reset();
+    endpointStore.reset();
+    settingsStore.reset();
+    uiStore.reset();
   });
 
   // ── Logo ────────────────────────────────────────────────────────────────────
@@ -143,12 +149,14 @@ describe('Topbar', () => {
     expect(getStartStopClasses('stopping')).toEqual({ start: false, stop: false });
   });
 
-  // Secondary buttons are always btn-ghost (verified by template — class is static)
-  it('secondary buttons have ghost class (static in template)', () => {
-    // Settings, Share, + Endpoint all use class="btn btn-ghost" in the template.
-    // This test documents the expectation; actual DOM verification requires a DOM renderer.
-    const secondaryClass = 'btn-ghost';
-    expect(secondaryClass).toBe('btn-ghost');
+  it('renders the shared chrome controls with accessible names', () => {
+    const { getByRole } = render(Topbar, { props: {} });
+
+    expect(getByRole('button', { name: /run details/i })).toBeTruthy();
+    expect(getByRole('button', { name: /add or remove endpoints/i })).toBeTruthy();
+    expect(getByRole('button', { name: /open settings/i })).toBeTruthy();
+    expect(getByRole('button', { name: /share results/i })).toBeTruthy();
+    expect(getByRole('button', { name: /^start$/i })).toBeTruthy();
   });
 
   // statTransition / dotEntrance / dotExit removed in Phase 7 — the surviving
