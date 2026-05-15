@@ -285,6 +285,8 @@ describe('figma redesign shell tokens (PR 1)', () => {
     expect(tokens.color.shell.panelActive).toBe('rgba(103,232,249,.095)');
     expect(tokens.color.shell.border).toBe('rgba(255,255,255,.085)');
     expect(tokens.color.shell.borderStrong).toBe('rgba(255,255,255,.145)');
+    expect(tokens.color.shell.divider).toBe('rgba(255,255,255,.06)');
+    expect(tokens.color.shell.backdrop).toBe('rgba(7,11,18,.78)');
     expect(tokens.color.shell.bgCyan).toBe('rgba(103,232,249,.045)');
     expect(tokens.color.shell.bgAmber).toBe('rgba(251,191,36,.028)');
   });
