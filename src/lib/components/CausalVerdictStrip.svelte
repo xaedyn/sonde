@@ -532,7 +532,7 @@
   }
   .verdict-drill:hover { background: rgba(103, 232, 249, 0.15); }
   .verdict-drill:focus-visible {
-    outline: 1.5px solid var(--accent-cyan);
+    outline: 2px solid var(--accent-cyan);
     outline-offset: 2px;
   }
   .verdict-drill-ep {

@@ -169,7 +169,7 @@
     /* Inherit the row's mono + ts-sm so all columns share one baseline. */
     font: inherit;
   }
-  .feed-btn:focus-visible { outline: 1.5px solid var(--accent-cyan); outline-offset: 2px; border-radius: 6px; }
+  .feed-btn:focus-visible { outline: 2px solid var(--accent-cyan); outline-offset: 2px; border-radius: 6px; }
 
   .feed-time {
     color: var(--t2);

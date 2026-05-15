@@ -182,7 +182,7 @@
   }
   .rail-row.disabled, .rail-row:disabled { opacity: 0.5; cursor: not-allowed; }
   .rail-row:focus-visible {
-    outline: 1.5px solid var(--accent-cyan);
+    outline: 2px solid var(--accent-cyan);
     outline-offset: 2px;
   }
 
@@ -258,7 +258,7 @@
     border-color: var(--accent-cyan);
   }
   .rail-add:focus-visible {
-    outline: 1.5px solid var(--accent-cyan);
+    outline: 2px solid var(--accent-cyan);
     outline-offset: 2px;
   }
 

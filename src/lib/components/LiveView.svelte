@@ -330,7 +330,7 @@
     border-color: transparent;
   }
   .live-chip:focus-visible {
-    outline: 1.5px solid var(--accent-cyan);
+    outline: 2px solid var(--accent-cyan);
     outline-offset: 2px;
   }
   .live-chip-back {
@@ -348,7 +348,7 @@
   }
   .live-chip-back:hover { color: var(--t1); border-color: var(--border-bright); }
   .live-chip-back:focus-visible {
-    outline: 1.5px solid var(--accent-cyan);
+    outline: 2px solid var(--accent-cyan);
     outline-offset: 2px;
   }
 
@@ -419,7 +419,7 @@
     border-color: var(--border-bright);
   }
   .live-footer-chip:focus-visible {
-    outline: 1.5px solid var(--accent-cyan);
+    outline: 2px solid var(--accent-cyan);
     outline-offset: 2px;
   }
   .live-footer-pip {

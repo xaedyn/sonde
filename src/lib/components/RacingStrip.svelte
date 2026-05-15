@@ -210,7 +210,7 @@
   .racing-row:hover { background: rgba(255,255,255,.03); border-color: var(--border-mid); }
   .racing-row.focused { background: rgba(255,255,255,.05); border-color: var(--border-bright); }
   .racing-row.over { background: rgba(249,168,212,.04); }
-  .racing-row:focus-visible { outline: 1.5px solid var(--accent-cyan); outline-offset: 2px; }
+  .racing-row:focus-visible { outline: 2px solid var(--accent-cyan); outline-offset: 2px; }
 
   .racing-label { display: flex; align-items: center; gap: 8px; min-width: 0; }
   .racing-dot {

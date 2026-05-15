@@ -553,7 +553,7 @@
     background: rgba(18, 42, 52, .88);
   }
   .story-beat:focus-visible {
-    outline: 1.5px solid var(--accent-cyan);
+    outline: 2px solid var(--accent-cyan);
     outline-offset: 2px;
   }
   .story-beat-pin {
@@ -626,7 +626,7 @@
     border-color: var(--border-mid);
   }
   .story-row:focus-visible {
-    outline: 1.5px solid var(--accent-cyan);
+    outline: 2px solid var(--accent-cyan);
     outline-offset: 2px;
   }
   .story-label {

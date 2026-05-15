@@ -1526,7 +1526,7 @@
     border-color: transparent;
   }
   .diagnose-chip:focus-visible {
-    outline: 1.5px solid var(--accent-cyan);
+    outline: 2px solid var(--accent-cyan);
     outline-offset: 2px;
   }
   .diagnose-chip-action {

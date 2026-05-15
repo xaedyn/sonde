@@ -388,7 +388,7 @@
     background: var(--shell-panel-hover);
   }
   .icon-btn:focus-visible {
-    outline: 1.5px solid var(--accent-cyan);
+    outline: 2px solid var(--accent-cyan);
     outline-offset: 2px;
   }
 
@@ -416,7 +416,7 @@
   .run-btn:hover:not(:disabled) { filter: brightness(1.15); }
   .run-btn:disabled { opacity: 0.55; cursor: not-allowed; }
   .run-btn:focus-visible {
-    outline: 1.5px solid var(--accent-cyan);
+    outline: 2px solid var(--accent-cyan);
     outline-offset: 2px;
   }
   .run-btn-icon { font-size: var(--ts-xs); }

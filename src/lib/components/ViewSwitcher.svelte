@@ -112,7 +112,7 @@
     box-shadow: 0 0 10px var(--glow-cyan);
   }
   .view-tab:focus-visible {
-    outline: 1.5px solid var(--accent-cyan);
+    outline: 2px solid var(--accent-cyan);
     outline-offset: 2px;
     border-radius: 4px;
   }

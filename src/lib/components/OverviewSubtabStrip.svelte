@@ -92,7 +92,7 @@
     background: var(--accent-cyan);
   }
   button[role="tab"]:focus-visible {
-    outline: 1.5px solid var(--accent-cyan);
+    outline: 2px solid var(--accent-cyan);
     outline-offset: 2px;
     border-radius: 4px;
   }
