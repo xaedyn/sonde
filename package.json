@@ -16,6 +16,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:visual": "playwright test",
+    "smoke:live": "node scripts/smoke-live-site.cjs",
     "companion": "node companion/local-agent.cjs",
     "deploy": "npm run build && wrangler pages deploy dist --project-name chronoscope"
   },

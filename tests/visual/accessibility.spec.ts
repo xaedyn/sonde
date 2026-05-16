@@ -113,12 +113,16 @@ test.describe('Accessibility', () => {
 
     await expectNoAxeViolations(page);
 
-    await page.getByRole('button', { name: /^Live/ }).click();
+    await page.getByRole('button', { name: 'Live', exact: true }).click();
     await page.waitForSelector('section[aria-label="Live latency trace"]');
     await expectNoAxeViolations(page);
 
-    await page.getByRole('button', { name: /^Investigate/ }).click();
+    await page.getByRole('button', { name: 'Investigate', exact: true }).click();
     await page.waitForSelector('section[aria-label="Investigate"]');
+    await expectNoAxeViolations(page);
+
+    await page.getByRole('button', { name: 'Report', exact: true }).click();
+    await page.waitForSelector('section[aria-label="Diagnostic report"]');
     await expectNoAxeViolations(page);
   });
 
@@ -130,8 +134,8 @@ test.describe('Accessibility', () => {
     const timelineTab = page.getByRole('tab', { name: 'Timeline' });
     if (await timelineTab.isVisible()) await timelineTab.click();
 
-    await expect(page.locator('.story-beat').first()).toBeVisible();
-    const opacities = await page.locator('.story-beat').evaluateAll((rows) => (
+    await expect(page.locator('.event-entry').first()).toBeVisible();
+    const opacities = await page.locator('.event-entry').evaluateAll((rows) => (
       rows.map((row) => Number(getComputedStyle(row).opacity))
     ));
     for (const opacity of opacities) {

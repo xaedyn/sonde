@@ -399,6 +399,7 @@
             <button
               type="button"
               class="endpoint-row"
+              data-endpoint-id={row.endpoint.id}
               data-tone={row.tone}
               aria-label="{row.endpoint.label}. {row.status}. {row.recent}. Latest {formatLatency(row.latency)} milliseconds."
               onclick={() => handleEndpointDrill(row.endpoint.id, 'live')}
