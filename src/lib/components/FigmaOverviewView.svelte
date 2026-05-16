@@ -7,7 +7,10 @@
   import { settingsStore } from '$lib/stores/settings';
   import { uiStore } from '$lib/stores/ui';
   import { networkQualityStore, monitoredEndpointsStore } from '$lib/stores/derived';
-  import { buildDiagnosticNarrative, type DiagnosticNarrative } from '$lib/utils/diagnostic-narrative';
+  import {
+    buildDiagnosticNarrative,
+    type DiagnosticNarrative,
+  } from '$lib/utils/diagnostic-narrative';
   import { diagnosticAlignedScore } from '$lib/utils/classify';
   import { buildRunStoryline, type RunStoryline, type StoryBeatSeverity } from '$lib/utils/run-storyline';
   import type { Endpoint, EndpointStatistics, MeasurementSample } from '$lib/types';
@@ -104,7 +107,12 @@
     }
     return diagnosticNarrative.safeSummary.replace(/^This browser test:\s*/i, '');
   });
-  const primaryActionText = 'Verify from outside network';
+  const primaryActionText = $derived(diagnosticNarrative.primaryValidation.label);
+  const primaryActionReason = $derived(diagnosticNarrative.primaryValidation.reason);
+  const primaryActionDisabled = $derived(
+    diagnosticNarrative.primaryValidation.id === 'collect-more-samples'
+      && (measurements.lifecycle === 'running' || measurements.lifecycle === 'starting' || measurements.lifecycle === 'stopping'),
+  );
 
   const endpointRows: readonly EndpointSummary[] = $derived.by(() => (
     monitored.map((endpoint) => {
@@ -201,9 +209,31 @@
   }
 
   function handlePrimaryAction(): void {
-    const target = diagnosticNarrative.primaryValidation.endpointId;
+    const action = diagnosticNarrative.primaryValidation;
+    const target = action.endpointId;
     if (target) uiStore.setFocusedEndpoint(target);
-    uiStore.setActiveView('diagnose');
+
+    switch (action.id) {
+      case 'collect-more-samples':
+        if (
+          measurements.lifecycle === 'idle'
+          || measurements.lifecycle === 'stopped'
+          || measurements.lifecycle === 'completed'
+        ) {
+          measurementStore.setLifecycle('starting');
+        }
+        return;
+      case 'share-snapshot':
+      case 'share-support-report':
+        uiStore.toggleShare();
+        return;
+      case 'explain-browser-visibility':
+      case 'open-investigate':
+      case 'run-remote-check':
+      case 'compare-network':
+        uiStore.setActiveView('diagnose');
+        return;
+    }
   }
 
   function handleEvidenceAction(): void {
@@ -238,7 +268,14 @@
         <p><strong>Measured Fact:</strong> {measuredFact}</p>
         <p class="interpretation"><strong>Interpretation:</strong> {interpretation}</p>
         <div class="verdict-actions">
-          <button type="button" class="primary-action" onclick={handlePrimaryAction}>
+          <button
+            type="button"
+            class="primary-action"
+            title={primaryActionReason}
+            disabled={primaryActionDisabled}
+            aria-disabled={primaryActionDisabled}
+            onclick={handlePrimaryAction}
+          >
             <span aria-hidden="true">◇</span>
             {primaryActionText}
           </button>
@@ -499,6 +536,12 @@
     background: linear-gradient(135deg, var(--accent-cyan), #2f80ff);
     color: var(--shell-bg);
     box-shadow: 0 0 28px rgba(103, 232, 249, 0.26);
+  }
+
+  .primary-action:disabled {
+    cursor: default;
+    opacity: 0.72;
+    box-shadow: none;
   }
 
   .secondary-action {
