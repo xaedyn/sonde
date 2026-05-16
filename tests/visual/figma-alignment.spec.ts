@@ -11,13 +11,12 @@ test.describe('Figma alignment shell', () => {
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
       await page.goto('/');
       await page.waitForSelector('#chronoscope-root');
-      await page.waitForTimeout(500);
+      await expect(page.locator('section[aria-label="Overview"]')).toBeVisible();
 
       await expect(page.getByRole('button', { name: 'Overview', exact: true })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Live', exact: true })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Investigate', exact: true })).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Report', exact: true })).toBeAttached();
-      await expect(page.locator('section[aria-label="Overview"]')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Report', exact: true })).toBeVisible();
       await expect(page.locator('.verdict-card')).toBeVisible();
       await expect(page.getByRole('button', { name: /Verify from outside network/i })).toBeVisible();
       await expect(page.locator('.rail')).toHaveCount(0);

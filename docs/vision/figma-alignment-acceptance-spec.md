@@ -14,7 +14,7 @@ This is not a request for another light restyle. The target is a product-level h
 
 Reference source:
 
-- Local Figma export: `/Users/shane/claude/chronoscope-redesign-figma/`
+- Local Figma export: source path intentionally omitted; use the captured manifest and screenshots below as the portable visual reference.
 - Captured reference manifest: `docs/artifacts/figma-alignment-reference/manifest.json`
 - Current production mismatch manifest: `docs/artifacts/figma-alignment-current/manifest.json`
 
