@@ -1,0 +1,22 @@
+{
+  "generatedAt": "2026-05-15T23:48:18.645Z",
+  "source": "https://chronoscope.dev/",
+  "routes": [
+    {
+      "viewport": "laptop",
+      "width": 1440,
+      "height": 900,
+      "url": "https://chronoscope.dev/",
+      "file": "screenshots/current-overview-laptop-1440x900.png",
+      "text": "Skip to main content\nChronoscope\nHTTP LATENCY MONITOR · MULTI-SITE\nMEASURING\nT+0060\nBrowser test · 4 endpoints · 5s timeout\n■\nStop\nENDPOINTS\n4\nGoogle\ngoogle.com\n19\nms\nEdge\nchronoscope.dev/probe\n31\nms\nAWS\naws.amazon.com\n31\nms\nFastly\nfastly.com/robots.txt\n20\nms\nManage endpoints\n1\nStatus\nIs everything okay?\n2\nLive\nWhat's happening right now?\n3\nInvestigate\nWhy does it look that way?\n⌨ 1·2·3\nNEEDS ATTENTION\nLatency is jumping around.\nHIGH CONFIDENCE\nNO BASELINE\n\nEvidence: 40+ successful checks across 4 sites; 40/160 checks show detailed timing.\n\nMEASURED FACTS\nMEDIAN\n25\nms\nJITTER\n67.6\nms\nLOSS\n0.0\n%\nInvestigate\nEdge\n→\n\nBROWSER LIMIT\nSome timing details are hidden by the browser\n\nNEXT CHECK\nCompare wired, Wi-Fi, or another network while watching jitter.\n\nScore 79 · Degraded\n4 sites clean. Score capped because latency is jumping around.\nNORMAL\n0\n300\n600\n870\nSTATUS SCORE\n79\nDEGRADED· LIVE 27· WITHIN BAND\nPer-endpoint\nTimeline\nPer-endpoint comparison\n\nLIVE LATENCIES ON SHARED AXIS\n\nSlow threshold: 120 ms\n\nClick → Live · ⇧-click → Investigate\n\n0\n300\n600\n870\nGoogle\n22ms\np95 22\nEdge\n34ms\np95 38\nAWS\n32ms\np95 37\nFastly\n22ms\np95 27\nTest started with 4 endpoints"
+    },
+    {
+      "viewport": "mobile",
+      "width": 390,
+      "height": 844,
+      "url": "https://chronoscope.dev/",
+      "file": "screenshots/current-overview-mobile-390x844.png",
+      "text": "Skip to main content\nChronoscope\n■\n1\nStatus\n2\nLive\n3\nInvestigate\nGOOD\nThis test looks healthy.\nHIGH CONFIDENCE\nNO BASELINE\nMEDIAN\n27\nms\nJITTER\n7.1\nms\nLOSS\n0.0\n%\nNORMAL\n0\n30\n60\n90\n120\n150\nSTATUS SCORE\n100\nHEALTHY· LIVE 28· WITHIN BAND\nPer-endpoint\nTimeline\nGoogle\n23ms\np95 26\nEdge\n40ms\np95 43\nAWS\n34ms\np95 40\nFastly\n23ms\np95 32\nTest started with 4 endpoints"
+    }
+  ]
+}

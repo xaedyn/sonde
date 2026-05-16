@@ -12,6 +12,7 @@ const VIEW_BY_KEY: Readonly<Record<string, ActiveView>> = {
   '1': 'overview',
   '2': 'live',
   '3': 'diagnose',
+  '4': 'report',
 };
 
 function isTextInput(target: EventTarget | null): boolean {

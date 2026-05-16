@@ -1,6 +1,6 @@
 <!-- src/lib/components/Layout.svelte -->
-<!-- v2 shell. Topbar (top) | { Rail (264px) | { ViewSwitcher + main content } }. -->
-<!-- Routes activeView to OverviewView / LiveView / DiagnoseView. The legacy    -->
+<!-- Figma-aligned shell. Topbar + top-level nav + active content.             -->
+<!-- Routes activeView to Overview / Live / Investigate / Report. The legacy   -->
 <!-- Lanes family was retired in Phase 7 — the v6→v7 migration rewrites         -->
 <!-- 'lanes' / 'timeline' / 'heatmap' / 'split' to 'overview' so nothing        -->
 <!-- reaches here.                                                              -->
@@ -12,9 +12,8 @@
   import { uiStore } from '$lib/stores/ui';
   import { tokens } from '$lib/tokens';
   import Topbar from './Topbar.svelte';
-  import EndpointRail from './EndpointRail.svelte';
   import ViewSwitcher from './ViewSwitcher.svelte';
-  import OverviewView from './OverviewView.svelte';
+  import FigmaOverviewView from './FigmaOverviewView.svelte';
   import LiveView from './LiveView.svelte';
   import DiagnoseView from './DiagnoseView.svelte';
   import ReportView from './ReportView.svelte';
@@ -82,8 +81,6 @@
     </main>
   {:else}
     <div class="shell-body">
-      <EndpointRail />
-
       <div class="shell-main-wrap">
         <ViewSwitcher />
 
@@ -92,14 +89,16 @@
             <LiveView />
           {:else if activeView === 'diagnose'}
             <DiagnoseView />
+          {:else if activeView === 'report'}
+            <ReportView />
           {:else}
             <!--
               Fallback: overview renders here as the default. Legacy route IDs
               may still exist in ActiveView or persisted payloads for backwards
-              compatibility, but the primary ViewSwitcher exposes only Status,
-              Live, and Investigate.
+              compatibility, but the primary ViewSwitcher exposes Overview,
+              Live, Investigate, and Report.
             -->
-            <OverviewView {onStart} />
+            <FigmaOverviewView />
           {/if}
         </main>
       </div>
@@ -154,6 +153,7 @@
     flex: 1;
     display: flex;
     min-height: 0;
+    min-width: 0;
   }
 
   .shell-main-wrap {

@@ -1,0 +1,114 @@
+{
+  "generatedAt": "2026-05-15T23:47:26.539Z",
+  "source": "/Users/shane/claude/chronoscope-redesign-figma",
+  "routes": [
+    {
+      "route": "overview",
+      "viewport": "desktop",
+      "width": 2048,
+      "height": 1330,
+      "url": "http://127.0.0.1:5190/",
+      "file": "screenshots/overview-desktop-2048x1330.png",
+      "text": "CHRONOSCOPE\nSTOP TEST\nOVERVIEW\nLIVE\nINVESTIGATE\nREPORT\n8.2\nSCORE\nBASED ON\nAGGREGATE LATENCY\nDEGRADED\nMEASURING\nOne endpoint is slower than the others from your browser.\n\nMeasured Fact: Your connection to app.chronoscope.dev is stable, but api.service.net is experiencing intermittent latency spikes.\n\nInterpretation: Since other endpoints are fast, your local Wi-Fi and core ISP connection are likely fine. The issue is likely specific to the route to the API, or the API itself.\n\nVerify from outside network\nView full evidence\nMEASURED ENDPOINTS\nLive chart\napp.chronoscope.dev\nStable performance\n42 ms\n±5 ms\napi.service.net\nLatency spikes detected\n185 ms\n±45 ms\ncdn.assets.io\nStable performance\n28 ms\n±2 ms\nauth.identity.net\nStable performance\n56 ms\n±8 ms\nEVENT LOG\n42:01\nRun started from Chrome (macOS)\n42:05\napi.service.net latency spiked to 450ms\n42:15\nAll endpoints stabilized\n43:00\napi.service.net timeout (5000ms limit)\nVIEW ALL 24 EVENTS"
+    },
+    {
+      "route": "overview",
+      "viewport": "laptop",
+      "width": 1440,
+      "height": 900,
+      "url": "http://127.0.0.1:5190/",
+      "file": "screenshots/overview-laptop-1440x900.png",
+      "text": "CHRONOSCOPE\nSTART TEST\nOVERVIEW\nLIVE\nINVESTIGATE\nREPORT\n8.2\nSCORE\nBASED ON\nAGGREGATE LATENCY\nDEGRADED\nOne endpoint is slower than the others from your browser.\n\nMeasured Fact: Your connection to app.chronoscope.dev is stable, but api.service.net is experiencing intermittent latency spikes.\n\nInterpretation: Since other endpoints are fast, your local Wi-Fi and core ISP connection are likely fine. The issue is likely specific to the route to the API, or the API itself.\n\nVerify from outside network\nView full evidence\nMEASURED ENDPOINTS\nLive chart\napp.chronoscope.dev\nStable performance\n42 ms\n±5 ms\napi.service.net\nLatency spikes detected\n185 ms\n±45 ms\ncdn.assets.io\nStable performance\n28 ms\n±2 ms\nauth.identity.net\nStable performance\n56 ms\n±8 ms\nEVENT LOG\n42:01\nRun started from Chrome (macOS)\n42:05\napi.service.net latency spiked to 450ms\n42:15\nAll endpoints stabilized\n43:00\napi.service.net timeout (5000ms limit)\nVIEW ALL 24 EVENTS"
+    },
+    {
+      "route": "overview",
+      "viewport": "mobile",
+      "width": 390,
+      "height": 844,
+      "url": "http://127.0.0.1:5190/",
+      "file": "screenshots/overview-mobile-390x844.png",
+      "text": "CHRONOSCOPE\nSTART TEST\nOVERVIEW\nLIVE\nINVESTIGATE\nREPORT\n8.2\nSCORE\nBASED ON\nAGGREGATE LATENCY\nDEGRADED\nOne endpoint is slower than the others from your browser.\n\nMeasured Fact: Your connection to app.chronoscope.dev is stable, but api.service.net is experiencing intermittent latency spikes.\n\nInterpretation: Since other endpoints are fast, your local Wi-Fi and core ISP connection are likely fine. The issue is likely specific to the route to the API, or the API itself.\n\nVerify from outside network\nView full evidence\nMEASURED ENDPOINTS\nLive chart\napp.chronoscope.dev\nStable performance\n42 ms\n±5 ms\napi.service.net\nLatency spikes detected\n185 ms\n±45 ms\ncdn.assets.io\nStable performance\n28 ms\n±2 ms\nauth.identity.net\nStable performance\n56 ms\n±8 ms\nEVENT LOG\n42:01\nRun started from Chrome (macOS)\n42:05\napi.service.net latency spiked to 450ms\n42:15\nAll endpoints stabilized\n43:00\napi.service.net timeout (5000ms limit)\nVIEW ALL 24 EVENTS"
+    },
+    {
+      "route": "live",
+      "viewport": "desktop",
+      "width": 2048,
+      "height": 1330,
+      "url": "http://127.0.0.1:5190/live",
+      "file": "screenshots/live-desktop-2048x1330.png",
+      "text": "CHRONOSCOPE\nSTART TEST\nOVERVIEW\nLIVE\nINVESTIGATE\nREPORT\nLive Measurement\n\nSynchronized latency testing from your browser\n\napp\napi\ncdn\nMeasurement Paused\nClick Start Test in the top bar to resume live network diagnostics.\n-40s\n-37s\n-34s\n-31s\n-28s\n-25s\n-22s\n-19s\n-16s\n-13s\n-11s\n-9s\n-7s\n-5s\n-3s\n-1s\n0 ms\n15 ms\n30 ms\n45 ms\n60 ms\n0 ms"
+    },
+    {
+      "route": "live",
+      "viewport": "laptop",
+      "width": 1440,
+      "height": 900,
+      "url": "http://127.0.0.1:5190/live",
+      "file": "screenshots/live-laptop-1440x900.png",
+      "text": "CHRONOSCOPE\nSTART TEST\nOVERVIEW\nLIVE\nINVESTIGATE\nREPORT\nLive Measurement\n\nSynchronized latency testing from your browser\n\napp\napi\ncdn\nMeasurement Paused\nClick Start Test in the top bar to resume live network diagnostics.\n-40s\n-37s\n-34s\n-31s\n-28s\n-25s\n-22s\n-19s\n-16s\n-13s\n-11s\n-9s\n-7s\n-5s\n-3s\n-1s\n0 ms\n15 ms\n30 ms\n45 ms\n60 ms\n0 ms"
+    },
+    {
+      "route": "live",
+      "viewport": "mobile",
+      "width": 390,
+      "height": 844,
+      "url": "http://127.0.0.1:5190/live",
+      "file": "screenshots/live-mobile-390x844.png",
+      "text": "CHRONOSCOPE\nSTART TEST\nOVERVIEW\nLIVE\nINVESTIGATE\nREPORT\nLive Measurement\n\nSynchronized latency testing from your browser\n\napp\napi\ncdn\nMeasurement Paused\nClick Start Test in the top bar to resume live network diagnostics.\n-35s\n-26s\n-17s\n-9s\n-1s\n0 ms\n15 ms\n30 ms\n45 ms\n60 ms\n0 ms"
+    },
+    {
+      "route": "investigate",
+      "viewport": "desktop",
+      "width": 2048,
+      "height": 1330,
+      "url": "http://127.0.0.1:5190/investigate",
+      "file": "screenshots/investigate-desktop-2048x1330.png",
+      "text": "CHRONOSCOPE\nSTART TEST\nOVERVIEW\nLIVE\nINVESTIGATE\nREPORT\nInvestigate Evidence\n\nDetailed endpoint diagnostics and what the browser can see\n\nMEASURED FROM YOUR BROWSER\n\nWhat we can definitively see from your current environment.\n\napp.chronoscope.dev\nSTABLE\nAVG LATENCY\n42 ms\nJITTER\n5 ms\nFAILURES\n0%\nFull diagnostic visibility (Same-Origin)\napi.service.net\nSPIKING\nAVG LATENCY\n185 ms\nJITTER\n45 ms\nFAILURES\n0%\nHidden by server (CORS limits)\nThe browser is not permitted to see exactly where time is spent (DNS, TCP, or server delay). We can only measure total trip time.\nNEEDS OUTSIDE VALIDATION\n\nData required to prove whether the issue is local to you.\n\nCheck from Outside Vantage Points\n\nRight now, we only know what your specific browser is experiencing. An outside check will prove if this slowness happens to everyone globally, or just your local connection.\n\nRun global test\nCheck with Local Agent\nNOT INSTALLED\n\nA desktop agent can bypass browser security limits to measure precise TCP/TLS times and network routing directly from your machine.\n\nWhy do we separate this?\nWe measure latency, but we never guess the root cause without proof. Separating facts from interpretation prevents falsely blaming your ISP or a specific server."
+    },
+    {
+      "route": "investigate",
+      "viewport": "laptop",
+      "width": 1440,
+      "height": 900,
+      "url": "http://127.0.0.1:5190/investigate",
+      "file": "screenshots/investigate-laptop-1440x900.png",
+      "text": "CHRONOSCOPE\nSTART TEST\nOVERVIEW\nLIVE\nINVESTIGATE\nREPORT\nInvestigate Evidence\n\nDetailed endpoint diagnostics and what the browser can see\n\nMEASURED FROM YOUR BROWSER\n\nWhat we can definitively see from your current environment.\n\napp.chronoscope.dev\nSTABLE\nAVG LATENCY\n42 ms\nJITTER\n5 ms\nFAILURES\n0%\nFull diagnostic visibility (Same-Origin)\napi.service.net\nSPIKING\nAVG LATENCY\n185 ms\nJITTER\n45 ms\nFAILURES\n0%\nHidden by server (CORS limits)\nThe browser is not permitted to see exactly where time is spent (DNS, TCP, or server delay). We can only measure total trip time.\nNEEDS OUTSIDE VALIDATION\n\nData required to prove whether the issue is local to you.\n\nCheck from Outside Vantage Points\n\nRight now, we only know what your specific browser is experiencing. An outside check will prove if this slowness happens to everyone globally, or just your local connection.\n\nRun global test\nCheck with Local Agent\nNOT INSTALLED\n\nA desktop agent can bypass browser security limits to measure precise TCP/TLS times and network routing directly from your machine.\n\nWhy do we separate this?\nWe measure latency, but we never guess the root cause without proof. Separating facts from interpretation prevents falsely blaming your ISP or a specific server."
+    },
+    {
+      "route": "investigate",
+      "viewport": "mobile",
+      "width": 390,
+      "height": 844,
+      "url": "http://127.0.0.1:5190/investigate",
+      "file": "screenshots/investigate-mobile-390x844.png",
+      "text": "CHRONOSCOPE\nSTART TEST\nOVERVIEW\nLIVE\nINVESTIGATE\nREPORT\nInvestigate Evidence\n\nDetailed endpoint diagnostics and what the browser can see\n\nMEASURED FROM YOUR BROWSER\n\nWhat we can definitively see from your current environment.\n\napp.chronoscope.dev\nSTABLE\nAVG LATENCY\n42 ms\nJITTER\n5 ms\nFAILURES\n0%\nFull diagnostic visibility (Same-Origin)\napi.service.net\nSPIKING\nAVG LATENCY\n185 ms\nJITTER\n45 ms\nFAILURES\n0%\nHidden by server (CORS limits)\nThe browser is not permitted to see exactly where time is spent (DNS, TCP, or server delay). We can only measure total trip time.\nNEEDS OUTSIDE VALIDATION\n\nData required to prove whether the issue is local to you.\n\nCheck from Outside Vantage Points\n\nRight now, we only know what your specific browser is experiencing. An outside check will prove if this slowness happens to everyone globally, or just your local connection.\n\nRun global test\nCheck with Local Agent\nNOT INSTALLED\n\nA desktop agent can bypass browser security limits to measure precise TCP/TLS times and network routing directly from your machine.\n\nWhy do we separate this?\nWe measure latency, but we never guess the root cause without proof. Separating facts from interpretation prevents falsely blaming your ISP or a specific server."
+    },
+    {
+      "route": "report",
+      "viewport": "desktop",
+      "width": 2048,
+      "height": 1330,
+      "url": "http://127.0.0.1:5190/report",
+      "file": "screenshots/report-desktop-2048x1330.png",
+      "text": "CHRONOSCOPE\nSTART TEST\nOVERVIEW\nLIVE\nINVESTIGATE\nREPORT\nDiagnostic Report\n\nGenerated on May 15, 2026\n\nCopy Summary\nShare Link\nCHRONOSCOPE\nDegraded Connection Detected\n\nOne endpoint (api.service.net) is significantly slower than the others from this browser.\n\nMEASURED FACTS\nDURATION\n2m 45s\nSAMPLES\n1,650\nENDPOINT COMPARISON\nENDPOINT\tAVG LATENCY\tJITTER\tSTATUS\napp.chronoscope.dev\t42 ms\t±5 ms\tSTABLE\napi.service.net\t185 ms\t±45 ms\tSPIKING\ncdn.assets.io\t28 ms\t±2 ms\tSTABLE\nBROWSER LIMITATIONS\n\nThe spiking endpoint (api.service.net) hides detailed timing data. Because of this, the browser cannot determine whether the delay is caused by DNS resolution, TCP connection, TLS handshake, or server processing time.\n\nRECOMMENDED NEXT STEP\n\nRun an outside validation test to determine if this latency is isolated to your local network/ISP, or if it is affecting all users globally.\n\nID: ch_req_98b72x9f • View live: chronoscope.dev/r/98b72x9f\nRETURN TO DASHBOARD"
+    },
+    {
+      "route": "report",
+      "viewport": "laptop",
+      "width": 1440,
+      "height": 900,
+      "url": "http://127.0.0.1:5190/report",
+      "file": "screenshots/report-laptop-1440x900.png",
+      "text": "CHRONOSCOPE\nSTART TEST\nOVERVIEW\nLIVE\nINVESTIGATE\nREPORT\nDiagnostic Report\n\nGenerated on May 15, 2026\n\nCopy Summary\nShare Link\nCHRONOSCOPE\nDegraded Connection Detected\n\nOne endpoint (api.service.net) is significantly slower than the others from this browser.\n\nMEASURED FACTS\nDURATION\n2m 45s\nSAMPLES\n1,650\nENDPOINT COMPARISON\nENDPOINT\tAVG LATENCY\tJITTER\tSTATUS\napp.chronoscope.dev\t42 ms\t±5 ms\tSTABLE\napi.service.net\t185 ms\t±45 ms\tSPIKING\ncdn.assets.io\t28 ms\t±2 ms\tSTABLE\nBROWSER LIMITATIONS\n\nThe spiking endpoint (api.service.net) hides detailed timing data. Because of this, the browser cannot determine whether the delay is caused by DNS resolution, TCP connection, TLS handshake, or server processing time.\n\nRECOMMENDED NEXT STEP\n\nRun an outside validation test to determine if this latency is isolated to your local network/ISP, or if it is affecting all users globally.\n\nID: ch_req_98b72x9f • View live: chronoscope.dev/r/98b72x9f\nRETURN TO DASHBOARD"
+    },
+    {
+      "route": "report",
+      "viewport": "mobile",
+      "width": 390,
+      "height": 844,
+      "url": "http://127.0.0.1:5190/report",
+      "file": "screenshots/report-mobile-390x844.png",
+      "text": "CHRONOSCOPE\nSTART TEST\nOVERVIEW\nLIVE\nINVESTIGATE\nREPORT\nDiagnostic Report\n\nGenerated on May 15, 2026\n\nCopy Summary\nShare Link\nCHRONOSCOPE\nDegraded Connection Detected\n\nOne endpoint (api.service.net) is significantly slower than the others from this browser.\n\nMEASURED FACTS\nDURATION\n2m 45s\nSAMPLES\n1,650\nENDPOINT COMPARISON\nENDPOINT\tAVG LATENCY\tJITTER\tSTATUS\napp.chronoscope.dev\t42 ms\t±5 ms\tSTABLE\napi.service.net\t185 ms\t±45 ms\tSPIKING\ncdn.assets.io\t28 ms\t±2 ms\tSTABLE\nBROWSER LIMITATIONS\n\nThe spiking endpoint (api.service.net) hides detailed timing data. Because of this, the browser cannot determine whether the delay is caused by DNS resolution, TCP connection, TLS handshake, or server processing time.\n\nRECOMMENDED NEXT STEP\n\nRun an outside validation test to determine if this latency is isolated to your local network/ISP, or if it is affecting all users globally.\n\nID: ch_req_98b72x9f • View live: chronoscope.dev/r/98b72x9f\nRETURN TO DASHBOARD"
+    }
+  ]
+}

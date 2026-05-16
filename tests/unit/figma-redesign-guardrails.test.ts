@@ -38,12 +38,20 @@ describe('Figma redesign guardrails', () => {
     expect(shellSource).not.toMatch(/\bprove\b/i);
   });
 
-  it('keeps Report out of the primary shell navigation for this slice', () => {
+  it('uses the aligned Overview shell instead of the old permanent endpoint rail', () => {
+    const layoutSource = readRepoFile('src/lib/components/Layout.svelte');
+
+    expect(layoutSource).toContain('FigmaOverviewView');
+    expect(layoutSource).not.toContain('EndpointRail');
+  });
+
+  it('exposes the Figma-aligned primary shell navigation', () => {
     const switcherSource = readRepoFile('src/lib/components/ViewSwitcher.svelte');
 
-    expect(switcherSource).toContain("label: 'Status'");
+    expect(switcherSource).toContain("label: 'Overview'");
     expect(switcherSource).toContain("label: 'Live'");
     expect(switcherSource).toContain("label: 'Investigate'");
-    expect(switcherSource).not.toMatch(/label:\s*['"]Report['"]/);
+    expect(switcherSource).toContain("label: 'Report'");
+    expect(switcherSource).not.toMatch(/label:\s*['"]Status['"]/);
   });
 });

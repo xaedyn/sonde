@@ -41,6 +41,9 @@ describe('global shortcuts', () => {
 
     expect(press('3')).toBe(true);
     expect(get(uiStore).activeView).toBe('diagnose');
+
+    expect(press('4')).toBe(true);
+    expect(get(uiStore).activeView).toBe('report');
   });
 
   it('ignores shifted number keys for view tabs', () => {
@@ -67,7 +70,6 @@ describe('global shortcuts', () => {
   it('does not toggle endpoints when users press disabled view numbers', () => {
     const before = get(endpointStore).map((ep) => ep.enabled);
 
-    expect(press('4')).toBe(false);
     expect(press('5')).toBe(false);
 
     expect(get(endpointStore).map((ep) => ep.enabled)).toEqual(before);

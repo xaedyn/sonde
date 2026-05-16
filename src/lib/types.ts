@@ -218,6 +218,7 @@ export type ActiveView =
   | 'overview'
   | 'live'
   | 'diagnose'
+  | 'report'
   | 'strata'
   | 'terminal';
 

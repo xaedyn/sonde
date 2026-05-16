@@ -25,7 +25,7 @@ export const CURRENT_VERSION = 11;
 
 // Views valid at v10/v11. Hidden legacy routes normalize to overview below.
 const V10_VIEWS: ReadonlySet<string> = new Set<ActiveView>([
-  'overview', 'live', 'diagnose', 'strata', 'terminal',
+  'overview', 'live', 'diagnose', 'report', 'strata', 'terminal',
 ]);
 
 const HIDDEN_VIEWS: ReadonlySet<string> = new Set<ActiveView>(['strata', 'terminal']);
