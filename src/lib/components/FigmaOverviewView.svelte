@@ -12,26 +12,43 @@
     type DiagnosticNarrative,
   } from '$lib/utils/diagnostic-narrative';
   import { diagnosticAlignedScore } from '$lib/utils/classify';
-  import { buildRunStoryline, type RunStoryline, type StoryBeatSeverity } from '$lib/utils/run-storyline';
+  import {
+    buildRunStoryline,
+    type EndpointTimelineRow,
+    type RunStoryline,
+    type StoryBeat,
+    type StoryBeatSeverity,
+    type TimelinePoint,
+  } from '$lib/utils/run-storyline';
   import type { Endpoint, EndpointStatistics, MeasurementSample } from '$lib/types';
   import type { VerdictRow } from '$lib/utils/verdict';
+
+  const HISTORY_VIEWBOX_WIDTH = 180;
+  const HISTORY_VIEWBOX_HEIGHT = 48;
+  const HISTORY_BASELINE_Y = 40;
+  const HISTORY_RANGE_Y = 32;
 
   interface EndpointSummary {
     readonly endpoint: Endpoint;
     readonly stats: EndpointStatistics | null;
     readonly samples: readonly MeasurementSample[];
+    readonly timeline: EndpointTimelineRow | null;
     readonly latency: number | null;
     readonly delta: number | null;
     readonly status: string;
+    readonly recent: string;
     readonly tone: 'good' | 'warn' | 'bad' | 'collecting';
   }
 
   interface EventLogItem {
     readonly id: string;
+    readonly t: number | null;
     readonly time: string;
+    readonly age: string;
     readonly label: string;
     readonly evidence: string;
     readonly tone: 'info' | 'good' | 'watch' | 'bad';
+    readonly endpointIds: readonly string[];
   }
 
   const monitored = $derived($monitoredEndpointsStore);
@@ -82,7 +99,13 @@
     threshold,
     runStart: measurements.startedAt,
     focusedEndpointId: $uiStore.focusedEndpointId,
+    maxVisibleRows: Math.max(monitored.length, 4),
   }));
+  const timelineRowsByEndpoint = $derived.by<Record<string, EndpointTimelineRow>>(() => (
+    Object.fromEntries(runStoryline.rows.map((row) => [row.endpointId, row]))
+  ));
+  const timelineWindowLabel = $derived(`Last ${durationLabel(timelineWindowSpan())} · Now on right`);
+  const timelineTicks = $derived(buildTimelineTicks(runStoryline.windowStart, runStoryline.windowEnd));
 
   const score = $derived(diagnosticAlignedScore(rawScore, diagnosticNarrative.severity));
   const scoreDisplay = $derived(score === null ? '—' : (score / 10).toFixed(1));
@@ -120,6 +143,7 @@
       const endpointState = measurements.endpoints[endpoint.id];
       const latency = endpointState?.lastLatency ?? rowStats?.p50 ?? null;
       const samples = samplesByEndpoint[endpoint.id] ?? [];
+      const timeline = timelineRowsByEndpoint[endpoint.id] ?? null;
       const lastStatus = endpointState?.lastStatus ?? null;
       const delta = rowStats?.stddev ?? null;
       let tone: EndpointSummary['tone'] = 'collecting';
@@ -144,27 +168,43 @@
         }
       }
 
-      return { endpoint, stats: rowStats, samples, latency, delta, status, tone };
+      return {
+        endpoint,
+        stats: rowStats,
+        samples,
+        timeline,
+        latency,
+        delta,
+        status,
+        recent: timeline?.summary ?? `${samples.length} recent browser samples`,
+        tone,
+      };
     })
   ));
 
   const eventRows: readonly EventLogItem[] = $derived.by(() => {
-    const beats = runStoryline.beats.slice(-4);
+    const beats = runStoryline.beats.slice(-5);
     if (beats.length === 0) {
       return [{
         id: 'run-state',
-        time: measurements.roundCounter > 0 ? `T+${String(measurements.roundCounter).padStart(4, '0')}` : 'Ready',
+        t: measurements.roundCounter > 0 ? runStoryline.windowEnd : null,
+        time: measurements.roundCounter > 0 ? eventRunTime(runStoryline.windowEnd) : 'Ready',
+        age: measurements.roundCounter > 0 ? 'now' : 'no run yet',
         label: measurements.roundCounter > 0 ? runStoryline.summary : 'Start a browser test to build an event trail',
         evidence: measurements.roundCounter > 0 ? `${runStoryline.sampleCount} samples in the current window` : 'No measurements captured yet',
         tone: 'info',
+        endpointIds: [],
       }];
     }
-    return beats.map((beat) => ({
+    return beats.map((beat: StoryBeat) => ({
       id: beat.id,
-      time: eventTime(beat.t),
+      t: beat.t,
+      time: eventRunTime(beat.t),
+      age: timeAgoLabel(beat.t),
       label: beat.label,
       evidence: beat.evidence,
       tone: toneForBeat(beat.severity),
+      endpointIds: beat.endpointIds,
     }));
   });
 
@@ -175,13 +215,74 @@
     return 'info';
   }
 
-  function eventTime(timestamp: number): string {
+  function timelineWindowSpan(): number {
+    return Math.max(1, runStoryline.windowEnd - runStoryline.windowStart);
+  }
+
+  function durationLabel(ms: number): string {
+    const seconds = Math.max(0, Math.round(ms / 1000));
+    if (seconds < 90) return `${seconds}s`;
+    const minutes = Math.round(seconds / 60);
+    if (minutes < 60) return `${minutes}m`;
+    const hours = Math.round(minutes / 60);
+    return `${hours}h`;
+  }
+
+  function buildTimelineTicks(start: number, end: number): readonly { readonly pct: number; readonly label: string }[] {
+    const span = Math.max(1, end - start);
+    const seconds = span / 1000;
+    const positions = seconds < 20 ? [0, 0.5, 1] : [0, 0.25, 0.5, 0.75, 1];
+    return positions.map((position) => ({
+      pct: position * 100,
+      label: position === 1 ? 'Now' : `-${durationLabel(span * (1 - position))}`,
+    }));
+  }
+
+  function timelinePct(timestamp: number): number {
+    const span = timelineWindowSpan();
+    return Math.max(0, Math.min(100, ((timestamp - runStoryline.windowStart) / span) * 100));
+  }
+
+  function historyPointY(point: Pick<TimelinePoint, 'normalizedLatency' | 'status'>): number {
+    if (point.status === 'failed' || point.normalizedLatency == null) return 48;
+    const y = HISTORY_BASELINE_Y - Math.min(HISTORY_RANGE_Y, Math.max(0, point.normalizedLatency) * HISTORY_RANGE_Y);
+    return (y / HISTORY_VIEWBOX_HEIGHT) * 100;
+  }
+
+  function historyPath(row: EndpointTimelineRow): string {
+    let d = '';
+    let prevWasGap = true;
+    for (const point of row.points) {
+      if (point.status === 'failed' || point.normalizedLatency == null) {
+        prevWasGap = true;
+        continue;
+      }
+      const x = (timelinePct(point.t) / 100) * HISTORY_VIEWBOX_WIDTH;
+      const y = HISTORY_BASELINE_Y - Math.min(HISTORY_RANGE_Y, Math.max(0, point.normalizedLatency) * HISTORY_RANGE_Y);
+      d += `${prevWasGap ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)} `;
+      prevWasGap = false;
+    }
+    return d.trim();
+  }
+
+  function historyMarkers(row: EndpointTimelineRow): readonly TimelinePoint[] {
+    return row.points.filter((point) => (
+      point.status === 'failed' || point.status === 'slow' || point.status === 'elevated'
+    ));
+  }
+
+  function timeAgoLabel(timestamp: number): string {
+    const age = Math.max(0, runStoryline.windowEnd - timestamp);
+    return age <= 999 ? 'now' : `${durationLabel(age)} ago`;
+  }
+
+  function eventRunTime(timestamp: number): string {
     if (!Number.isFinite(timestamp)) return 'Now';
     if (measurements.startedAt !== null) {
       const elapsed = Math.max(0, Math.round((timestamp - measurements.startedAt) / 1000));
       const mins = Math.floor(elapsed / 60);
       const secs = elapsed % 60;
-      return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+      return `T+${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
     }
     const date = new Date(timestamp);
     return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
@@ -193,19 +294,6 @@
 
   function formatDelta(value: number | null): string {
     return value === null || !Number.isFinite(value) ? '±—' : `±${Math.round(value)}`;
-  }
-
-  function sparklinePoints(samples: readonly MeasurementSample[], rowStats: EndpointStatistics | null): string {
-    const okSamples = samples
-      .filter((sample) => sample.status === 'ok' && Number.isFinite(sample.latency))
-      .slice(-24);
-    if (okSamples.length === 0) return '0,22 120,22';
-    const ceiling = Math.max(threshold, rowStats?.p95 ?? 0, ...okSamples.map((sample) => sample.latency), 1);
-    return okSamples.map((sample, index) => {
-      const x = okSamples.length === 1 ? 120 : (index / (okSamples.length - 1)) * 120;
-      const y = 28 - Math.max(0, Math.min(1, sample.latency / ceiling)) * 24;
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    }).join(' ');
   }
 
   function handlePrimaryAction(): void {
@@ -243,6 +331,12 @@
   function handleEndpointDrill(endpointId: string, destination: 'live' | 'diagnose'): void {
     uiStore.setFocusedEndpoint(endpointId);
     uiStore.setActiveView(destination);
+  }
+
+  function handleEventDrill(item: EventLogItem): void {
+    const endpointId = item.endpointIds[0] ?? null;
+    if (endpointId) uiStore.setFocusedEndpoint(endpointId);
+    uiStore.setActiveView('diagnose');
   }
 </script>
 
@@ -289,15 +383,24 @@
     <div class="lower-grid">
       <section class="measured-panel" aria-label="Measured endpoints">
         <header class="panel-header">
-          <h2>Measured Endpoints</h2>
+          <div>
+            <h2>Measured Endpoints</h2>
+            <p class="overview-time-window">{timelineWindowLabel}</p>
+          </div>
           <button type="button" onclick={() => uiStore.setActiveView('live')}>Live chart <span aria-hidden="true">›</span></button>
         </header>
+        <div class="overview-time-axis" aria-hidden="true">
+          {#each timelineTicks as tick (tick.pct)}
+            <span style:left="{tick.pct}%">{tick.label}</span>
+          {/each}
+        </div>
         <div class="endpoint-list">
           {#each endpointRows as row (row.endpoint.id)}
             <button
               type="button"
               class="endpoint-row"
               data-tone={row.tone}
+              aria-label="{row.endpoint.label}. {row.status}. {row.recent}. Latest {formatLatency(row.latency)} milliseconds."
               onclick={() => handleEndpointDrill(row.endpoint.id, 'live')}
               onkeydown={(event) => {
                 if (event.shiftKey && (event.key === 'Enter' || event.key === ' ')) {
@@ -310,10 +413,29 @@
               <span class="endpoint-main">
                 <strong>{row.endpoint.label}</strong>
                 <small>{row.status}</small>
+                <em>{row.recent}</em>
               </span>
-              <svg class="sparkline" viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true">
-                <polyline points={sparklinePoints(row.samples, row.stats)} />
-              </svg>
+              <span class="endpoint-history" aria-hidden="true">
+                {#if row.timeline}
+                  <svg
+                    class="endpoint-trace"
+                    viewBox="0 0 {HISTORY_VIEWBOX_WIDTH} {HISTORY_VIEWBOX_HEIGHT}"
+                    preserveAspectRatio="none"
+                  >
+                    <path d={historyPath(row.timeline)} />
+                  </svg>
+                  {#each historyMarkers(row.timeline) as point (`${row.endpoint.id}-${point.round}-${point.t}-${point.status}`)}
+                    <span
+                      class="endpoint-history-marker"
+                      data-status={point.status}
+                      style:left="{timelinePct(point.t)}%"
+                      style:top="{historyPointY(point)}%"
+                    ></span>
+                  {/each}
+                {:else}
+                  <span class="endpoint-history-empty"></span>
+                {/if}
+              </span>
               <span class="endpoint-metric">
                 <strong>{formatLatency(row.latency)} <small>ms</small></strong>
                 <em>{formatDelta(row.delta)} ms</em>
@@ -325,16 +447,45 @@
 
       <section class="event-panel" aria-label="Event log">
         <header class="panel-header">
-          <h2>Event Log</h2>
+          <div>
+            <h2>Event Log</h2>
+          </div>
         </header>
+        <div class="event-timeline" aria-label="Event timeline">
+          <p class="overview-time-window event-timeline-window">{timelineWindowLabel}</p>
+          <div class="overview-time-axis" aria-hidden="true">
+            {#each timelineTicks as tick (tick.pct)}
+              <span style:left="{tick.pct}%">{tick.label}</span>
+            {/each}
+          </div>
+          <div class="event-track" aria-hidden="true">
+            {#each eventRows as item (item.id)}
+              {#if item.t !== null}
+                <span
+                  class="event-pin"
+                  data-tone={item.tone}
+                  style:left="{timelinePct(item.t)}%"
+                ></span>
+              {/if}
+            {/each}
+          </div>
+        </div>
         <ol class="event-list">
           {#each eventRows as item (item.id)}
             <li data-tone={item.tone}>
-              <time>{item.time}</time>
-              <span>
-                <strong>{item.label}</strong>
-                <small>{item.evidence}</small>
-              </span>
+              <button
+                type="button"
+                class="event-entry"
+                data-tone={item.tone}
+                onclick={() => handleEventDrill(item)}
+              >
+                <time>{item.time}</time>
+                <span>
+                  <strong>{item.label}</strong>
+                  <small>{item.evidence}</small>
+                </span>
+                <em>{item.age}</em>
+              </button>
             </li>
           {/each}
         </ol>
@@ -577,7 +728,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    min-height: 44px;
+    min-height: 54px;
     border-bottom: 1px solid var(--shell-border);
   }
 
@@ -590,15 +741,56 @@
     color: var(--t2);
   }
 
+  .panel-header p {
+    margin: 5px 0 0;
+    font-family: var(--mono);
+    font-size: 10px;
+    line-height: 1.2;
+    letter-spacing: var(--tr-label);
+    text-transform: uppercase;
+    color: var(--t4);
+  }
+
   .panel-header button {
     border: 0;
     background: transparent;
     color: var(--accent-cyan);
   }
 
+  .overview-time-axis {
+    position: relative;
+    height: 24px;
+    margin-top: 12px;
+    color: var(--t4);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: var(--tr-label);
+    text-transform: uppercase;
+  }
+
+  .overview-time-axis::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 11px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--shell-border-strong), transparent);
+  }
+
+  .overview-time-axis span {
+    position: absolute;
+    top: 0;
+    transform: translateX(-50%);
+    white-space: nowrap;
+  }
+
+  .overview-time-axis span:first-child { transform: translateX(0); }
+  .overview-time-axis span:last-child { transform: translateX(-100%); color: var(--accent-cyan); }
+
   .endpoint-list,
   .event-list {
-    margin-top: 22px;
+    margin-top: 10px;
     border: 1px solid var(--shell-border);
     border-radius: 18px;
     background: rgba(11, 17, 27, 0.74);
@@ -608,11 +800,11 @@
   .endpoint-row {
     width: 100%;
     display: grid;
-    grid-template-columns: 20px minmax(210px, 1fr) minmax(140px, 190px) minmax(76px, auto);
+    grid-template-columns: 20px minmax(190px, 0.9fr) minmax(220px, 1.15fr) minmax(76px, auto);
     gap: 16px;
     align-items: center;
-    min-height: 86px;
-    padding: 16px 20px;
+    min-height: 102px;
+    padding: 18px 20px;
     border: 0;
     border-bottom: 1px solid var(--shell-border);
     background: transparent;
@@ -640,7 +832,7 @@
   .endpoint-main {
     min-width: 0;
     display: grid;
-    gap: 6px;
+    gap: 5px;
   }
 
   .endpoint-main strong {
@@ -655,29 +847,87 @@
   }
 
   .endpoint-main small,
+  .endpoint-main em,
   .endpoint-metric em,
   .event-list small {
     font-style: normal;
     color: var(--t3);
   }
 
-  .sparkline {
-    width: 100%;
-    height: 36px;
+  .endpoint-main em {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: var(--ts-xs);
+    color: var(--t4);
   }
 
-  .sparkline polyline {
+  .endpoint-history {
+    position: relative;
+    width: 100%;
+    min-width: 0;
+    height: 54px;
+    border-radius: 10px;
+    background: rgba(8, 14, 24, 0.54);
+    overflow: hidden;
+  }
+
+  .endpoint-history::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 10px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.14), transparent);
+  }
+
+  .endpoint-trace {
+    position: absolute;
+    inset: 7px 8px;
+    width: calc(100% - 16px);
+    height: calc(100% - 14px);
+    overflow: visible;
+  }
+
+  .endpoint-trace path {
     fill: none;
     stroke: currentColor;
-    stroke-width: 3;
+    stroke-width: 4;
     stroke-linecap: round;
     stroke-linejoin: round;
     color: var(--accent-green);
+    filter: drop-shadow(0 0 8px rgba(44, 245, 169, 0.18));
   }
 
-  .endpoint-row[data-tone='warn'] .sparkline polyline { color: var(--accent-amber); }
-  .endpoint-row[data-tone='bad'] .sparkline polyline { color: var(--accent-pink); }
-  .endpoint-row[data-tone='collecting'] .sparkline polyline { color: var(--accent-cyan); }
+  .endpoint-row[data-tone='warn'] .endpoint-trace path { color: var(--accent-amber); }
+  .endpoint-row[data-tone='bad'] .endpoint-trace path { color: var(--accent-pink); }
+  .endpoint-row[data-tone='collecting'] .endpoint-trace path { color: var(--accent-cyan); }
+
+  .endpoint-history-marker {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--accent-amber);
+    border: 2px solid rgba(8, 14, 24, 0.92);
+    box-shadow: 0 0 14px rgba(250, 204, 21, 0.35);
+  }
+
+  .endpoint-history-marker[data-status='slow'] {
+    background: var(--accent-pink);
+    box-shadow: 0 0 16px rgba(251, 113, 133, 0.36);
+  }
+
+  .endpoint-history-marker[data-status='failed'] {
+    width: 14px;
+    height: 14px;
+    border-radius: 4px;
+    background: var(--accent-pink);
+    box-shadow: 0 0 16px rgba(251, 113, 133, 0.42);
+  }
 
   .endpoint-metric {
     display: grid;
@@ -696,18 +946,98 @@
     color: var(--t2);
   }
 
+  .event-timeline {
+    margin-top: 12px;
+    padding: 12px 14px 14px;
+    border: 1px solid var(--shell-border);
+    border-radius: 14px;
+    background: rgba(8, 14, 24, 0.62);
+  }
+
+  .event-timeline-window {
+    margin: 0 0 8px;
+    max-width: none;
+    font-family: var(--mono);
+    font-size: 10px;
+    line-height: 1.2;
+    letter-spacing: var(--tr-label);
+    text-transform: uppercase;
+    color: var(--t4);
+  }
+
+  .event-timeline .overview-time-axis {
+    margin-top: 0;
+  }
+
+  .event-track {
+    position: relative;
+    height: 36px;
+    margin-top: 4px;
+  }
+
+  .event-track::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 17px;
+    height: 2px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(103, 232, 249, 0.12), rgba(103, 232, 249, 0.38), rgba(103, 232, 249, 0.12));
+  }
+
+  .event-pin {
+    position: absolute;
+    top: 17px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--accent-cyan);
+    border: 2px solid rgba(8, 14, 24, 0.95);
+    box-shadow: 0 0 18px rgba(103, 232, 249, 0.4);
+  }
+
+  .event-pin[data-tone='good'] {
+    background: var(--accent-green);
+    box-shadow: 0 0 18px rgba(44, 245, 169, 0.34);
+  }
+
+  .event-pin[data-tone='watch'] {
+    background: var(--accent-amber);
+    box-shadow: 0 0 18px rgba(250, 204, 21, 0.34);
+  }
+
+  .event-pin[data-tone='bad'] {
+    background: var(--accent-pink);
+    box-shadow: 0 0 18px rgba(251, 113, 133, 0.38);
+  }
+
   .event-list {
     list-style: none;
     padding: 18px;
     display: grid;
-    gap: 18px;
+    gap: 10px;
   }
 
   .event-list li {
+    min-width: 0;
+  }
+
+  .event-entry {
+    width: 100%;
     display: grid;
-    grid-template-columns: 48px minmax(0, 1fr);
-    gap: 14px;
+    grid-template-columns: 72px minmax(0, 1fr) 58px;
+    gap: 12px;
+    align-items: start;
+    min-height: 54px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    text-align: left;
     font-family: var(--mono);
+    cursor: pointer;
   }
 
   .event-list time {
@@ -715,7 +1045,7 @@
     font-size: var(--ts-sm);
   }
 
-  .event-list span {
+  .event-entry span {
     display: grid;
     gap: 6px;
     min-width: 0;
@@ -725,6 +1055,19 @@
     color: var(--t1);
     font-size: var(--ts-md);
     line-height: 1.45;
+  }
+
+  .event-entry em {
+    justify-self: end;
+    font-style: normal;
+    font-size: var(--ts-xs);
+    color: var(--t4);
+    white-space: nowrap;
+  }
+
+  .event-entry:hover strong,
+  .event-entry:focus-visible strong {
+    color: var(--accent-cyan);
   }
 
   .event-list li[data-tone='good'] strong { color: var(--accent-green); }
@@ -793,16 +1136,26 @@
     .endpoint-row {
       grid-template-columns: 18px minmax(0, 1fr) minmax(86px, 120px);
       gap: 12px;
-      min-height: 76px;
+      min-height: 128px;
       padding: 14px;
     }
-    .sparkline {
+    .endpoint-main em {
+      white-space: normal;
+    }
+    .endpoint-history {
       grid-column: 2 / -1;
       grid-row: 2;
-      height: 30px;
+      height: 52px;
     }
     .endpoint-metric {
       align-self: start;
+    }
+    .event-entry {
+      grid-template-columns: 68px minmax(0, 1fr);
+    }
+    .event-entry em {
+      grid-column: 2;
+      justify-self: start;
     }
     .verdict-actions {
       width: 100%;
