@@ -424,7 +424,7 @@
                   >
                     <path d={historyPath(row.timeline)} />
                   </svg>
-                  {#each historyMarkers(row.timeline) as point (`${row.endpoint.id}-${point.round}-${point.t}-${point.status}`)}
+                  {#each historyMarkers(row.timeline) as point, markerIndex (`${row.endpoint.id}-${point.round}-${point.t}-${point.status}-${markerIndex}`)}
                     <span
                       class="endpoint-history-marker"
                       data-status={point.status}

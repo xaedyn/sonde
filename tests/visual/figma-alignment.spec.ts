@@ -6,6 +6,8 @@ const VIEWPORTS = [
   { name: 'mobile', width: 390, height: 844 },
 ] as const;
 
+const MIN_ENDPOINT_HISTORY_HEIGHT = 44;
+
 type OverviewFixture = 'collecting' | 'healthy' | 'isolated-slow' | 'request-failures';
 
 async function seedOverviewFixture(page: Page, fixture: OverviewFixture): Promise<void> {
@@ -145,12 +147,12 @@ test.describe('Figma alignment shell', () => {
     const history = page.locator('.endpoint-row[data-tone="warn"] .endpoint-history').first();
     await expect(history).toBeVisible();
     const box = await history.boundingBox();
-    expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+    expect(box?.height ?? 0).toBeGreaterThanOrEqual(MIN_ENDPOINT_HISTORY_HEIGHT);
 
     const markers = page.locator('.endpoint-row[data-tone="warn"] .endpoint-history-marker');
     expect(await markers.count()).toBeGreaterThan(0);
 
-    const event = page.locator('.event-entry[data-tone="bad"], .event-entry[data-tone="watch"]').first();
+    const event = page.locator('.event-entry[data-tone="bad"]').first();
     await expect(event).toContainText(/T\+\d{2}:\d{2}/);
     await expect(event).toContainText(/ago/);
     await event.click();
@@ -163,7 +165,7 @@ test.describe('Figma alignment shell', () => {
     await expect(page.locator('.overview-time-axis').first()).toContainText('Now');
     const failures = page.locator('.endpoint-row[data-tone="bad"] .endpoint-history-marker[data-status="failed"]');
     expect(await failures.count()).toBeGreaterThan(0);
-    await expect(page.locator('.event-timeline')).toContainText(/Last \d+(s|m)/);
+    await expect(page.locator('.event-timeline .overview-time-window')).toContainText(/Last \d+(s|m)/);
   });
 
   test('Overview lower evidence stays readable on mobile', async ({ page }) => {
@@ -172,7 +174,7 @@ test.describe('Figma alignment shell', () => {
 
     const history = page.locator('.endpoint-row[data-tone="warn"] .endpoint-history').first();
     const box = await history.boundingBox();
-    expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+    expect(box?.height ?? 0).toBeGreaterThanOrEqual(MIN_ENDPOINT_HISTORY_HEIGHT);
     await expect(page.locator('.event-timeline')).toBeVisible();
 
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
