@@ -290,7 +290,7 @@
 </script>
 
 <section
-  class="report"
+  class="report report-surface"
   aria-label="Diagnostic report"
   style:--accent-cyan={tokens.color.accent.cyan}
   style:--accent-green={tokens.color.accent.green}
@@ -600,9 +600,9 @@
 <style>
   .report {
     width: 100%;
-    max-width: min(1120px, calc(100vw - 32px));
+    max-width: min(1320px, calc(100vw - 32px));
     margin: 0 auto;
-    padding: 22px 0 32px;
+    padding: clamp(24px, 4vw, 48px) 0 44px;
     color: var(--t1);
     font-family: var(--sans);
   }
@@ -610,12 +610,12 @@
   .report-hero {
     position: relative;
     overflow: hidden;
-    border: 1px solid var(--border-mid);
-    border-radius: 8px;
+    border: 1px solid var(--shell-border-strong);
+    border-radius: 18px;
     background:
-      linear-gradient(135deg, rgba(103,232,249,.085), transparent 32%),
-      linear-gradient(145deg, rgba(16,23,34,.88), rgba(8,12,19,.82));
-    box-shadow: 0 24px 80px rgba(0,0,0,.22);
+      radial-gradient(circle at 12% 40%, var(--shell-bg-cyan), transparent 32%),
+      linear-gradient(135deg, var(--shell-panel-raised), rgba(16, 23, 34, 0.72));
+    box-shadow: 0 28px 90px rgba(0,0,0,.18);
   }
   .report-hero::after {
     content: "";
@@ -629,7 +629,7 @@
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
     gap: 24px;
-    padding: 28px;
+    padding: clamp(22px, 3vw, 34px);
   }
   .report-copy {
     min-width: 0;
@@ -659,8 +659,8 @@
   h1 {
     margin: 0;
     max-width: 820px;
-    font-size: 44px;
-    line-height: 1.02;
+    font-size: clamp(32px, 4.1vw, 52px);
+    line-height: 1.06;
     letter-spacing: 0;
   }
 
@@ -685,8 +685,8 @@
     flex-direction: column;
     gap: 8px;
     padding: 16px;
-    border: 1px solid rgba(103,232,249,.18);
-    border-radius: 8px;
+    border: 1px solid var(--shell-border);
+    border-radius: 14px;
     background: rgba(7,11,18,.62);
   }
   .report-fact-card span {
@@ -739,7 +739,7 @@
   .action {
     min-height: 44px;
     border-radius: 8px;
-    border: 1px solid var(--border-mid);
+    border: 1px solid var(--shell-border);
     background: rgba(255,255,255,.025);
     color: var(--t2);
     padding: 0 13px;
@@ -749,7 +749,7 @@
   }
   .action:hover {
     color: var(--t1);
-    border-color: var(--border-bright);
+    border-color: var(--shell-border-strong);
   }
   .action-primary {
     color: var(--accent-cyan);
@@ -796,15 +796,15 @@
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 1px;
     margin: 18px 0;
-    border: 1px solid var(--border-mid);
-    border-radius: 8px;
+    border: 1px solid var(--shell-border);
+    border-radius: 14px;
     overflow: hidden;
-    background: var(--border-mid);
+    background: var(--shell-border);
   }
   .report-strip > div {
     min-width: 0;
     padding: 13px 14px;
-    background: rgba(12,10,20,.68);
+    background: rgba(8, 14, 24, 0.68);
     display: flex;
     flex-direction: column;
     gap: 4px;
@@ -816,9 +816,9 @@
 
   .evidence-trail {
     margin-bottom: 18px;
-    border: 1px solid var(--border-mid);
-    border-radius: 8px;
-    background: rgba(12,10,20,.58);
+    border: 1px solid var(--shell-border);
+    border-radius: 14px;
+    background: rgba(8, 14, 24, 0.62);
     padding: 14px;
   }
 
@@ -932,9 +932,9 @@
 
   .report-panel,
   .next-steps {
-    border: 1px solid var(--border-mid);
-    border-radius: 8px;
-    background: rgba(12,10,20,.58);
+    border: 1px solid var(--shell-border);
+    border-radius: 14px;
+    background: rgba(8, 14, 24, 0.62);
     padding: 16px;
   }
   .next-steps {

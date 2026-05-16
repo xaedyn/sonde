@@ -69,6 +69,11 @@ async function seedOverviewFixture(page: Page, fixture: OverviewFixture): Promis
   }, fixture);
 }
 
+async function expectNoHorizontalOverflow(page: Page): Promise<void> {
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+  expect(overflow).toBe(false);
+}
+
 test.describe('Figma alignment shell', () => {
   for (const viewport of VIEWPORTS) {
     test(`Overview first impression matches aligned shell at ${viewport.name}`, async ({ page }) => {
@@ -86,8 +91,7 @@ test.describe('Figma alignment shell', () => {
       await expect(page.locator('.rail')).toHaveCount(0);
       await expect(page.locator('svg.dial')).toHaveCount(0);
 
-      const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
-      expect(overflow).toBe(false);
+      await expectNoHorizontalOverflow(page);
     });
   }
 
@@ -177,7 +181,63 @@ test.describe('Figma alignment shell', () => {
     expect(box?.height ?? 0).toBeGreaterThanOrEqual(MIN_ENDPOINT_HISTORY_HEIGHT);
     await expect(page.locator('.event-timeline')).toBeVisible();
 
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
-    expect(overflow).toBe(false);
+    await expectNoHorizontalOverflow(page);
+  });
+
+  test('Live surface uses the aligned shell with compact endpoint evidence', async ({ page }) => {
+    await seedOverviewFixture(page, 'isolated-slow');
+
+    await page.getByRole('button', { name: 'Live', exact: true }).click();
+
+    await expect(page.locator('section[aria-label="Live latency trace"]')).toBeVisible();
+    await expect(page.locator('.live-surface')).toBeVisible();
+    await expect(page.locator('.live-hero')).toBeVisible();
+    await expect(page.locator('.live-scope-panel')).toBeVisible();
+    await expect(page.locator('.live-footer')).toBeVisible();
+    await expect(page.locator('.live-footer-chip')).toHaveCount(4);
+    await expect(page.locator('.rail')).toHaveCount(0);
+    await expectNoHorizontalOverflow(page);
+  });
+
+  test('Live surface stays scroll-safe at mobile width', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await seedOverviewFixture(page, 'isolated-slow');
+
+    await page.getByRole('button', { name: 'Live', exact: true }).click();
+
+    await expect(page.locator('.live-surface')).toBeVisible();
+    await expect(page.locator('.live-hero')).toBeVisible();
+    await expect(page.locator('.live-scope-panel')).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+  });
+
+  test('Investigate surface separates facts, interpretation, and proof boundaries', async ({ page }) => {
+    await seedOverviewFixture(page, 'isolated-slow');
+
+    await page.getByRole('button', { name: 'Investigate', exact: true }).click();
+
+    await expect(page.locator('section[aria-label="Investigate"]')).toBeVisible();
+    await expect(page.locator('.diagnose-surface')).toBeVisible();
+    await expect(page.locator('.diagnose-hero')).toBeVisible();
+    await expect(page.locator('.diagnose-proof-grid')).toBeVisible();
+    await expect(page.locator('.diagnose-answer-fact')).toContainText('Measured fact:');
+    await expect(page.locator('.diagnose-answer-interpretation')).toContainText('Interpretation:');
+    await expect(page.locator('.diagnose-proof-stack')).toContainText('Next proof actions');
+    await expect(page.locator('.diagnose')).not.toContainText(/prove your local|root cause|definitely/i);
+    await expectNoHorizontalOverflow(page);
+  });
+
+  test('Report surface is aligned, shareable, and scroll-safe', async ({ page }) => {
+    await seedOverviewFixture(page, 'healthy');
+
+    await page.getByRole('button', { name: 'Report', exact: true }).click();
+
+    await expect(page.locator('section[aria-label="Diagnostic report"]')).toBeVisible();
+    await expect(page.locator('.report-surface')).toBeVisible();
+    await expect(page.locator('.report-hero')).toBeVisible();
+    await expect(page.locator('.report-strip')).toBeVisible();
+    await expect(page.locator('.evidence-trail')).toBeVisible();
+    await expect(page.getByRole('button', { name: /Copy Report Link/i })).toBeVisible();
+    await expectNoHorizontalOverflow(page);
   });
 });

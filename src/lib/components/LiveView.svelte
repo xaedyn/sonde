@@ -103,11 +103,11 @@
   }
 </script>
 
-<section class="live-wrap" aria-label="Live latency trace">
-  <header class="live-header">
+<section class="live-wrap live-surface" aria-label="Live latency trace">
+  <header class="live-header live-hero">
     <div class="live-title-block">
       <div class="live-kicker">Live</div>
-      <h1 class="live-title">Live trace</h1>
+      <h1 class="live-title">Live latency trace</h1>
       <div class="live-status-strip" aria-label="Live trace summary">
         <span>{modeLabel}</span>
         {#if soloEndpoint}
@@ -169,35 +169,37 @@
     </div>
   </header>
 
-  {#if mode === 'split'}
-    <div class="scope-stack">
-      {#each visibleEndpoints as ep (ep.id)}
-        <ScopeCanvas
-          endpoints={[ep]}
-          samplesByEndpoint={{ [ep.id]: samplesByEndpoint[ep.id] ?? [] }}
-          {threshold}
-          {currentRound}
-          height={scopeHeight}
-          focusedEndpointId={null}
-          {p99Across}
-          detailScale={true}
-          onDrill={handleDrill}
-        />
-      {/each}
-    </div>
-  {:else}
-    <ScopeCanvas
-      endpoints={visibleEndpoints}
-      {samplesByEndpoint}
-      {threshold}
-      {currentRound}
-      height={scopeHeight}
-      focusedEndpointId={soloEndpoint ? null : focusedId}
-      {p99Across}
-      detailScale={true}
-      onDrill={handleDrill}
-    />
-  {/if}
+  <div class="live-scope-panel" data-mode={mode}>
+    {#if mode === 'split'}
+      <div class="scope-stack">
+        {#each visibleEndpoints as ep (ep.id)}
+          <ScopeCanvas
+            endpoints={[ep]}
+            samplesByEndpoint={{ [ep.id]: samplesByEndpoint[ep.id] ?? [] }}
+            {threshold}
+            {currentRound}
+            height={scopeHeight}
+            focusedEndpointId={null}
+            {p99Across}
+            detailScale={true}
+            onDrill={handleDrill}
+          />
+        {/each}
+      </div>
+    {:else}
+      <ScopeCanvas
+        endpoints={visibleEndpoints}
+        {samplesByEndpoint}
+        {threshold}
+        {currentRound}
+        height={scopeHeight}
+        focusedEndpointId={soloEndpoint ? null : focusedId}
+        {p99Across}
+        detailScale={true}
+        onDrill={handleDrill}
+      />
+    {/if}
+  </div>
 
   <footer class="live-footer" aria-label="Endpoint summary">
     <span class="live-footer-kicker">Endpoints</span>
@@ -230,21 +232,31 @@
 
 <style>
   .live-wrap {
-    padding: 18px 24px 24px;
+    width: min(100%, 1320px);
+    margin: 0 auto;
+    padding: clamp(24px, 4vw, 48px) clamp(16px, 4vw, 48px) 40px;
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 22px;
     min-height: 0;
     overflow-y: auto;
     flex: 1;
+    color: var(--t1);
   }
 
   .live-header {
     display: flex;
     justify-content: space-between;
-    align-items: flex-end;
-    gap: 20px;
+    align-items: center;
+    gap: 24px;
     flex-wrap: wrap;
+    padding: clamp(20px, 3vw, 30px);
+    border: 1px solid var(--shell-border-strong);
+    border-radius: 18px;
+    background:
+      radial-gradient(circle at 12% 40%, var(--shell-bg-cyan), transparent 32%),
+      linear-gradient(135deg, var(--shell-panel-raised), rgba(16, 23, 34, 0.72));
+    box-shadow: 0 28px 90px rgba(0, 0, 0, 0.18);
   }
   .live-kicker {
     font-family: var(--mono);
@@ -256,8 +268,9 @@
   }
   .live-title {
     margin: 0;
-    font-size: var(--ts-2xl);
-    font-weight: 500;
+    font-size: clamp(30px, 3.6vw, 46px);
+    line-height: 1.06;
+    font-weight: 700;
     letter-spacing: var(--tr-tight);
     color: var(--t1);
   }
@@ -275,9 +288,9 @@
     gap: 5px;
     min-width: 0;
     padding: 3px 7px;
-    border: 1px solid var(--border-mid);
-    border-radius: 5px;
-    background: rgba(255,255,255,.035);
+    border: 1px solid var(--shell-border);
+    border-radius: 6px;
+    background: rgba(255,255,255,.04);
     color: var(--t2);
     font-family: var(--mono);
     font-size: var(--ts-xs);
@@ -291,7 +304,16 @@
     box-shadow: 0 0 6px currentColor;
   }
 
-  .live-controls { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
+  .live-controls {
+    display: flex;
+    align-items: flex-end;
+    gap: 14px;
+    flex-wrap: wrap;
+    padding: 12px;
+    border: 1px solid var(--shell-border);
+    border-radius: 14px;
+    background: rgba(8, 14, 24, 0.58);
+  }
   .live-control { display: flex; flex-direction: column; gap: 4px; }
   .live-control-label {
     font-family: var(--mono);
@@ -305,7 +327,7 @@
     padding: 2px;
     background: rgba(255, 255, 255, 0.04);
     border-radius: 7px;
-    border: 1px solid var(--border-mid);
+    border: 1px solid var(--shell-border);
     gap: 2px;
   }
   .live-chip {
@@ -322,10 +344,10 @@
   }
   .live-chip:hover {
     color: var(--t1);
-    border-color: var(--border-bright);
+    border-color: var(--shell-border-strong);
   }
   .live-chip.on {
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--shell-panel-active);
     color: var(--t1);
     border-color: transparent;
   }
@@ -337,7 +359,7 @@
     padding: 6px 12px;
     border-radius: 5px;
     background: transparent;
-    border: 1px solid var(--border-mid);
+    border: 1px solid var(--shell-border);
     color: var(--t2);
     font-family: var(--mono);
     font-size: var(--ts-xs);
@@ -346,7 +368,7 @@
     transition: color 160ms ease, background 160ms ease, border-color 160ms ease;
     align-self: flex-end;
   }
-  .live-chip-back:hover { color: var(--t1); border-color: var(--border-bright); }
+  .live-chip-back:hover { color: var(--t1); border-color: var(--shell-border-strong); }
   .live-chip-back:focus-visible {
     outline: 2px solid var(--accent-cyan);
     outline-offset: 2px;
@@ -370,6 +392,16 @@
     letter-spacing: var(--tr-label);
   }
 
+  .live-scope-panel {
+    min-width: 0;
+    padding: clamp(12px, 2vw, 18px);
+    border: 1px solid var(--shell-border);
+    border-radius: 18px;
+    background: rgba(8, 14, 24, 0.68);
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.18);
+    overflow: hidden;
+  }
+
   .scope-stack {
     display: flex;
     flex-direction: column;
@@ -382,9 +414,9 @@
     gap: 6px;
     flex-wrap: wrap;
     padding: 10px 12px;
-    background: var(--glass-bg-rail-hover);
-    border: 1px solid var(--border-mid);
-    border-radius: 10px;
+    background: rgba(8, 14, 24, 0.62);
+    border: 1px solid var(--shell-border);
+    border-radius: 14px;
   }
   .live-footer-kicker {
     font-family: var(--mono);
@@ -401,7 +433,7 @@
     padding: 5px 10px;
     border-radius: 6px;
     background: rgba(255, 255, 255, 0.03);
-    border: 1px solid var(--border-mid);
+    border: 1px solid var(--shell-border);
     color: var(--t2);
     font-family: var(--mono);
     font-size: var(--ts-xs);
@@ -411,12 +443,12 @@
   }
   .live-footer-chip:hover {
     color: var(--t1);
-    border-color: var(--border-bright);
+    border-color: var(--shell-border-strong);
   }
   .live-footer-chip.on {
     background: rgba(255, 255, 255, 0.06);
     color: var(--t1);
-    border-color: var(--border-bright);
+    border-color: var(--shell-border-strong);
   }
   .live-footer-chip:focus-visible {
     outline: 2px solid var(--accent-cyan);
@@ -451,7 +483,10 @@
   }
 
   @media (max-width: 767px) {
-    .live-wrap { padding: 12px; gap: 10px; }
-    .live-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+    .live-wrap { width: 100%; padding: 16px; gap: 14px; }
+    .live-header { flex-direction: column; align-items: flex-start; gap: 14px; }
+    .live-controls { width: 100%; align-items: stretch; }
+    .live-control { flex: 1 1 120px; min-width: 0; }
+    .live-scope-panel { padding: 10px; border-radius: 14px; }
   }
 </style>

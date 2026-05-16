@@ -326,8 +326,8 @@
   );
 </script>
 
-<section class="diagnose" aria-label="Investigate">
-  <header class="diagnose-header">
+<section class="diagnose diagnose-surface" aria-label="Investigate">
+  <header class="diagnose-header diagnose-hero">
     <div class="diagnose-title-block">
       <div class="diagnose-kicker">Investigate · Distribution and correlation</div>
       <h1 class="diagnose-title">
@@ -402,7 +402,7 @@
       </div>
     </section>
 
-    <div class="diagnose-evidence-layout">
+    <div class="diagnose-evidence-layout diagnose-proof-grid">
       <section class="diagnose-facts-stack" aria-label="Measured browser facts">
         <div class="diagnose-column-head">
           <div class="diagnose-section-kicker">Measured browser facts</div>
@@ -785,10 +785,12 @@
 
 <style>
   .diagnose {
-    padding: 18px 28px 40px;
+    width: min(100%, 1320px);
+    margin: 0 auto;
+    padding: clamp(24px, 4vw, 48px) clamp(16px, 4vw, 48px) 44px;
     display: flex;
     flex-direction: column;
-    gap: 18px;
+    gap: 22px;
     min-height: 0;
     overflow-y: auto;
     flex: 1;
@@ -797,9 +799,16 @@
   .diagnose-header {
     display: flex;
     justify-content: space-between;
-    align-items: flex-end;
-    gap: 20px;
+    align-items: center;
+    gap: 24px;
     flex-wrap: wrap;
+    padding: clamp(20px, 3vw, 30px);
+    border: 1px solid var(--shell-border-strong);
+    border-radius: 18px;
+    background:
+      radial-gradient(circle at 12% 40%, var(--shell-bg-cyan), transparent 32%),
+      linear-gradient(135deg, var(--shell-panel-raised), rgba(16, 23, 34, 0.72));
+    box-shadow: 0 28px 90px rgba(0, 0, 0, 0.18);
   }
   .diagnose-kicker {
     font-family: var(--mono);
@@ -828,9 +837,9 @@
     flex-direction: column;
     gap: 8px;
     padding: 16px;
-    background: rgba(255, 255, 255, 0.025);
-    border: 1px solid var(--border-mid);
-    border-radius: 10px;
+    background: rgba(8, 14, 24, 0.62);
+    border: 1px solid var(--shell-border);
+    border-radius: 14px;
   }
   .distro-stats {
     display: flex;
@@ -899,9 +908,9 @@
     flex-direction: column;
     gap: 10px;
     padding: 16px;
-    background: rgba(255, 255, 255, 0.025);
-    border: 1px solid var(--border-mid);
-    border-radius: 10px;
+    background: rgba(8, 14, 24, 0.62);
+    border: 1px solid var(--shell-border);
+    border-radius: 14px;
   }
   .diagnose-brief {
     display: grid;
@@ -912,10 +921,10 @@
     min-height: 220px;
     background:
       linear-gradient(135deg, rgba(103, 232, 249, 0.07), rgba(37, 99, 235, 0.035) 42%, rgba(255, 255, 255, 0.022)),
-      rgba(255, 255, 255, 0.026);
-    border-color: color-mix(in srgb, var(--accent-cyan) 18%, var(--border-mid));
-    border-radius: 16px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.24);
+      var(--shell-panel-raised);
+    border-color: color-mix(in srgb, var(--accent-cyan) 20%, var(--shell-border-strong));
+    border-radius: 18px;
+    box-shadow: 0 28px 90px rgba(0, 0, 0, 0.18);
   }
   .diagnose-brief-score {
     width: clamp(112px, 12vw, 148px);
@@ -967,7 +976,7 @@
   .diagnose-evidence-layout {
     display: grid;
     grid-template-columns: minmax(0, 1.22fr) minmax(320px, 0.78fr);
-    gap: 18px;
+    gap: 22px;
     align-items: start;
   }
   .diagnose-facts-stack,
@@ -1062,9 +1071,8 @@
     color: var(--t1);
     font-family: var(--mono);
     font-size: var(--ts-sm);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
   }
   .visibility-headline {
     color: var(--t1);
@@ -1317,9 +1325,9 @@
     flex-direction: column;
     gap: 10px;
     padding: 16px;
-    background: rgba(255, 255, 255, 0.025);
-    border: 1px solid var(--border-mid);
-    border-radius: 10px;
+    background: rgba(8, 14, 24, 0.62);
+    border: 1px solid var(--shell-border);
+    border-radius: 14px;
   }
   .correlation-headline {
     margin: 0;
@@ -1396,9 +1404,9 @@
 
   /* ── Phase breakdown (collapsed by default) ────────────────────────────── */
   .diagnose-phases {
-    background: rgba(255, 255, 255, 0.025);
-    border: 1px solid var(--border-mid);
-    border-radius: 10px;
+    background: rgba(8, 14, 24, 0.62);
+    border: 1px solid var(--shell-border);
+    border-radius: 14px;
     padding: 16px;
   }
   .diagnose-phases summary {
@@ -1474,8 +1482,9 @@
   }
   .diagnose-title {
     margin: 0;
-    font-size: var(--ts-2xl);
-    font-weight: 500;
+    font-size: clamp(30px, 3.6vw, 46px);
+    line-height: 1.06;
+    font-weight: 700;
     letter-spacing: var(--tr-tight);
     color: var(--t1);
     display: flex;
@@ -1530,8 +1539,8 @@
     outline-offset: 2px;
   }
   .diagnose-chip-action {
-    background: transparent;
-    border: 1px solid var(--border-mid);
+    background: rgba(8, 14, 24, 0.44);
+    border: 1px solid var(--shell-border);
   }
 
   /* Empty states */
@@ -1676,8 +1685,8 @@
 
   /* Samples */
   .diagnose-samples {
-    background: var(--glass-bg-rail-hover);
-    border: 1px solid var(--border-mid);
+    background: rgba(8, 14, 24, 0.62);
+    border: 1px solid var(--shell-border);
     border-radius: 14px;
     padding: 14px 18px;
     display: flex;
@@ -1757,8 +1766,8 @@
   }
 
   @media (max-width: 767px) {
-    .diagnose { padding: 12px; gap: 12px; }
-    .diagnose-header { flex-direction: column; align-items: flex-start; }
+    .diagnose { width: 100%; padding: 16px; gap: 14px; }
+    .diagnose-header { flex-direction: column; align-items: flex-start; gap: 14px; }
     .diagnose-brief {
       display: flex;
       flex-direction: column;

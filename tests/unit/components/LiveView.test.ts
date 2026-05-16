@@ -61,7 +61,7 @@ describe('LiveView', () => {
   it('renders a calm live hierarchy with mode, window, round, and scale cues', () => {
     const { getByRole, getByText } = render(LiveView);
 
-    expect(getByRole('heading', { name: 'Live trace' })).toBeTruthy();
+    expect(getByRole('heading', { name: 'Live latency trace' })).toBeTruthy();
     expect(getByText('Unified overlay')).toBeTruthy();
     expect(getByText('2 endpoints')).toBeTruthy();
     expect(getByText('Round 60')).toBeTruthy();
