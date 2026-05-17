@@ -183,7 +183,7 @@ The codebase's `ActiveView` type (`src/lib/types.ts:217`) is `'overview' | 'live
 | `/` | `'overview'` | — |
 | `/live` | `'live'` | — |
 | `/investigate` | `'investigate'` | — |
-| `/endpoint/<id>` | `'endpoint'` | `id` must match `[a-zA-Z0-9_-]{1,64}` |
+| `/endpoint/<id>` | `'endpoint'` | `id` must match anchored regex `^[a-zA-Z0-9_-]{1,64}$` (no substring matches) |
 | `/report` | `'report'` | — |
 | Other (including `/diagnose`) | (triggers replace-redirect per "Unknown / malformed routes" table below) | The legacy `/diagnose` path is intentionally NOT a parse target — the user-facing URL is `/investigate`. Anyone with a bookmark or external link to `/diagnose` is redirected. |
 
@@ -211,7 +211,7 @@ The codebase's `ActiveView` type (`src/lib/types.ts:217`) is `'overview' | 'live
 
 `endpointId` segments come from user-controlled URLs (shared links, manually-typed addresses). Spec:
 
-- **Allowed characters:** `[a-zA-Z0-9_-]`. No `.`, no `/`, no URL-encoded characters, no Unicode.
+- **Allowed characters:** must fully match the anchored regex `^[a-zA-Z0-9_-]{1,64}$`. No `.`, no `/`, no URL-encoded characters, no Unicode. The anchoring is load-bearing: an unanchored pattern would match valid substrings inside attacker input (`/endpoint/abc@malicious` would partially match `abc`). PR 4 unit tests must explicitly cover `abc@malicious`, `abc/def`, `abc.def`, `<script>`, and the empty string as invalid inputs.
 - **Length:** 1 to 64 characters inclusive.
 - **Source format today:** Endpoint IDs are generated either by the share payload (`shared-ep-<i>-<timestamp>`, see `src/lib/share/hash-router.ts:80`) or by user-add flow (currently UUID-style strings). Both forms fall within the allowed character class.
 - **Validation point:** Router-wrapper validates on parse. Invalid IDs trigger the `replaceState('/investigate')` redirect — they never reach any component.
@@ -231,7 +231,7 @@ The codebase's `ActiveView` type (`src/lib/types.ts:217`) is `'overview' | 'live
 - URL-bar updates other than the path itself (already validated).
 - Analytics payloads other than as the validated `endpointId` (treated as opaque key).
 
-The validation contract above (`[a-zA-Z0-9_-]{1,64}`) makes the segment safe to render as text content but it is never inserted as HTML.
+The validation contract above (`^[a-zA-Z0-9_-]{1,64}$`, anchored) makes the segment safe to render as text content but it is never inserted as HTML.
 
 ### Cloudflare Pages SPA fallback
 
@@ -744,23 +744,28 @@ Each PR is independently merge-able and ends with a fidelity-gate update. Branch
 
 **Distribution-shape interpretation thresholds** (concrete, testable):
 
-Compute on the histogram bins (typically 7–10 bins, log-spaced from min sample to max):
+Compute on the histogram bins (typically 7–10 bins, log-spaced from min sample to max).
 
-- `peakRatio = secondHighestBinCount / highestBinCount` (in [0, 1])
+**Precondition: when total successful samples < 8** (the `MIN_READY_SAMPLES` threshold from `diagnostic-narrative.ts:141`), the template selection short-circuits to `insufficient-data` and the histogram itself is not rendered (an empty-state card appears in its place — see EndpointDetail Edge Cases). This avoids division-by-zero when `highestBinCount` is 0 and avoids attaching interpretation copy to a distribution that doesn't yet have a meaningful shape.
+
+Otherwise compute:
+
+- `peakRatio = secondHighestBinCount / highestBinCount` (in [0, 1]; `highestBinCount >= 1` is guaranteed by the precondition)
 - `binsAboveThreshold = count of bins with count > 0 and binMin > healthThreshold`
 
 Templates:
 
 | Condition | Template name | Interpretation copy |
 |---|---|---|
+| Total successful samples < 8 (precondition) | `insufficient-data` | *(no interpretation copy rendered — histogram replaced by empty-state card with copy `Collecting samples — distribution will appear once enough data is captured.`)* |
 | `binsAboveThreshold === 0` AND `peakRatio < 0.4` | `unimodal-tight` | `A tight cluster indicates consistent and predictable network performance.` |
 | `binsAboveThreshold === 0` AND `peakRatio >= 0.4` | `unimodal-wide` | `Latency varies but stays below the threshold throughout this window.` |
 | `binsAboveThreshold >= 1` AND `peakRatio >= 0.3` | `bimodal` | `Performance is splitting into two distinct speed groups. This often means traffic is occasionally taking a different, slower route.` |
 | `binsAboveThreshold >= 1` AND `peakRatio < 0.3` | `tail-spikes` | `Most samples are fast, with intermittent slow outliers. Often indicates occasional congestion rather than a baseline problem.` |
 
-These are unit-testable: given an array of bin counts and a threshold, the template selection is deterministic. Tests must cover each branch at minimum.
+These are unit-testable: given an array of bin counts and a threshold, the template selection is deterministic. Tests must cover each branch including `insufficient-data` (zero samples, 1 sample, exactly 7 samples — all hit the precondition; 8 samples falls through to the shape templates).
 
-**Merge gate:** Typecheck (with svelte-check), lint, unit tests including the 4 distribution templates + snapshot-load-does-not-call-navigateTo + endpoint-disappears-mid-view scenarios, build, axe scan on the new route. Fidelity-gate extended to 5 routes × 3 viewports = 15 cases.
+**Merge gate:** Typecheck (with svelte-check), lint, unit tests including the 5 distribution templates (including `insufficient-data`) + snapshot-load-does-not-call-navigateTo + endpoint-disappears-mid-view scenarios, build, axe scan on the new route. Fidelity-gate extended to 5 routes × 4 viewports (2048×1330, 1440×900, 390×844, 375×667) = 20 cases.
 
 **Unblocks:** Investigate landing decomposition in PR 8.
 
@@ -849,6 +854,7 @@ The fidelity gate and unit tests must cover the following states or they remain 
 | Condition | Behavior |
 |---|---|
 | `uiStore.isSharedView === true` (snapshot mode) | Live route renders the snapshot's captured trace; Paused overlay does NOT render (lifecycle is by-design not-running in snapshot mode). Add `[data-shared-snapshot="true"]` attribute to `.live-surface` so the gate can assert the overlay is absent. |
+| `monitoredEndpointsStore.length === 0` | Render Live empty-state card before the chart: copy `Add an endpoint to start measuring.`; chart panel hidden. |
 
 ### Snapshot-mode behavior across routes
 
@@ -863,7 +869,6 @@ When `uiStore.isSharedView === true`, the router still functions and `navigateTo
 | `/report` | Renders the snapshot's report metadata directly (same as today's behavior when `sharedReportMode === true`). Endpoint chips in the artifact card link to `/endpoint/:id` within the snapshot's endpoint set. |
 
 A `navigateTo({ name: 'endpoint', endpointId })` call where `endpointId` is not in the snapshot's endpoint set redirects to `/investigate` (same validation rule as non-shared mode).
-| `monitoredEndpointsStore.length === 0` | Render Live empty-state card before the chart: copy `Add an endpoint to start measuring.`; chart panel hidden. |
 
 ### Investigate landing
 
@@ -908,8 +913,7 @@ A `navigateTo({ name: 'endpoint', endpointId })` call where `endpointId` is not 
 The synthesis is complete only when all of these are true:
 
 - [ ] All 9 PRs merged.
-- [ ] Fidelity gate covers 5 routes × 3 viewports = 15 cases, all passing.
-- [ ] Fidelity gate includes 375-viewport assertions (not only 390).
+- [ ] Fidelity gate covers 5 routes × 4 viewports (2048×1330 desktop, 1440×900 laptop, 390×844 mobile, 375×667 mobile-SE) = 20 cases, all passing. Note: 375 is added by this arc (in PR 4) on top of the existing 3-viewport gate; 390 is retained for continuity with existing baselines.
 - [ ] All 4 nav tabs fully visible at 375 viewport with fade affordance for any clipping.
 - [ ] No numeric suffixes in any tab's accessible name.
 - [ ] Verdict card at 1440 viewport: 880 ≤ width ≤ 1040, 100 ≤ top ≤ 160, 360 ≤ height ≤ 460.
