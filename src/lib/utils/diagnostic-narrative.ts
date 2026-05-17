@@ -963,8 +963,18 @@ function primaryValidationFor(input: {
   };
 }
 
-function safeSummaryFor(claim: DiagnosticClaim, confidenceReasonText: string): string {
-  return `This browser test: ${claim.text} (${claim.strength} confidence; ${confidenceReasonText})`;
+function safeSummaryFor(claim: DiagnosticClaim): string {
+  // Drops the "(${strength} confidence; ${reason})" parenthetical that the
+  // synthesis design contract Section 2 "Disallowed" list explicitly forbids
+  // ("duplicates the measured fact and reads as marketing"). Confidence and
+  // its reason are still exposed on the DiagnoseNarrative via the
+  // `confidence`, `confidenceLabel`, and `confidenceReason` fields — surfaces
+  // that want to render them can compose them explicitly. The parenthetical
+  // also caused the Interpretation in the Overview verdict card to repeat the
+  // headline verbatim with a marketing-style suffix (verified in production
+  // 2026-05-17), which undermines the fact-vs-interpretation discipline the
+  // verdict card was designed to demonstrate.
+  return `This browser test: ${claim.text}`;
 }
 
 function timingSummaryFor(timingVisibility: TimingVisibility): string {
@@ -1022,6 +1032,57 @@ function supportingSummaryFor(input: {
     return `Clean browser-visible run: ${sampleScope}.`;
   }
 
+  // Substantive Measured Fact for the degraded kinds (jitter, isolated-
+  // endpoint, shared-network, multiple-slow, packet-loss). The prior
+  // fallback ("Evidence: ${sampleScope}; ${timingSummary}.") was meta-count,
+  // not a fact about WHAT was measured — the synthesis design contract
+  // calls for the Measured Fact slot to carry the actual measurement.
+  if (rows.length > 0) {
+    const medians = rows.map((r) => r.stats.p50).filter((v) => Number.isFinite(v)).sort((a, b) => a - b);
+    const median = medians.length > 0 ? Math.round(medians[Math.floor(medians.length / 2)] ?? 0) : null;
+    const p95s = rows.map((r) => r.stats.p95).filter((v) => Number.isFinite(v));
+    const peakP95 = p95s.length > 0 ? Math.round(Math.max(...p95s)) : null;
+    const peakRow = peakP95 !== null ? rows.find((r) => Math.round(r.stats.p95) === peakP95) : null;
+    const peakName = peakRow?.ep.label ?? null;
+
+    if (kind === 'isolated-endpoint') {
+      // The slow endpoint is the one with the highest p95 — peakRow above
+      // already identifies it. Surface its name and p95 explicitly so the
+      // Measured Fact carries the actual measurement, not just a count.
+      const slowName = peakName ?? 'one site';
+      return median !== null && peakP95 !== null
+        ? `Median latency is ${median} ms across ${rows.length} ${plural(rows.length, 'site')}; ${slowName} is the slowest at p95 ${peakP95} ms.`
+        : `${slowName} is the slowest site in this window.`;
+    }
+
+    if (kind === 'jitter') {
+      return median !== null && peakP95 !== null
+        ? `p50 is ${median} ms across ${rows.length} ${plural(rows.length, 'site')}, but p95 reaches ${peakP95} ms — latency is varying widely.`
+        : `Latencies are varying widely across ${rows.length} ${plural(rows.length, 'site')}.`;
+    }
+
+    if (kind === 'shared-network') {
+      return median !== null
+        ? `All ${rows.length} measured ${plural(rows.length, 'site')} are elevated: median is ${median} ms (threshold ${threshold} ms).`
+        : `All ${rows.length} measured ${plural(rows.length, 'site')} are over threshold.`;
+    }
+
+    if (kind === 'multiple-slow') {
+      const over = rows.filter((r) => r.stats.p50 > threshold).length;
+      return median !== null
+        ? `${over} of ${rows.length} ${plural(rows.length, 'site')} are over the ${threshold} ms threshold; overall median is ${median} ms.`
+        : `${over} of ${rows.length} ${plural(rows.length, 'site')} are over the ${threshold} ms threshold.`;
+    }
+
+    if (kind === 'packet-loss') {
+      const totalLoss = rows.reduce((sum, r) => sum + (r.stats.lossPercent ?? 0), 0) / rows.length;
+      return Number.isFinite(totalLoss)
+        ? `Some requests are failing — average loss across ${rows.length} ${plural(rows.length, 'site')} is ${totalLoss.toFixed(1)}%.`
+        : `Some requests are failing across ${rows.length} ${plural(rows.length, 'site')}.`;
+    }
+  }
+
+  // Final fallback (rare — handles edge cases where no rows are ready).
   return `Evidence: ${sampleScope}; ${timingSummaryFor(timingVisibility)}.`;
 }
 
@@ -1104,7 +1165,7 @@ export function buildDiagnosticNarrative(input: DiagnosticInput): DiagnosticNarr
     primaryAnswer,
     claims: [primaryAnswer, ...registryClaims],
     primaryValidation,
-    safeSummary: safeSummaryFor(primaryAnswer, confidenceReasonText),
+    safeSummary: safeSummaryFor(primaryAnswer),
     supportingSummary: supportingSummaryFor({
       kind,
       confidence,

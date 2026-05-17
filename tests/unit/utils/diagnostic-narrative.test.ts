@@ -224,7 +224,14 @@ describe('buildDiagnosticNarrative', () => {
     );
     expect(narrative.evidence.some((item) => item.label === 'Site to inspect' && item.value === 'API')).toBe(true);
     expect(narrative.safeSummary).not.toMatch(/likely (source|site|network|your network)/i);
-    expect(narrative.supportingSummary).toBe('Evidence: 18+ successful checks across 3 sites; total timing only.');
+    // Post-hotfix (fix/synthesis-arc-hotfixes) the Measured Fact slot
+    // surfaces actual measurements per kind rather than the prior generic
+    // "Evidence: N+ successful checks across N sites; total timing only."
+    // meta-count. For the isolated-endpoint kind, it now names the slowest
+    // site by label and includes its p95.
+    expect(narrative.supportingSummary).toBe(
+      'Median latency is 45 ms across 3 sites; API is the slowest at p95 70 ms.',
+    );
     expect(narrative.nextSteps.join(' ')).toContain('Open Investigate');
     expect(narrative.triageActions.map((action) => action.id)).toEqual([
       'review-browser-visibility',
