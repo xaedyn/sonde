@@ -962,7 +962,7 @@
     flex-direction: column;
     gap: 8px;
     padding: 16px;
-    background: rgba(8, 14, 24, 0.62);
+    background: color-mix(in srgb, black 40%, transparent);
     border: 1px solid var(--shell-border);
     border-radius: 14px;
   }
@@ -1060,10 +1060,10 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
-    padding: 16px;
-    background: rgba(8, 14, 24, 0.62);
+    padding: 18px;
+    background: var(--shell-panel);
     border: 1px solid var(--shell-border);
-    border-radius: 14px;
+    border-radius: 16px;
   }
   .diagnose-brief {
     display: grid;
@@ -1072,12 +1072,13 @@
     gap: clamp(18px, 3vw, 34px);
     padding: clamp(20px, 3vw, 30px);
     min-height: 220px;
-    background:
-      linear-gradient(135deg, rgba(103, 232, 249, 0.07), rgba(37, 99, 235, 0.035) 42%, rgba(255, 255, 255, 0.022)),
-      var(--shell-panel-raised);
-    border-color: color-mix(in srgb, var(--accent-cyan) 20%, var(--shell-border-strong));
-    border-radius: 18px;
-    box-shadow: 0 28px 90px rgba(0, 0, 0, 0.18);
+    /* v2 alignment: flat panel surface in the same family as the other
+       diagnose panels — drops the cyan-tinted gradient that previously
+       singled this surface out. */
+    background: var(--shell-panel);
+    border-color: var(--shell-border);
+    border-radius: 24px;
+    box-shadow: 0 25px 50px -12px color-mix(in srgb, black 35%, transparent);
   }
   .diagnose-brief-score {
     width: clamp(112px, 12vw, 148px);
