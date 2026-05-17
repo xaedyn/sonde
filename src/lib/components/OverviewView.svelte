@@ -121,11 +121,30 @@
   });
   const headline = $derived(diagnosticNarrative.primaryAnswer.text);
   const measuredFact = $derived(diagnosticNarrative.supportingSummary);
+  // Interpretation paragraph — distinct from the headline by design. Each
+  // diagnostic kind gets a sentence that says what the headline implies
+  // *for the user*, never restating it verbatim. Previously every kind
+  // fell back to safeSummary, which is just the headline with a prefix
+  // stripped — making the second paragraph a duplicate of the first
+  // (verified on production 2026-05-17 healthy state).
   const interpretation = $derived.by(() => {
-    if (diagnosticNarrative.kind === 'collecting') {
-      return 'Chronoscope needs a few successful checks before it can compare endpoints responsibly.';
+    const kind = diagnosticNarrative.kind;
+    switch (kind) {
+      case 'collecting':
+        return 'Chronoscope needs a few successful checks before it can compare endpoints responsibly.';
+      case 'healthy':
+        return 'Chronoscope has not seen a meaningful slowdown or failure in this window.';
+      case 'isolated-endpoint':
+        return "That points to either your browser's route to that one endpoint, or the endpoint itself. An outside check can confirm whether the slowness follows the endpoint from other networks.";
+      case 'shared-network':
+        return 'Multiple endpoints slowing in the same window typically points to a shared link between your browser and them — most often local network or upstream ISP.';
+      case 'multiple-slow':
+        return 'Several endpoints over the threshold without a shared slow phase — likely either a shared upstream issue or coincident endpoint-side slowness. An outside check helps separate the two.';
+      case 'packet-loss':
+        return 'Failed requests in the browser can come from the endpoint, the route to it, or a CORS block. An outside check separates these without changing your local network.';
+      case 'jitter':
+        return "Bouncing latency without a clear failure pattern usually points to congestion somewhere on the path. The path's not down — it's noisy.";
     }
-    return diagnosticNarrative.safeSummary.replace(/^This browser test:\s*/i, '');
   });
   const primaryActionText = $derived(diagnosticNarrative.primaryValidation.label);
   const primaryActionReason = $derived(diagnosticNarrative.primaryValidation.reason);
@@ -200,6 +219,40 @@
       after: headline.slice(index + label.length),
     };
   });
+
+  // v2-style inline endpoint highlight inside body paragraphs (not just the
+  // headline). Splits on any monitored endpoint label that appears in the
+  // text and emits a span sequence the template renders as styled chips.
+  function highlightEndpoints(text: string): readonly { readonly text: string; readonly tone: EndpointSummary['tone'] | null }[] {
+    if (text.length === 0) return [{ text: '', tone: null }];
+    const matchableLabels = endpointRows
+      .map((row) => ({ label: row.endpoint.label, tone: row.tone }))
+      .filter(({ label }) => label.length >= 2)
+      .sort((a, b) => b.label.length - a.label.length); // longest-first so overlapping labels prefer the longer match
+    if (matchableLabels.length === 0) return [{ text, tone: null }];
+
+    const segments: { text: string; tone: EndpointSummary['tone'] | null }[] = [];
+    let cursor = 0;
+    while (cursor < text.length) {
+      let best: { label: string; tone: EndpointSummary['tone']; index: number } | null = null;
+      for (const candidate of matchableLabels) {
+        const index = text.indexOf(candidate.label, cursor);
+        if (index < 0) continue;
+        if (best === null || index < best.index) best = { ...candidate, index };
+      }
+      if (best === null) {
+        segments.push({ text: text.slice(cursor), tone: null });
+        break;
+      }
+      if (best.index > cursor) segments.push({ text: text.slice(cursor, best.index), tone: null });
+      segments.push({ text: best.label, tone: best.tone });
+      cursor = best.index + best.label.length;
+    }
+    return segments;
+  }
+
+  const measuredFactSegments = $derived(highlightEndpoints(measuredFact));
+  const interpretationSegments = $derived(highlightEndpoints(interpretation));
 
   const eventRows: readonly EventLogItem[] = $derived.by(() => {
     const beats = runStoryline.beats.slice(-5);
@@ -406,8 +459,16 @@
           {/if}
         </h1>
         <div class="verdict-body">
-          <p>{measuredFact}</p>
-          <p class="interpretation">{interpretation}</p>
+          <p>
+            {#each measuredFactSegments as seg, i (i)}
+              {#if seg.tone}<span class="body-endpoint-name" data-tone={seg.tone}>{seg.text}</span>{:else}{seg.text}{/if}
+            {/each}
+          </p>
+          <p class="interpretation">
+            {#each interpretationSegments as seg, i (i)}
+              {#if seg.tone}<span class="body-endpoint-name" data-tone={seg.tone}>{seg.text}</span>{:else}{seg.text}{/if}
+            {/each}
+          </p>
         </div>
         <div class="verdict-actions">
           <button
@@ -435,11 +496,16 @@
     <div class="lower-grid">
       <section class="measured-panel" aria-label="Measured endpoints">
         <header class="panel-header">
-          <div>
-            <h2>Measured Endpoints</h2>
-            <p class="overview-time-window">{timelineWindowLabel}</p>
-          </div>
-          <button type="button" onclick={() => navigateTo({ name: 'live', endpointId: null })}>Live chart <span aria-hidden="true">›</span></button>
+          <h2>
+            <span class="panel-header-icon" aria-hidden="true">
+              <svg viewBox="0 0 16 16" fill="none">
+                <path d="M2 8h2.6l1.4-4 2.2 8 2-5 1.2 3h2.6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </span>
+            Measured Endpoints
+          </h2>
+          <p class="overview-time-window">{timelineWindowLabel}</p>
+          <button type="button" class="panel-link" onclick={() => navigateTo({ name: 'live', endpointId: null })}>Live chart <span aria-hidden="true">›</span></button>
         </header>
         <div class="overview-time-axis" aria-hidden="true">
           {#each timelineTicks as tick (tick.pct)}
@@ -500,9 +566,15 @@
 
       <section class="event-panel" aria-label="Event log">
         <header class="panel-header">
-          <div>
-            <h2>Event Log</h2>
-          </div>
+          <h2>
+            <span class="panel-header-icon" aria-hidden="true">
+              <svg viewBox="0 0 16 16" fill="none">
+                <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/>
+                <path d="M8 4.5V8L10.5 9.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </span>
+            Event Log
+          </h2>
         </header>
         <div class="event-timeline" aria-label="Event timeline">
           <p class="overview-time-window event-timeline-window">{timelineWindowLabel}</p>
@@ -701,16 +773,24 @@
 
   /* Inline endpoint name highlight — v2 pattern: same typographic size as
      the surrounding sentence, just a tone-coloured weight bump (no
-     background, no border, no chip box). Reads as a name, not a button. */
-  .headline-endpoint-name {
+     background, no border, no chip box). Reads as a name, not a button.
+     The body variant is slightly heavier (weight 600 vs 500 surrounding
+     prose) so the name pops without enlarging. */
+  .headline-endpoint-name,
+  .body-endpoint-name {
     color: var(--t1);
     font-weight: 600;
   }
-  .headline-endpoint-name[data-tone='good']      { color: var(--accent-green); }
+  .headline-endpoint-name[data-tone='good'],
+  .body-endpoint-name[data-tone='good']      { color: var(--accent-green); }
   .headline-endpoint-name[data-tone='warn'],
-  .headline-endpoint-name[data-tone='watch']     { color: var(--accent-amber); }
-  .headline-endpoint-name[data-tone='bad']       { color: var(--accent-pink); }
-  .headline-endpoint-name[data-tone='collecting']{ color: var(--accent-cyan); }
+  .headline-endpoint-name[data-tone='watch'],
+  .body-endpoint-name[data-tone='warn'],
+  .body-endpoint-name[data-tone='watch']     { color: var(--accent-amber); }
+  .headline-endpoint-name[data-tone='bad'],
+  .body-endpoint-name[data-tone='bad']       { color: var(--accent-pink); }
+  .headline-endpoint-name[data-tone='collecting'],
+  .body-endpoint-name[data-tone='collecting']{ color: var(--accent-cyan); }
 
   /* Body paragraphs — v2 drops the "Measured Fact:" / "Interpretation:"
      labels. Sentence separation survives through typography (slightly
@@ -817,49 +897,89 @@
     min-width: 0;
   }
 
+  /* v2 panel headers — small icon + 12px mono-uppercase kicker + optional
+     time-window subtitle + Live chart link on the right. The whole header
+     fits in a single row; no border-bottom separator (the cards below
+     carry their own borders, so a separator here just stacks lines). */
   .panel-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
-    min-height: 54px;
-    border-bottom: 1px solid var(--shell-border);
+    gap: 12px;
+    min-height: 28px;
+    margin-bottom: 8px;
   }
 
   .panel-header h2 {
     margin: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
     font-family: var(--mono);
-    font-size: clamp(16px, 1.7vw, 22px);
+    font-size: 12px;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: var(--tr-kicker);
-    color: var(--t2);
+    letter-spacing: var(--tr-label);
+    color: var(--t3);
   }
 
-  .panel-header p {
-    margin: 5px 0 0;
+  .panel-header-icon {
+    width: 14px;
+    height: 14px;
+    color: var(--t3);
+    display: inline-grid;
+    place-items: center;
+  }
+  .panel-header-icon svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Time-window subtitle — sits flush in the middle of the header row,
+     muted enough not to compete with the kicker. */
+  .panel-header .overview-time-window {
+    margin: 0;
+    flex: 1;
+    text-align: left;
+    padding-left: 4px;
     font-family: var(--mono);
     font-size: 10px;
-    line-height: 1.2;
+    line-height: 1;
     letter-spacing: var(--tr-label);
     text-transform: uppercase;
     color: var(--t4);
   }
 
-  .panel-header button {
+  /* Live chart link — quieter cyan, single line, hover lifts brightness. */
+  .panel-header .panel-link {
     border: 0;
     background: transparent;
     color: var(--accent-cyan);
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: background 160ms ease;
+  }
+  .panel-header .panel-link:hover {
+    background: color-mix(in srgb, var(--accent-cyan) 8%, transparent);
   }
 
+  /* v2 polish: smaller, more recessive time axis. Was 24 px tall + bright
+     gradient baseline; now 16 px + zinc-500 tone so it reads as a hint,
+     not a chart axis competing with the panel kicker. */
   .overview-time-axis {
     position: relative;
-    height: 24px;
-    margin-top: 12px;
+    height: 16px;
+    margin-top: 4px;
     color: var(--t4);
     font-family: var(--mono);
-    font-size: 10px;
+    font-size: 9px;
     letter-spacing: var(--tr-label);
     text-transform: uppercase;
+    opacity: 0.65;
   }
 
   .overview-time-axis::before {
