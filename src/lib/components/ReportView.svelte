@@ -1066,10 +1066,15 @@
     margin-top: 12px;
   }
   .endpoint-card {
+    /* Arc C C9: harmonise endpoint-card geometry with DiagnoseView's
+       landing cards — same border-radius family (12px here vs 14px on
+       Diagnose's larger card) and a stronger border so the cards read as
+       the same family across the three surfaces. Token sweep for the
+       remaining raw rgba values lands in the PR η tokenization pass. */
     min-width: 0;
-    padding: 12px;
+    padding: 14px;
     border: 1px solid rgba(255,255,255,.07);
-    border-radius: 7px;
+    border-radius: 12px;
     background: rgba(255,255,255,.035);
   }
   .endpoint-card.implicated {

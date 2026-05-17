@@ -510,6 +510,15 @@
           <p class="landing-kicker">MEASURED FROM YOUR BROWSER</p>
           <p class="landing-subtitle">What we can definitively see from your current environment.</p>
         </header>
+        {#if landingCards.length === 0}
+          <!-- Arc C C8: Investigate landing previously rendered an empty
+               `<ul>` when no endpoints were monitored. Now surfaces a clear
+               empty-state pointing the user at the endpoints overlay. -->
+          <div class="landing-empty" role="note">
+            <p class="landing-empty-headline">No endpoints to investigate yet.</p>
+            <p class="landing-empty-detail">Add an endpoint from the settings cog to start collecting browser-side facts.</p>
+          </div>
+        {:else}
         <ul class="endpoint-cards">
           {#each landingCards as card (card.endpoint.id)}
             <li>
@@ -554,6 +563,7 @@
             </li>
           {/each}
         </ul>
+        {/if}
       </section>
 
       <section class="validation-column" aria-label="Needs outside validation">
@@ -2152,6 +2162,34 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
+  }
+
+  /* Arc C C8: empty-state for the Investigate landing's measured column
+     when no endpoints are monitored. Matches the endpoint-card border
+     treatment (same radius + token border) so it slots into the column. */
+  .landing-empty {
+    padding: 18px;
+    border: 1px dashed var(--shell-border);
+    border-radius: 14px;
+    background: var(--shell-panel);
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .landing-empty-headline {
+    margin: 0;
+    color: var(--t1);
+    font-family: var(--sans);
+    font-size: var(--ts-sm);
+    font-weight: 700;
+  }
+  .landing-empty-detail {
+    margin: 0;
+    color: var(--t3);
+    font-family: var(--sans);
+    font-size: var(--ts-xs);
+    line-height: 1.45;
   }
   .endpoint-card {
     width: 100%;
