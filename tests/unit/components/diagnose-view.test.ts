@@ -121,16 +121,24 @@ describe('DiagnoseView investigation focus', () => {
     vi.restoreAllMocks();
   });
 
-  it('auto-selects the helper-selected endpoint on direct investigate entry', async () => {
+  it('renders the Investigate landing (no auto-focus) on direct investigate entry', async () => {
+    // PR 8 of synthesis arc: landing on /investigate (route.name ===
+    // 'investigate') now renders the two-column landing view and does NOT
+    // auto-focus an endpoint. Auto-focus only fires when the URL says
+    // /endpoint/:id (route.name === 'endpoint'). Users explicitly opt into
+    // a focused detail by clicking an endpoint card.
     endpointStore.setEndpoints([endpoint('api', 'API'), endpoint('cdn', 'CDN')]);
     seedReadySamples({ api: 120, cdn: 480 });
     uiStore.setActiveView('diagnose');
     uiStore.setFocusedEndpoint(null);
 
-    const { queryByText } = render(DiagnoseView);
+    const { queryByText, getByText } = render(DiagnoseView);
 
+    // No auto-focus: focusedEndpointId stays null because the URL is /
+    // by default in this test setup (jsdom doesn't navigate to /investigate
+    // implicitly; the route check gates the auto-focus effect).
     await waitFor(() => {
-      expect(get(uiStore).focusedEndpointId).toBe('cdn');
+      expect(getByText(/MEASURED FROM YOUR BROWSER/)).toBeTruthy();
     });
     expect(queryByText(/pick an endpoint from the left rail/i)).toBeNull();
   });
@@ -157,15 +165,21 @@ describe('DiagnoseView investigation focus', () => {
     expect(queryByText(/pick an endpoint from the left rail/i)).toBeNull();
   });
 
-  it('shows a choosing state instead of picker copy while monitored endpoints have no focus', () => {
+  it('renders the Investigate landing instead of picker copy while monitored endpoints have no focus', () => {
+    // PR 8 of synthesis arc: the legacy "Choosing the best endpoint to
+    // investigate..." loading copy was replaced by the two-column landing.
+    // No focus + monitored endpoints → render landing surface with the
+    // canonical "MEASURED FROM YOUR BROWSER" kicker.
     endpointStore.setEndpoints([endpoint('api', 'API')]);
     uiStore.setActiveView('overview');
     uiStore.setFocusedEndpoint(null);
 
     const { getByText, queryByText } = render(DiagnoseView);
 
-    expect(getByText(/choosing the best endpoint to investigate/i)).toBeTruthy();
+    expect(getByText(/MEASURED FROM YOUR BROWSER/)).toBeTruthy();
+    expect(getByText(/NEEDS OUTSIDE VALIDATION/)).toBeTruthy();
     expect(queryByText(/pick an endpoint from the left rail/i)).toBeNull();
+    expect(queryByText(/choosing the best endpoint to investigate/i)).toBeNull();
   });
 
   it('labels opaque no-cors fallback samples as total-only instead of errors', async () => {
