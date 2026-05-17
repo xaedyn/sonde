@@ -148,6 +148,7 @@
   });
   const primaryActionText = $derived(diagnosticNarrative.primaryValidation.label);
   const primaryActionReason = $derived(diagnosticNarrative.primaryValidation.reason);
+  const primaryActionId = $derived(diagnosticNarrative.primaryValidation.id);
   const primaryActionDisabled = $derived(
     diagnosticNarrative.primaryValidation.id === 'collect-more-samples'
       && (measurements.lifecycle === 'running' || measurements.lifecycle === 'starting' || measurements.lifecycle === 'stopping'),
@@ -437,7 +438,26 @@
     <section class="verdict-card" aria-label="Connection verdict">
       <div class="verdict-copy">
         <div class="verdict-kickers">
-          <span class="severity-pill" data-tone={severityTone}>{severityLabel}</span>
+          <span class="severity-pill" data-tone={severityTone}>
+            <span class="severity-pill-icon" aria-hidden="true">
+              {#if severityTone === 'good'}
+                <svg viewBox="0 0 16 16" fill="none">
+                  <circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.4"/>
+                  <path d="M5.2 8.2l2 2 3.6-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              {:else if severityTone === 'collecting'}
+                <svg viewBox="0 0 16 16" fill="none">
+                  <circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.4" stroke-dasharray="3 2"/>
+                </svg>
+              {:else}
+                <svg viewBox="0 0 16 16" fill="none">
+                  <path d="M8 2L14.5 13H1.5L8 2Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+                  <path d="M8 6.5V9.5M8 11.2V11.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                </svg>
+              {/if}
+            </span>
+            {severityLabel}
+          </span>
           {#if measurements.lifecycle === 'running' || measurements.lifecycle === 'starting'}
             <span class="measuring-pill" aria-label="Measuring">
               <span class="measuring-dot" aria-hidden="true">
@@ -479,6 +499,29 @@
             aria-disabled={primaryActionDisabled}
             onclick={handlePrimaryAction}
           >
+            <span class="primary-action-icon" aria-hidden="true">
+              {#if primaryActionId === 'share-snapshot' || primaryActionId === 'share-support-report'}
+                <svg viewBox="0 0 16 16" fill="none">
+                  <path d="M9.5 2.5h4v4M13.5 2.5L7.5 8.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M11 9v3.5a1 1 0 0 1-1 1H3.5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1H7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                </svg>
+              {:else if primaryActionId === 'run-remote-check' || primaryActionId === 'compare-network'}
+                <svg viewBox="0 0 16 16" fill="none">
+                  <path d="M8 1.5l5.5 2v4.4c0 3-2.3 5.8-5.5 6.6-3.2-.8-5.5-3.6-5.5-6.6V3.5L8 1.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+                  <path d="M5.6 8.2l1.7 1.7 3.3-3.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              {:else if primaryActionId === 'collect-more-samples'}
+                <svg viewBox="0 0 16 16" fill="none">
+                  <circle cx="8" cy="8" r="6.2" stroke="currentColor" stroke-width="1.4"/>
+                  <path d="M8 4.5V8L10.3 9.3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              {:else}
+                <svg viewBox="0 0 16 16" fill="none">
+                  <circle cx="7" cy="7" r="4.4" stroke="currentColor" stroke-width="1.4"/>
+                  <path d="M10.2 10.2 14 14" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                </svg>
+              {/if}
+            </span>
             {primaryActionText}
           </button>
           <button type="button" class="secondary-action" onclick={handleEvidenceAction}>
@@ -558,6 +601,11 @@
               <span class="endpoint-metric">
                 <strong>{formatLatency(row.latency)} <small>ms</small></strong>
                 <em>{formatDelta(row.delta)} ms</em>
+              </span>
+              <span class="endpoint-chevron" aria-hidden="true">
+                <svg viewBox="0 0 16 16" fill="none">
+                  <path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
               </span>
             </button>
           {/each}
@@ -693,9 +741,9 @@
   .measuring-pill {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     width: fit-content;
-    padding: 4px 12px;
+    padding: 4px 12px 4px 10px;
     border-radius: 999px;
     font-family: var(--mono);
     font-size: 11px;
@@ -703,6 +751,20 @@
     line-height: 1.4;
     text-transform: uppercase;
     letter-spacing: var(--tr-label);
+  }
+
+  /* v2 severity pill icon — small SVG glyph that takes the pill's
+     currentColor so it tints with the severity tone automatically. */
+  .severity-pill-icon {
+    display: inline-grid;
+    place-items: center;
+    width: 13px;
+    height: 13px;
+    color: currentColor;
+  }
+  .severity-pill-icon svg {
+    width: 100%;
+    height: 100%;
   }
 
   .severity-pill[data-tone='good'] {
@@ -830,7 +892,7 @@
     align-items: center;
     gap: 8px;
     min-height: 44px;
-    padding: 0 20px;
+    padding: 0 18px 0 16px;
     border: 0;
     border-radius: 12px;
     background: var(--t1);
@@ -841,6 +903,21 @@
     cursor: pointer;
     transition: transform 160ms ease, background 160ms ease;
     box-shadow: 0 0 20px color-mix(in srgb, var(--t1) 15%, transparent);
+  }
+
+  /* v2 primary-action icon — small SVG glyph that inherits the button's
+     color (shell-bg, i.e. black on the white pill). Sized to match the
+     action label's optical weight at 14 px. */
+  .primary-action-icon {
+    display: inline-grid;
+    place-items: center;
+    width: 16px;
+    height: 16px;
+    color: currentColor;
+  }
+  .primary-action-icon svg {
+    width: 100%;
+    height: 100%;
   }
   .primary-action:hover {
     background: color-mix(in srgb, var(--t1) 88%, transparent);
@@ -1020,7 +1097,10 @@
   .endpoint-row {
     width: 100%;
     display: grid;
-    grid-template-columns: 36px minmax(180px, 0.9fr) minmax(200px, 1.1fr) minmax(76px, auto);
+    /* v2 row geometry: status + name stack + sparkline + value + chevron.
+       Last column is a 16-px gutter for the chevron right-edge cue (v2
+       pattern: tells the user the row is clickable). */
+    grid-template-columns: 36px minmax(180px, 0.9fr) minmax(200px, 1.1fr) minmax(76px, auto) 16px;
     gap: 14px;
     align-items: center;
     min-height: 76px;
@@ -1188,6 +1268,32 @@
     font-style: normal;
     font-size: 11px;
     color: var(--t4);
+  }
+
+  /* v2 chevron — right-edge cue that the row is clickable. Dim by default,
+     brightens on hover/focus of the parent endpoint-row so the affordance
+     reads as "this row" not "this glyph". */
+  .endpoint-chevron {
+    display: grid;
+    place-items: center;
+    width: 16px;
+    height: 16px;
+    color: var(--t4);
+    transition: color 160ms ease, transform 160ms ease;
+  }
+  .endpoint-chevron svg {
+    width: 100%;
+    height: 100%;
+  }
+  .endpoint-row:hover .endpoint-chevron,
+  .endpoint-row:focus-visible .endpoint-chevron {
+    color: var(--t2);
+    transform: translateX(2px);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .endpoint-chevron { transition: none; }
+    .endpoint-row:hover .endpoint-chevron,
+    .endpoint-row:focus-visible .endpoint-chevron { transform: none; }
   }
 
   .event-timeline {
@@ -1380,11 +1486,14 @@
     h1 { font-size: 28px; line-height: 1.1; }
     .verdict-body p { font-size: 15px; line-height: 1.55; }
     .endpoint-row {
+      /* Mobile collapses to 3 effective tracks (status + content + value);
+         hide the chevron since the tap target is the whole row. */
       grid-template-columns: 18px minmax(0, 1fr) minmax(86px, 120px);
       gap: 12px;
       min-height: 128px;
       padding: 14px;
     }
+    .endpoint-row .endpoint-chevron { display: none; }
     .endpoint-main em {
       white-space: normal;
     }
