@@ -28,9 +28,8 @@ src/lib/components/RunStorylineCard.svelte
 src/lib/components/OverviewSubtabStrip.svelte
 src/lib/components/EventFeed.svelte
 
-# PR 4 (router + shell calmness) — these files are REWRITTEN. Clean violations during rewrite.
-src/lib/components/Topbar.svelte
-src/lib/components/ViewSwitcher.svelte
+# PR 4 (router + shell calmness) — REMOVED from ignore: violations cleaned in PR 4
+# (Topbar: tokenized rgba shell-backdrop + cyan-gradient color-mix; ViewSwitcher: same).
 
 # PR 6 (NetworkTopology + Overview placement) — FigmaOverviewView renamed to OverviewView; clean during rename.
 src/lib/components/FigmaOverviewView.svelte

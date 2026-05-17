@@ -1,1 +1,6 @@
-/r/* /index.html 200
+/r/*           /index.html  200
+/endpoint/*    /index.html  200
+/live          /index.html  200
+/investigate   /index.html  200
+/report        /index.html  200
+/diagnose      /investigate 301

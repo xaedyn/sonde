@@ -232,7 +232,7 @@
     align-items: center;
     gap: 14px;
     flex-shrink: 0;
-    background: rgba(7, 11, 18, 0.78);
+    background: var(--shell-backdrop);
     backdrop-filter: var(--shell-topbar-backdrop);
     -webkit-backdrop-filter: var(--shell-topbar-backdrop);
     border-bottom: 1px solid var(--shell-border);
@@ -243,12 +243,12 @@
   .brand-mark {
     width: 32px; height: 32px;
     border-radius: 8px;
-    background: linear-gradient(135deg, var(--accent-cyan), #0891b2);
+    background: linear-gradient(135deg, var(--accent-cyan), color-mix(in srgb, var(--accent-cyan), black 40%));
     border: 0;
     display: grid; place-items: center;
     color: var(--shell-bg);
     flex-shrink: 0;
-    box-shadow: 0 0 24px rgba(103, 232, 249, 0.22);
+    box-shadow: 0 0 24px color-mix(in srgb, var(--accent-cyan) 22%, transparent);
   }
   .brand-mark svg circle { display: none; }
   .brand-meta { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
