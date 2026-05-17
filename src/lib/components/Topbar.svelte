@@ -1,13 +1,13 @@
 <!-- src/lib/components/Topbar.svelte -->
-<!-- Single sticky shell pill. Brand row + nav row share a background and
-     border so they read as one floating element rather than two stacked
-     bars. Three icon ovals (endpoints/share/run-details) collapsed to a
-     single settings cog per synthesis design contract Section 1. Measuring
-     pulse + T+MM:SS elapsed counter integrated near the Stop button. -->
+<!-- v2 aesthetic alignment (v2 PR 4). Floating centred pill at desktop,
+     2-row stacked pill at mobile. Single row holds: brand on the left,
+     ViewSwitcher segmented control in the centre, Start/Stop + settings
+     cog on the right. The run-summary chrome line and the "Measuring +
+     T+MM:SS" affordance both retire in favour of v2's quieter pinging-dot
+     Live indicator that lives adjacent to the Stop button only while a
+     run is active. -->
 <script lang="ts">
   import { measurementStore } from '$lib/stores/measurements';
-  import { endpointStore } from '$lib/stores/endpoints';
-  import { settingsStore } from '$lib/stores/settings';
   import { uiStore } from '$lib/stores/ui';
   import type { TestLifecycleState } from '$lib/types';
   import { isStartLifecycle, runStatusText, startStopButtonLabel } from '$lib/utils/lifecycle-copy';
@@ -20,53 +20,20 @@
 
   const lifecycle: TestLifecycleState = $derived($measurementStore.lifecycle);
   const isSharedView: boolean = $derived($uiStore.isSharedView);
-  const enabledEndpointCount = $derived($endpointStore.filter((ep) => ep.enabled).length);
-  const cap = $derived($settingsStore.cap);
-  const timeout = $derived($settingsStore.timeout);
-  const startedAt = $derived($measurementStore.startedAt);
-
-  let now = $state(Date.now());
 
   const isRunning = $derived(lifecycle === 'running');
   const isTransitioning = $derived(lifecycle === 'starting' || lifecycle === 'stopping');
   const isMeasuring = $derived(isRunning || lifecycle === 'starting');
 
   const runText = $derived(runStatusText(lifecycle));
-  const endpointText = $derived(`${enabledEndpointCount} endpoint${enabledEndpointCount === 1 ? '' : 's'}`);
-  const timeoutText = $derived(`${Math.round(timeout / 1000)}s timeout`);
-  const runSummaryText = $derived(`${endpointText} · ${timeoutText} · cap ${cap}`);
 
-  // T+MM:SS elapsed counter per the synthesis design contract Section 1.
-  // Format mm:ss when under an hour, hh:mm:ss otherwise. Shows "T+00:00"
-  // during the brief "starting" lifecycle before the first round lands so
-  // the live affordance never blinks out.
-  const elapsedTickText = $derived.by(() => {
-    if (startedAt === null) return 'T+00:00';
-    const ms = Math.max(0, now - startedAt);
-    const totalSeconds = Math.floor(ms / 1000);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    const hours = Math.floor(minutes / 60);
-    if (hours > 0) {
-      const m = minutes % 60;
-      return `T+${String(hours).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-    }
-    return `T+${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-  });
-
-  // Single Stop/Start label per spec — drops the "Test" suffix.
+  // v2 Start/Stop label — drops the "Test" suffix per Arc C.
   const startStopLabel = $derived(startStopButtonLabel(lifecycle));
   const isStartButton = $derived(isStartLifecycle(lifecycle));
   const startStopText = $derived.by(() => {
     if (lifecycle === 'starting') return 'Starting…';
     if (lifecycle === 'stopping') return 'Stopping…';
     return isStartButton ? 'Start' : 'Stop';
-  });
-
-  $effect(() => {
-    if (lifecycle !== 'running' && lifecycle !== 'starting') return;
-    const id = setInterval(() => { now = Date.now(); }, 1000);
-    return () => clearInterval(id);
   });
 
   function handleStartStop(): void {
@@ -82,67 +49,54 @@
   function handleShare(): void { uiStore.toggleShare(); }
 </script>
 
-<header class="shell-pill">
-  <!-- Brand + run-state + actions row -->
-  <div class="shell-row pill-row">
+<header class="shell-floating">
+  <div class="shell-pill">
+    <!-- Brand -->
     <div class="brand">
       <div class="brand-mark" aria-hidden="true">
-        <svg viewBox="0 0 24 24" width="22" height="22">
-          <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.2" />
-          <circle cx="12" cy="12" r="1.4" fill="currentColor" />
-          <line x1="12" y1="12" x2="12" y2="4.5"  stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
-          <line x1="12" y1="12" x2="17" y2="15"   stroke="currentColor" stroke-width="1"   stroke-linecap="round" opacity="0.7" />
+        <svg viewBox="0 0 24 24" width="16" height="16">
+          <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.2"/>
+          <circle cx="12" cy="12" r="1.4" fill="currentColor"/>
+          <line x1="12" y1="12" x2="12" y2="4.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+          <line x1="12" y1="12" x2="17" y2="15"  stroke="currentColor" stroke-width="1"   stroke-linecap="round" opacity="0.7"/>
         </svg>
       </div>
-      <div class="brand-name">Chronoscope</div>
+      <span class="brand-name">Chronoscope</span>
     </div>
 
-    <!-- Measuring affordance integrated into the pill: cyan pulsing dot +
-         T+MM:SS elapsed counter near the Stop button. Renders only while
-         a run is active. -->
-    {#if isMeasuring}
-      <div class="run-status" role="status" aria-live="polite" aria-label={runText}>
-        <span class="measuring-dot" aria-hidden="true"></span>
-        <span class="measuring-label">Measuring</span>
-        <span class="measuring-tick" aria-hidden="true">{elapsedTickText}</span>
-      </div>
-    {/if}
+    <!-- Segmented control nav (desktop only — mobile shows the standalone
+         ViewSwitcher row below this pill). -->
+    <div class="nav-slot">
+      <ViewSwitcher />
+    </div>
 
-    <span class="spacer"></span>
-
-    <span class="run-summary" aria-hidden="true">{runSummaryText}</span>
-
+    <!-- Actions -->
     <nav class="actions" aria-label="Test controls">
+      {#if isMeasuring}
+        <span class="live-indicator" role="status" aria-live="polite" aria-label={runText}>
+          <span class="live-dot" aria-hidden="true">
+            <span class="live-dot-ping"></span>
+            <span class="live-dot-core"></span>
+          </span>
+          Live
+        </span>
+      {/if}
+
       {#if isSharedView}
         <button
           type="button" class="icon-btn"
           aria-label="Share results" aria-expanded={$uiStore.showShare} aria-controls="share-popover"
           onclick={handleShare}
         >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
             <path d="M4 10V12.5C4 13.052 4.448 13.5 5 13.5H11C11.552 13.5 12 13.052 12 12.5V10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
             <path d="M8 2.5V10M8 2.5L5.5 5M8 2.5L10.5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
-        <button type="button" class="run-btn start run-own" aria-label="Run your own test" onclick={handleRunOwn}>
+        <button type="button" class="run-btn start" aria-label="Run your own test" onclick={handleRunOwn}>
           Run your own test
         </button>
       {:else}
-        <!-- Single settings cog replaces the prior three icon ovals
-             (endpoints / settings / share / run-details). SettingsDrawer
-             provides the consolidated overlay sheet with Quick actions
-             section linking to endpoint management, share, and run
-             details — see synthesis design contract Section 1. -->
-        <button
-          type="button" class="icon-btn"
-          aria-label="Open settings" aria-expanded={$uiStore.showSettings} aria-controls="settings-drawer"
-          onclick={handleSettings}
-        >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <circle cx="8" cy="8" r="2.2" stroke="currentColor" stroke-width="1.3"/>
-            <path d="M8 1.5V3M8 13V14.5M14.5 8H13M3 8H1.5M12.6 3.4L11.5 4.5M4.5 11.5L3.4 12.6M12.6 12.6L11.5 11.5M4.5 4.5L3.4 3.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-          </svg>
-        </button>
         <button
           type="button"
           class="run-btn"
@@ -156,193 +110,241 @@
           <span class="run-btn-icon" aria-hidden="true">{isRunning ? '■' : '▶'}</span>
           <span>{startStopText}</span>
         </button>
+        <button
+          type="button" class="icon-btn"
+          aria-label="Open settings" aria-expanded={$uiStore.showSettings} aria-controls="settings-drawer"
+          onclick={handleSettings}
+        >
+          <svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <circle cx="8" cy="8" r="2.2" stroke="currentColor" stroke-width="1.3"/>
+            <path d="M8 1.5V3M8 13V14.5M14.5 8H13M3 8H1.5M12.6 3.4L11.5 4.5M4.5 11.5L3.4 12.6M12.6 12.6L11.5 11.5M4.5 4.5L3.4 3.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+          </svg>
+        </button>
       {/if}
     </nav>
   </div>
 
-  <!-- ViewSwitcher renders as the second row of the same pill. Shared
-       background + no internal divider so the two rows read as one
-       floating element. The pill itself sits sticky-top via .shell-pill. -->
-  <ViewSwitcher />
+  <!-- Mobile-only horizontal nav scroll. ViewSwitcher renders its tabs the
+       same way regardless of which slot it lives in; CSS hides this copy at
+       desktop where the segmented control inside the pill takes over. -->
+  <div class="mobile-nav-row">
+    <ViewSwitcher />
+  </div>
 </header>
 
 <style>
-  .shell-pill {
-    position: relative;
+  /* Outer container — full-width sticky header that doesn't carry visual
+     weight itself. The floating pill below is the actual visible element. */
+  .shell-floating {
+    position: sticky;
+    top: 0;
     z-index: 50;
+    width: 100%;
+    padding: 16px 16px 8px;
     display: flex;
     flex-direction: column;
-    flex-shrink: 0;
+    gap: 8px;
+    color: var(--t1);
+  }
+
+  /* The floating pill itself — v2's bg-[#1C1C1E]/80 backdrop-blur-2xl
+     border-white/[0.08] rounded-2xl shadow-2xl shadow-black/50, centred
+     with a max width so the surface doesn't span the full viewport. */
+  .shell-pill {
+    width: 100%;
+    max-width: 1024px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 16px;
+    padding: 8px 14px;
     background: var(--shell-backdrop);
     backdrop-filter: var(--shell-topbar-backdrop);
     -webkit-backdrop-filter: var(--shell-topbar-backdrop);
-    border-bottom: 1px solid var(--shell-border);
-    color: var(--t1);
+    border: 1px solid var(--shell-border);
+    border-radius: 18px;
+    box-shadow: 0 25px 50px -12px color-mix(in srgb, black 60%, transparent);
   }
 
-  .pill-row {
-    min-height: var(--shell-topbar-height, 60px);
-    padding: 0 18px;
+  .brand {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 12px;
+    min-width: 0;
+    padding-left: 4px;
   }
-
-  .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
   .brand-mark {
-    width: 36px; height: 36px;
-    border-radius: 10px;
-    background: linear-gradient(135deg, var(--accent-cyan), color-mix(in srgb, var(--accent-cyan), black 40%));
-    border: 0;
-    display: grid; place-items: center;
-    color: var(--shell-bg);
+    width: 32px;
+    height: 32px;
+    border-radius: 999px;
+    background: linear-gradient(to bottom, color-mix(in srgb, var(--t1) 18%, var(--shell-panel)), var(--shell-panel-raised));
+    border: 1px solid color-mix(in srgb, var(--t1) 10%, transparent);
+    color: var(--accent-cyan);
+    display: grid;
+    place-items: center;
     flex-shrink: 0;
-    box-shadow: 0 0 24px color-mix(in srgb, var(--accent-cyan) 22%, transparent);
+    box-shadow: inset 0 1px 1px color-mix(in srgb, var(--t1) 20%, transparent);
   }
-  .brand-mark svg circle { display: none; }
   .brand-name {
     font-family: var(--sans);
-    font-weight: 800;
-    font-size: 17px;
+    font-weight: 600;
+    font-size: 14px;
     letter-spacing: var(--tr-tight);
     color: var(--t1);
-    text-transform: none;
   }
 
-  /* Measuring affordance — cyan pulsing dot + T+MM:SS counter. Integrated
-     into the pill row near the Stop button per synthesis design contract. */
-  .run-status {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 5px 12px;
-    border-radius: 999px;
-    background: var(--shell-bg-cyan);
-    border: 1px solid var(--shell-border-strong);
-    color: var(--accent-cyan);
-    font-family: var(--mono);
-    font-size: var(--ts-xs);
-    font-weight: 700;
-    letter-spacing: var(--tr-label);
-    text-transform: uppercase;
-    line-height: 1;
-  }
-  .measuring-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--accent-cyan);
-    box-shadow: 0 0 12px var(--accent-cyan);
-    animation: measuring-pulse 1.4s ease-in-out infinite;
-  }
-  @keyframes measuring-pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.45; }
-  }
-  .measuring-label { color: var(--accent-cyan); }
-  .measuring-tick {
-    margin-left: 4px;
-    padding-left: 10px;
-    border-left: 1px solid var(--shell-border-strong);
-    color: var(--t1);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .spacer { flex: 1; }
-
-  .run-summary {
-    font-family: var(--mono);
-    font-size: var(--ts-xs);
-    color: var(--t4);
-    letter-spacing: var(--tr-label);
-    text-transform: uppercase;
+  /* The nav slot wraps ViewSwitcher so we can centre it inside the grid
+     middle column. ViewSwitcher owns its own segmented-control styling. */
+  .nav-slot {
+    display: flex;
+    justify-content: center;
+    min-width: 0;
   }
 
   .actions {
     display: flex;
     align-items: center;
     gap: 8px;
+    padding-right: 4px;
   }
 
+  /* v2 Live indicator — pinging dot + "Live" text. No pill, no border;
+     the dot itself carries the live-state signal. */
+  .live-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--accent-cyan);
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: var(--tr-label);
+    padding-right: 4px;
+  }
+  .live-dot {
+    position: relative;
+    display: inline-flex;
+    width: 8px;
+    height: 8px;
+    flex-shrink: 0;
+  }
+  .live-dot-ping {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: var(--accent-cyan);
+    opacity: 0.55;
+    animation: live-ping 1.4s cubic-bezier(0, 0, 0.2, 1) infinite;
+  }
+  .live-dot-core {
+    position: relative;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent-cyan);
+  }
+  @keyframes live-ping {
+    0% { transform: scale(1); opacity: 0.6; }
+    75%, 100% { transform: scale(2.2); opacity: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .live-dot-ping { animation: none; opacity: 0.4; }
+  }
+
+  /* Settings cog — v2 quiet icon button, no border, hover lifts colour
+     and adds a faint surface tint. */
   .icon-btn {
     width: 36px;
     height: 36px;
-    border-radius: 10px;
-    border: 1px solid var(--shell-border);
+    border-radius: 12px;
+    border: 0;
     background: transparent;
-    color: var(--t2);
+    color: var(--t3);
     cursor: pointer;
     display: grid;
     place-items: center;
-    transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
+    transition: background 160ms ease, color 160ms ease;
   }
   .icon-btn:hover {
-    background: var(--shell-panel-hover);
+    background: color-mix(in srgb, var(--t1) 5%, transparent);
     color: var(--t1);
-    border-color: var(--shell-border-strong);
   }
   .icon-btn:focus-visible {
     outline: 2px solid var(--accent-cyan);
     outline-offset: 2px;
   }
 
+  /* Start/Stop — v2 styling. Start: bg-zinc-100 text-black. Stop: rose-
+     tinted text + bg + border. Padding/sizing matches v2's px-4 py-1.5. */
   .run-btn {
+    position: relative;
     display: inline-flex;
     align-items: center;
     gap: 8px;
     min-height: 36px;
-    padding: 0 16px;
-    border-radius: 999px;
+    padding: 0 14px;
+    border-radius: 12px;
     border: 1px solid transparent;
     font-family: var(--sans);
-    font-weight: 700;
-    font-size: var(--ts-sm);
-    cursor: pointer;
-    transition: background 160ms ease, color 160ms ease;
+    font-size: 13px;
+    font-weight: 600;
     line-height: 1;
+    cursor: pointer;
+    transition: background 160ms ease, color 160ms ease, transform 160ms ease;
   }
   .run-btn.start {
     background: var(--t1);
     color: var(--shell-bg);
   }
-  .run-btn.start:hover {
-    background: color-mix(in srgb, var(--t1) 92%, transparent);
-  }
+  .run-btn.start:hover { transform: translateY(-1px); }
   .run-btn.stop {
-    background: var(--shell-stop-bg);
+    background: color-mix(in srgb, var(--accent-pink) 10%, transparent);
+    border-color: color-mix(in srgb, var(--accent-pink) 20%, transparent);
     color: var(--accent-pink);
-    border-color: var(--shell-stop-border);
   }
   .run-btn.stop:hover {
-    background: color-mix(in srgb, var(--accent-pink) 18%, transparent);
-  }
-  .run-btn.run-own {
-    background: var(--t1);
-    color: var(--shell-bg);
+    background: color-mix(in srgb, var(--accent-pink) 16%, transparent);
   }
   .run-btn:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+    transform: none;
   }
-  .run-btn-icon {
-    font-size: 11px;
-    line-height: 1;
-  }
+  .run-btn-icon { font-size: 10px; line-height: 1; }
   .run-btn:focus-visible {
     outline: 2px solid var(--accent-cyan);
     outline-offset: 2px;
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .measuring-dot { animation: none; }
-    .icon-btn, .run-btn { transition: none; }
-  }
+  /* Hide the mobile-only nav row at desktop. At mobile, hide the inline
+     nav slot inside the pill (it would crowd the brand + actions). */
+  .mobile-nav-row { display: none; }
 
   @media (max-width: 767px) {
-    .pill-row { padding: 0 12px; gap: 10px; min-height: 54px; }
-    .brand-name { font-size: 15px; }
-    .brand-mark { width: 32px; height: 32px; border-radius: 8px; }
-    .run-summary { display: none; }
-    .measuring-label { display: none; }
+    .shell-floating {
+      padding: 12px 12px 8px;
+      gap: 6px;
+    }
+    .shell-pill {
+      grid-template-columns: auto 1fr;
+      gap: 8px;
+      padding: 6px 10px;
+    }
+    .nav-slot { display: none; }
+    .mobile-nav-row {
+      display: block;
+      width: 100%;
+      max-width: 1024px;
+      margin: 0 auto;
+    }
+    .brand-name { display: none; }
+    .live-indicator { display: none; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .icon-btn, .run-btn { transition: none; }
+    .run-btn.start:hover { transform: none; }
   }
 </style>
