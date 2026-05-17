@@ -6,7 +6,9 @@
 <!-- auto-selects an investigation target when focus is missing or stale.       -->
 <script lang="ts">
   import { monitoredEndpointsStore } from '$lib/stores/derived';
-  import { navigateTo } from '$lib/router';
+  import { navigateTo, currentRoute, subscribeRoute, type RouteState } from '$lib/router';
+  import { companionStore } from '$lib/stores/companion';
+  import { ENDPOINT_TONE_PILL_LABEL, deriveEndpointTone } from '$lib/utils/endpoint-tone';
   import IntelligencePanel from '$lib/components/IntelligencePanel.svelte';
   import LocalProofPanel from '$lib/components/LocalProofPanel.svelte';
   import { bufferbloatStore } from '$lib/stores/bufferbloat';
@@ -39,7 +41,26 @@
   );
   const focusedEndpointUrlLabel = $derived(focusedEndpoint ? compactUrlLabel(focusedEndpoint.url) : '');
 
+  // Track the router state so we can distinguish /investigate (landing) from
+  // /endpoint/:id (focused deep-dive). The router only writes
+  // focusedEndpointId when route is 'endpoint'; the landing surface lives
+  // when route is 'investigate'. Subscribing so popstate / back-forward
+  // updates re-render correctly.
+  let route = $state<RouteState>(currentRoute());
   $effect(() => {
+    const off = subscribeRoute((next) => { route = next; });
+    return off;
+  });
+  const isEndpointRoute = $derived(route.name === 'endpoint');
+
+  $effect(() => {
+    // Auto-focus an endpoint only when the URL says /endpoint/* (PR 8 of
+    // synthesis arc). On /investigate landing, leave focusedEndpointId null
+    // so the two-column landing renders. The user explicitly opts into a
+    // focused detail by clicking an endpoint card → navigateTo({
+    //   name: 'endpoint', endpointId
+    // }).
+    if (!isEndpointRoute) return;
     if ($uiStore.activeView !== 'diagnose') return;
     const next = selectInvestigationEndpointId({
       monitored,
@@ -51,6 +72,58 @@
       uiStore.setFocusedEndpoint(next);
     }
   });
+
+  // Landing-view derivations (per endpoint card).
+  interface LandingCard {
+    readonly endpoint: typeof monitored[number];
+    readonly tone: ReturnType<typeof deriveEndpointTone>;
+    readonly pillLabel: string;
+    readonly latencyMs: string;
+    readonly jitterMs: string;
+    readonly failPct: string;
+    readonly visibilityLevel: 'none' | 'total-only' | 'mixed' | 'phase';
+  }
+  const landingCards: readonly LandingCard[] = $derived.by(() => (
+    monitored.map((ep): LandingCard => {
+      const epStats = stats[ep.id] ?? null;
+      const epState = measurements.endpoints[ep.id];
+      const lastStatus = epState?.lastStatus ?? null;
+      const tone = deriveEndpointTone({
+        stats: epStats,
+        lastStatus,
+        healthThreshold: settings.healthThreshold,
+      });
+      const allSamples = epState?.samples.toArray() ?? [];
+      const vis = describeTimingVisibility(allSamples, settings.corsMode);
+      return {
+        endpoint: ep,
+        tone,
+        pillLabel: ENDPOINT_TONE_PILL_LABEL[tone],
+        latencyMs: epStats?.ready ? `${fmt(epStats.p50)} ms` : '—',
+        jitterMs: epStats?.ready ? `${fmt(epStats.stddev)} ms` : '—',
+        failPct: epStats?.ready ? `${epStats.lossPercent.toFixed(1)}%` : '—',
+        visibilityLevel: vis.level,
+      };
+    })
+  ));
+
+  const remoteVantageStatus = $derived($remoteVantageStore.status);
+  const companionInstalled = $derived($companionStore.hasSecret === true);
+
+  function handleEndpointCardClick(endpointId: string): void {
+    navigateTo({ name: 'endpoint', endpointId });
+  }
+
+  function handleRunOutsideCheck(): void {
+    // Defer to the existing remote-vantage flow — the spec wires this card
+    // to the same probe the focused-detail Outside Check button uses.
+    // The landing button runs the probe across ALL monitored endpoints
+    // (the underlying API accepts a list), so the user gets a global check
+    // rather than committing to one endpoint first.
+    if (monitored.length > 0) {
+      void remoteVantageStore.runProbe(monitored);
+    }
+  }
 
   const focusedStats = $derived(focusedEndpoint ? stats[focusedEndpoint.id] : undefined);
   const remoteInsight = $derived(buildRemoteVantageInsight({
@@ -413,8 +486,107 @@
       <p class="diagnose-empty-hint">Chronoscope needs at least one monitored endpoint before it can compare distribution and correlation evidence.</p>
     </div>
   {:else if !focusedEndpoint}
-    <div class="diagnose-empty" role="note">
-      <p class="diagnose-empty-title">Choosing the best endpoint to investigate...</p>
+    <!-- Investigate landing (PR 8 of synthesis arc).
+         Two-column composition: left = "what we can see from this browser"
+         per endpoint; right = "what needs outside validation". The user
+         clicks an endpoint card to drill into /endpoint/:id (the focused
+         detail surface owned by the existing focused-endpoint branch
+         below). Wire matches the spec's anatomy table in Section 4. -->
+    <div class="investigate-landing" role="region" aria-label="Investigate landing">
+      <section class="measured-column" aria-label="Measured from your browser">
+        <header class="landing-col-header">
+          <p class="landing-kicker">MEASURED FROM YOUR BROWSER</p>
+          <p class="landing-subtitle">What we can definitively see from your current environment.</p>
+        </header>
+        <ul class="endpoint-cards">
+          {#each landingCards as card (card.endpoint.id)}
+            <li>
+              <button
+                type="button"
+                class="endpoint-card"
+                data-endpoint-id={card.endpoint.id}
+                data-tone={card.tone}
+                aria-label="View {card.endpoint.label} details"
+                onclick={() => handleEndpointCardClick(card.endpoint.id)}
+              >
+                <div class="endpoint-card-row">
+                  <span class="endpoint-card-name">{card.endpoint.label}</span>
+                  <span class="endpoint-card-pill">{card.pillLabel}</span>
+                </div>
+                <div class="endpoint-card-metrics">
+                  <div class="endpoint-card-metric">
+                    <span class="endpoint-card-metric-label">LATENCY</span>
+                    <span class="endpoint-card-metric-value">{card.latencyMs}</span>
+                  </div>
+                  <div class="endpoint-card-metric">
+                    <span class="endpoint-card-metric-label">JITTER</span>
+                    <span class="endpoint-card-metric-value">{card.jitterMs}</span>
+                  </div>
+                  <div class="endpoint-card-metric">
+                    <span class="endpoint-card-metric-label">FAILURES</span>
+                    <span class="endpoint-card-metric-value">{card.failPct}</span>
+                  </div>
+                </div>
+                <div class="endpoint-card-visibility" data-visibility-level={card.visibilityLevel}>
+                  {#if card.visibilityLevel === 'none'}
+                    COLLECTING
+                  {:else if card.visibilityLevel === 'total-only'}
+                    HIDDEN BY SERVER
+                  {:else if card.visibilityLevel === 'mixed'}
+                    PARTIAL VISIBILITY
+                  {:else}
+                    FULL VISIBILITY
+                  {/if}
+                </div>
+              </button>
+            </li>
+          {/each}
+        </ul>
+      </section>
+
+      <section class="validation-column" aria-label="Needs outside validation">
+        <header class="landing-col-header">
+          <p class="landing-kicker">NEEDS OUTSIDE VALIDATION</p>
+          <p class="landing-subtitle">Data required to prove whether the issue is local to you.</p>
+        </header>
+        <div class="validation-card">
+          <h3 class="validation-card-title">Check from Outside Vantage Points</h3>
+          <p class="validation-card-detail">
+            Right now we only know what your specific browser is experiencing.
+            An outside check will prove if this slowness happens to everyone
+            globally, or just your local connection.
+          </p>
+          <button
+            type="button"
+            class="validation-card-cta"
+            disabled={monitored.length === 0 || remoteVantageStatus === 'probing' || remoteVantageStatus === 'checking'}
+            onclick={handleRunOutsideCheck}
+          >
+            {remoteVantageStatus === 'probing' ? 'Running…' : 'Run global test'}
+          </button>
+        </div>
+
+        <div class="validation-card" data-state={companionInstalled ? 'installed' : 'not-installed'}>
+          <h3 class="validation-card-title">
+            Check with Local Agent
+            {#if !companionInstalled}
+              <span class="validation-card-flag">NOT INSTALLED</span>
+            {/if}
+          </h3>
+          <p class="validation-card-detail">
+            A desktop agent can bypass browser security limits to measure precise
+            TCP / TLS times and network routing directly from your machine.
+          </p>
+        </div>
+
+        <aside class="why-separate-callout" aria-label="Why we separate facts from interpretation">
+          <p>
+            <strong>Why do we separate this?</strong> We measure latency, but we
+            never guess the root cause without proof. Separating facts from
+            interpretation prevents falsely blaming your ISP or a specific server.
+          </p>
+        </aside>
+      </section>
     </div>
   {:else}
     <section class="diagnose-answer diagnose-brief" aria-label="Diagnostic answer">
@@ -1894,8 +2066,234 @@
     white-space: nowrap; border: 0;
   }
 
+  /* ── Investigate landing (PR 8 of synthesis arc) ─────────────────────── */
+  .investigate-landing {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.8fr);
+    gap: 32px;
+    align-items: start;
+  }
+  .landing-col-header {
+    margin-bottom: 16px;
+  }
+  .landing-kicker {
+    margin: 0;
+    color: var(--t3);
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: var(--tr-label);
+    text-transform: uppercase;
+  }
+  .landing-subtitle {
+    margin: 6px 0 0;
+    color: var(--t2);
+    font-family: var(--sans);
+    font-size: var(--ts-sm);
+    line-height: 1.5;
+  }
+  .endpoint-cards {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .endpoint-card {
+    width: 100%;
+    padding: 18px;
+    border: 1px solid var(--shell-border);
+    border-radius: 14px;
+    background: var(--shell-panel);
+    color: var(--t1);
+    text-align: left;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    transition: background 160ms ease, border-color 160ms ease;
+  }
+  .endpoint-card:hover { background: var(--shell-panel-hover); }
+  .endpoint-card:focus-visible {
+    outline: 2px solid var(--accent-cyan);
+    outline-offset: 2px;
+  }
+  .endpoint-card-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .endpoint-card-name {
+    font-family: var(--mono);
+    font-size: var(--ts-md);
+    font-weight: 700;
+    color: var(--t1);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .endpoint-card-pill {
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: var(--tr-label);
+    text-transform: uppercase;
+    border: 1px solid var(--shell-border-strong);
+    background: var(--shell-bg-cyan);
+    color: var(--accent-cyan);
+  }
+  .endpoint-card[data-tone='good'] .endpoint-card-pill {
+    color: var(--accent-green);
+    background: var(--shell-success-bg);
+    border-color: var(--shell-success-border);
+  }
+  .endpoint-card[data-tone='watch'] .endpoint-card-pill {
+    color: var(--accent-amber);
+    background: var(--shell-bg-amber);
+    border-color: var(--shell-stop-border);
+  }
+  .endpoint-card[data-tone='bad'] .endpoint-card-pill {
+    color: var(--accent-pink);
+    background: var(--shell-stop-bg);
+    border-color: var(--shell-stop-border);
+  }
+  .endpoint-card-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .endpoint-card-metric {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--shell-base) 54%, transparent);
+  }
+  .endpoint-card-metric-label {
+    color: var(--t4);
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: var(--tr-label);
+    text-transform: uppercase;
+  }
+  .endpoint-card-metric-value {
+    color: var(--t1);
+    font-family: var(--mono);
+    font-size: var(--ts-sm);
+    font-weight: 700;
+  }
+  .endpoint-card-visibility {
+    padding: 6px 10px;
+    border-radius: 6px;
+    align-self: flex-start;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: var(--tr-label);
+    text-transform: uppercase;
+  }
+  .endpoint-card-visibility[data-visibility-level='none'] {
+    color: var(--accent-cyan);
+    background: var(--shell-bg-cyan);
+  }
+  .endpoint-card-visibility[data-visibility-level='total-only'],
+  .endpoint-card-visibility[data-visibility-level='mixed'] {
+    color: var(--accent-amber);
+    background: var(--shell-bg-amber);
+  }
+  .endpoint-card-visibility[data-visibility-level='phase'] {
+    color: var(--accent-green);
+    background: var(--shell-success-bg);
+  }
+
+  .validation-card {
+    padding: 18px;
+    margin-bottom: 14px;
+    border: 1px solid var(--shell-border);
+    border-radius: 14px;
+    background: var(--shell-panel);
+  }
+  .validation-card-title {
+    margin: 0 0 8px;
+    color: var(--t1);
+    font-family: var(--sans);
+    font-size: var(--ts-base);
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .validation-card-flag {
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--shell-panel-hover);
+    color: var(--t3);
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: var(--tr-label);
+    text-transform: uppercase;
+  }
+  .validation-card-detail {
+    margin: 0 0 12px;
+    color: var(--t2);
+    font-family: var(--sans);
+    font-size: var(--ts-sm);
+    line-height: 1.55;
+  }
+  .validation-card-cta {
+    min-height: 36px;
+    padding: 0 16px;
+    border-radius: 8px;
+    border: 0;
+    background: var(--shell-bg-cyan);
+    color: var(--accent-cyan);
+    font-family: var(--sans);
+    font-size: var(--ts-sm);
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .validation-card-cta:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  .validation-card[data-state='not-installed'] {
+    opacity: 0.7;
+  }
+
+  .why-separate-callout {
+    margin-top: 16px;
+    padding: 16px;
+    border: 1px solid var(--shell-border-strong);
+    border-radius: 14px;
+    background: var(--shell-bg-cyan);
+  }
+  .why-separate-callout p {
+    margin: 0;
+    color: var(--t1);
+    font-family: var(--sans);
+    font-size: var(--ts-sm);
+    line-height: 1.6;
+  }
+  .why-separate-callout strong {
+    color: var(--accent-cyan);
+  }
+
+  @media (max-width: 1023px) {
+    .investigate-landing {
+      grid-template-columns: 1fr;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .diagnose-chip, .diagnose-bar-seg { transition: none; }
+    .endpoint-card { transition: none; }
   }
 
   @media (max-width: 767px) {
