@@ -38,6 +38,18 @@ jobs:
       - run: npm ci
       - run: npm run lint
 
+  lint-css:
+    name: Lint CSS
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      - run: npm run lint:css
+
   test:
     name: Unit tests
     runs-on: ubuntu-latest
@@ -69,7 +81,7 @@ jobs:
 
   deploy:
     name: Deploy
-    needs: [typecheck, lint, test, build]
+    needs: [typecheck, lint, lint-css, test, build]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:

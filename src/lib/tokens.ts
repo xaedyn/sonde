@@ -1,7 +1,12 @@
 // src/lib/tokens.ts
-// Design token system: primitive → semantic → component
-// This is the ONLY file permitted to contain raw hex/rgba/px/duration values.
-// ESLint enforces this via no-restricted-syntax (no-raw-visual-values rule).
+// Design token system: primitive → semantic → component.
+// This is the ONLY file permitted to contain raw hex/rgba/px/duration values
+// as JavaScript literals. ESLint's no-raw-visual-values rule (eslint-rules/)
+// enforces this for *.ts files. CSS inside Svelte <style> blocks is enforced
+// separately by stylelint (see .stylelintrc.json + .stylelintignore) — that
+// rule bans raw hex / rgb / rgba / hsl / hsla in CSS. Existing files with
+// historical violations are listed in .stylelintignore on a per-PR ownership
+// basis and cleaned as the synthesis arc progresses.
 // Glass Lanes visual language — locked 2026-04-09.
 
 // ── Primitive tokens ───────────────────────────────────────────────────────

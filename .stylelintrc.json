@@ -1,0 +1,32 @@
+{
+  "overrides": [
+    {
+      "files": ["**/*.svelte"],
+      "customSyntax": "postcss-html"
+    }
+  ],
+  "rules": {
+    "color-no-hex": [true, {
+      "message": "Use design tokens from src/lib/tokens.ts — no raw hex colors in CSS. (no-raw-css-color)"
+    }],
+    "declaration-property-value-disallowed-list": [
+      {
+        "/^.*/": ["/^rgba?\\(/i", "/^hsla?\\(/i"]
+      },
+      {
+        "message": "Use design tokens from src/lib/tokens.ts via CSS custom properties — no raw rgba/rgb/hsl/hsla values in CSS. (no-raw-css-color-fn)"
+      }
+    ]
+  },
+  "ignoreFiles": [
+    "dist/**/*",
+    "node_modules/**/*",
+    "v2/**/*",
+    "design-concepts/**/*",
+    "handoff/**/*",
+    "Handoff.html",
+    "index.html",
+    "public/**/*",
+    "tests/**/*"
+  ]
+}

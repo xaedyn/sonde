@@ -1,0 +1,60 @@
+# Build output / vendor
+dist/**/*
+node_modules/**/*
+
+# External / non-source CSS
+v2/**/*
+design-concepts/**/*
+handoff/**/*
+Handoff.html
+index.html
+public/**/*
+tests/**/*
+
+# ── Synthesis-arc cleanup ratchet (see 2026-05-17-synthesis-design-contract.md) ──
+# Stylelint discipline introduced in PR 2. Existing files with raw-color
+# violations are ignored here on a per-PR ownership basis. Each subsequent PR
+# REMOVES its owned files from this list as part of its scope, then cleans
+# the violations. New files added by later PRs are NOT in this list and MUST
+# be clean from day 1.
+#
+# OWNERSHIP MAP (remove file from ignore in the listed PR):
+
+# PR 5 (dead-code purge) — these files are DELETED. Removed from ignore by virtue of deletion.
+src/lib/components/ChronographDial.svelte
+src/lib/components/CausalVerdictStrip.svelte
+src/lib/components/RacingStrip.svelte
+src/lib/components/RunStorylineCard.svelte
+src/lib/components/OverviewSubtabStrip.svelte
+src/lib/components/EventFeed.svelte
+
+# PR 4 (router + shell calmness) — these files are REWRITTEN. Clean violations during rewrite.
+src/lib/components/Topbar.svelte
+src/lib/components/ViewSwitcher.svelte
+
+# PR 6 (NetworkTopology + Overview placement) — FigmaOverviewView renamed to OverviewView; clean during rename.
+src/lib/components/FigmaOverviewView.svelte
+
+# PR 7 (EndpointDetail + DiagnoseView decomposition) — DiagnoseView heavily modified; clean during decomposition.
+src/lib/components/DiagnoseView.svelte
+
+# PR 9 (Report artifact framing) — ReportView heavily modified; clean during rewrite.
+src/lib/components/ReportView.svelte
+
+# ── Files not owned by any current synthesis PR (follow-on cleanup) ──
+# These have raw-value violations but no synthesis PR rewrites them. A follow-on
+# tokenization PR after the arc completes should clean them. Until then, the
+# rule applies to all newly-touched code but these specific files are exempt.
+src/lib/components/SharePopover.svelte
+src/lib/components/SettingsDrawer.svelte
+src/lib/components/CompanionPanel.svelte
+src/lib/components/ConfigStagingBanner.svelte
+src/lib/components/LiveView.svelte
+src/lib/components/SharedResultsBanner.svelte
+src/lib/components/IntelligencePanel.svelte
+src/lib/components/EndpointDrawer.svelte
+src/lib/components/EndpointRow.svelte
+src/lib/components/KeyboardOverlay.svelte
+src/lib/components/ScopeCanvas.svelte
+src/lib/components/LocalProofPanel.svelte
+src/app.css

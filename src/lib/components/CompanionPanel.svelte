@@ -27,7 +27,7 @@
   let routeProbe = $state(true);
   let wifiProbe = $state(true);
 
-  const state = $derived($agentStore);
+  const agentState = $derived($agentStore);
   const selectedEndpoint = $derived(
     $endpointStore.find((endpoint) => endpoint.id === $uiStore.focusedEndpointId)
       ?? $endpointStore.find((endpoint) => endpoint.enabled)
@@ -40,18 +40,18 @@
   const probeUrlId = $derived(`${idPrefix}-probe-url`);
   const titleId = $derived(`${idPrefix}-title`);
   const hasSelectedProbe = $derived(dnsProbe || tlsProbe || routeProbe || wifiProbe);
-  const isBusy = $derived(state.status === 'checking' || state.status === 'probing');
+  const isBusy = $derived(agentState.status === 'checking' || agentState.status === 'probing');
   const statusLabel = $derived(({
     idle: 'Offline',
     checking: 'Checking',
     connected: 'Connected',
     probing: 'Probing',
     error: 'Attention',
-  })[state.status]);
+  })[agentState.status]);
 
   $effect(() => {
     if (!initialized) {
-      agentUrl = state.baseUrl;
+      agentUrl = agentState.baseUrl;
       initialized = true;
     }
   });
@@ -110,7 +110,7 @@
 <section class="companion-panel" aria-labelledby={titleId}>
   <div class="companion-head">
     <h3 id={titleId}>{title}</h3>
-    <span class="status-pill" data-status={state.status}>{statusLabel}</span>
+    <span class="status-pill" data-status={agentState.status}>{statusLabel}</span>
   </div>
 
   <p class="agent-note">
@@ -119,8 +119,8 @@
 
   <div class="health-row" aria-live="polite">
     <span>Health check: {statusLabel}</span>
-    {#if state.version}
-      <span>Agent {state.version}</span>
+    {#if agentState.version}
+      <span>Agent {agentState.version}</span>
     {/if}
   </div>
 
@@ -152,7 +152,7 @@
     <button
       type="button"
       class="agent-btn"
-      disabled={isBusy || (!state.hasSecret && pairingToken.trim() === '')}
+      disabled={isBusy || (!agentState.hasSecret && pairingToken.trim() === '')}
       onclick={handleLoadHistory}
     >
       History
@@ -160,20 +160,20 @@
     <button
       type="button"
       class="agent-btn"
-      disabled={isBusy || (!state.hasSecret && pairingToken.trim() === '')}
+      disabled={isBusy || (!agentState.hasSecret && pairingToken.trim() === '')}
       onclick={handleForgetToken}
     >
       Forget Token
     </button>
   </div>
 
-  {#if state.capabilities}
+  {#if agentState.capabilities}
     <div class="capability-row" aria-label="Local companion capabilities">
-      <span class:available={state.capabilities.dns}>DNS</span>
-      <span class:available={state.capabilities.tls}>TLS</span>
-      <span class:available={state.capabilities.route}>Route</span>
-      <span class:available={state.capabilities.wifi}>WiFi</span>
-      <span class:available={state.capabilities.sqliteHistory}>SQLite</span>
+      <span class:available={agentState.capabilities.dns}>DNS</span>
+      <span class:available={agentState.capabilities.tls}>TLS</span>
+      <span class:available={agentState.capabilities.route}>Route</span>
+      <span class:available={agentState.capabilities.wifi}>WiFi</span>
+      <span class:available={agentState.capabilities.sqliteHistory}>SQLite</span>
     </div>
   {/if}
 
@@ -227,20 +227,20 @@
     </button>
   </div>
 
-  {#if state.error}
-    <p class="agent-message error" aria-live="polite">{state.error}</p>
+  {#if agentState.error}
+    <p class="agent-message error" aria-live="polite">{agentState.error}</p>
   {/if}
 
-  {#if state.lastProbe}
+  {#if agentState.lastProbe}
     <div class="agent-result" aria-live="polite">
-      <span class="result-host">{state.lastProbe.targetHost}</span>
-      <span class="result-summary">{state.lastProbe.summary}</span>
+      <span class="result-host">{agentState.lastProbe.targetHost}</span>
+      <span class="result-summary">{agentState.lastProbe.summary}</span>
     </div>
   {/if}
 
-  {#if state.history.length > 0}
+  {#if agentState.history.length > 0}
     <div class="history-strip" aria-label="Recent local companion probes">
-      {#each state.history.slice(0, 3) as entry (entry.id)}
+      {#each agentState.history.slice(0, 3) as entry (entry.id)}
         <span>{entry.targetHost}</span>
       {/each}
     </div>
