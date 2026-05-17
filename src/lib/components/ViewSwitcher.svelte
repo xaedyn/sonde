@@ -95,19 +95,22 @@
 </div>
 
 <style>
+  /* v2 segmented control. No underline, no panel-active fill — the active
+     tab is a filled rectangle inside a tinted track. Inactive tabs hover
+     to t1. The wrap stays scrollable at mobile for ≤375 px viewports. */
   .view-switcher-wrap {
     position: relative;
     flex-shrink: 0;
   }
   .view-switcher {
-    min-height: 50px;
-    display: flex;
-    gap: 0;
-    padding: 0 24px;
+    display: inline-flex;
     align-items: stretch;
-    border-bottom: 1px solid var(--shell-border);
-    background: var(--shell-backdrop);
-    flex-shrink: 0;
+    gap: 0;
+    padding: 4px;
+    background: color-mix(in srgb, black 50%, transparent);
+    border: 1px solid color-mix(in srgb, var(--t1) 4%, transparent);
+    border-radius: 12px;
+    box-shadow: inset 0 1px 2px color-mix(in srgb, black 40%, transparent);
     overflow-x: auto;
     scroll-snap-type: x proximity;
     scrollbar-width: none;
@@ -116,87 +119,72 @@
   .view-tab { scroll-snap-align: start; }
   .view-tab {
     background: transparent;
-    border: 0;
-    padding: 0 18px;
-    display: flex;
+    border: 1px solid transparent;
+    padding: 6px 14px;
+    display: inline-flex;
     align-items: center;
-    gap: 10px;
-    border-radius: 0;
+    gap: 8px;
+    border-radius: 8px;
     position: relative;
-    transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+    transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
     color: var(--t3);
     font-family: var(--sans);
     cursor: pointer;
     flex-shrink: 0;
     min-width: 0;
-    min-height: 50px;
-  }
-  .view-tab::after {
-    content: '';
-    position: absolute;
-    bottom: -1px;
-    left: 0;
-    right: 0;
-    height: 3px;
-    border-radius: 0;
-    background: transparent;
-    transition: background 200ms ease, box-shadow 200ms ease;
+    min-height: 32px;
   }
   .view-tab:hover {
-    color: var(--t1);
-    background: var(--shell-panel-hover);
+    color: var(--t2);
   }
   .view-tab.active {
-    color: var(--accent-cyan);
-    background: var(--shell-panel-active);
-  }
-  .view-tab.active::after {
-    background: var(--accent-cyan);
-    box-shadow: 0 0 10px var(--glow-cyan);
+    color: var(--t1);
+    background: var(--shell-panel-raised);
+    border-color: color-mix(in srgb, var(--t1) 5%, transparent);
   }
   .view-tab:focus-visible {
     outline: 2px solid var(--accent-cyan);
     outline-offset: 2px;
-    border-radius: 4px;
   }
 
   .view-tab-icon {
-    width: 18px;
-    height: 18px;
+    width: 16px;
+    height: 16px;
     color: currentColor;
-    opacity: 0.9;
+    opacity: 0.95;
   }
   .view-tab-icon svg {
     width: 100%;
     height: 100%;
     fill: none;
     stroke: currentColor;
-    stroke-width: 1.8;
+    stroke-width: 1.6;
     stroke-linecap: round;
     stroke-linejoin: round;
   }
 
   .view-tab-label {
-    font-size: var(--ts-lg);
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: var(--tr-label);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    text-transform: none;
     white-space: nowrap;
   }
 
   /* Mobile fade-affordance: visible only when content is clipped on the
-     right. Hidden when nothing is being clipped or at desktop widths
-     where all four tabs always fit. */
+     right. Tinted to match the segmented-control track so it reads as a
+     continuation of the track surface rather than a foreign overlay. */
   .view-switcher-fade {
     position: absolute;
     top: 0;
     right: 0;
-    bottom: 1px;
-    width: 36px;
+    bottom: 0;
+    width: 32px;
     pointer-events: none;
-    background: linear-gradient(to right, transparent, var(--shell-backdrop));
+    background: linear-gradient(to right, transparent, color-mix(in srgb, black 50%, transparent));
     opacity: 0;
     transition: opacity 160ms ease;
+    border-radius: 0 12px 12px 0;
   }
   .view-switcher-wrap[data-scroll-right='true'] .view-switcher-fade {
     opacity: 1;
