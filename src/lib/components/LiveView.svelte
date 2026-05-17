@@ -251,12 +251,13 @@
     gap: 24px;
     flex-wrap: wrap;
     padding: clamp(20px, 3vw, 30px);
-    border: 1px solid var(--shell-border-strong);
-    border-radius: 18px;
-    background:
-      radial-gradient(circle at 12% 40%, var(--shell-bg-cyan), transparent 32%),
-      linear-gradient(135deg, var(--shell-panel-raised), rgba(16, 23, 34, 0.72));
-    box-shadow: 0 28px 90px rgba(0, 0, 0, 0.18);
+    border: 1px solid var(--shell-border);
+    /* v2 alignment: 24 px radius matches the verdict-card family; flat
+       panel surface (no radial-gradient) so the page palette carries the
+       atmosphere instead of each card layering its own. */
+    border-radius: 24px;
+    background: var(--shell-panel);
+    box-shadow: 0 25px 50px -12px color-mix(in srgb, black 35%, transparent);
   }
   .live-kicker {
     font-family: var(--mono);
@@ -312,7 +313,7 @@
     padding: 12px;
     border: 1px solid var(--shell-border);
     border-radius: 14px;
-    background: rgba(8, 14, 24, 0.58);
+    background: color-mix(in srgb, black 40%, transparent);
   }
   .live-control { display: flex; flex-direction: column; gap: 4px; }
   .live-control-label {
@@ -396,9 +397,9 @@
     min-width: 0;
     padding: clamp(12px, 2vw, 18px);
     border: 1px solid var(--shell-border);
-    border-radius: 18px;
-    background: rgba(8, 14, 24, 0.68);
-    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.18);
+    border-radius: 24px;
+    background: var(--shell-panel);
+    box-shadow: 0 25px 50px -12px color-mix(in srgb, black 35%, transparent);
     overflow: hidden;
   }
 
@@ -414,7 +415,7 @@
     gap: 6px;
     flex-wrap: wrap;
     padding: 10px 12px;
-    background: rgba(8, 14, 24, 0.62);
+    background: color-mix(in srgb, black 40%, transparent);
     border: 1px solid var(--shell-border);
     border-radius: 14px;
   }

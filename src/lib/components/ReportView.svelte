@@ -613,19 +613,13 @@
   .report-hero {
     position: relative;
     overflow: hidden;
-    border: 1px solid var(--shell-border-strong);
-    border-radius: 18px;
-    background:
-      radial-gradient(circle at 12% 40%, var(--shell-bg-cyan), transparent 32%),
-      linear-gradient(135deg, var(--shell-panel-raised), rgba(16, 23, 34, 0.72));
-    box-shadow: 0 28px 90px rgba(0,0,0,.18);
-  }
-  .report-hero::after {
-    content: "";
-    position: absolute;
-    inset: auto 0 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(103,232,249,.42), transparent);
+    border: 1px solid var(--shell-border);
+    /* v2 alignment: 24 px radius, flat panel surface, soft shadow. Drops
+       the cyan radial-gradient that previously singled this surface out
+       and the cyan underline accent below the hero. */
+    border-radius: 24px;
+    background: var(--shell-panel);
+    box-shadow: 0 25px 50px -12px color-mix(in srgb, black 35%, transparent);
   }
   .report-hero-grid {
     position: relative;
@@ -807,7 +801,7 @@
   .report-strip > div {
     min-width: 0;
     padding: 13px 14px;
-    background: rgba(8, 14, 24, 0.68);
+    background: var(--shell-panel);
     display: flex;
     flex-direction: column;
     gap: 4px;
@@ -821,7 +815,7 @@
     margin-bottom: 18px;
     border: 1px solid var(--shell-border);
     border-radius: 14px;
-    background: rgba(8, 14, 24, 0.62);
+    background: color-mix(in srgb, black 40%, transparent);
     padding: 14px;
   }
 
