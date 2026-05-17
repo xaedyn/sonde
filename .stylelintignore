@@ -35,10 +35,9 @@ tests/**/*
 # PR 4 (router + shell calmness) — REMOVED from ignore: violations cleaned in PR 4
 # (Topbar: tokenized rgba shell-backdrop + cyan-gradient color-mix; ViewSwitcher: same).
 
-# PR 6 (NetworkTopology + Overview placement) — FigmaOverviewView renamed to
-# OverviewView in PR 5. The file's CSS violations get cleaned during PR 6's
-# NetworkTopology placement and verdict-card geometry tightening.
-src/lib/components/OverviewView.svelte
+# PR 6 (NetworkTopology + Overview placement) — REMOVED from ignore:
+# OverviewView's raw rgba/hex values were tokenized as part of the
+# verdict-card geometry tightening + NetworkTopology placement.
 
 # PR 7 (EndpointDetail + DiagnoseView decomposition) — DiagnoseView heavily modified; clean during decomposition.
 src/lib/components/DiagnoseView.svelte
