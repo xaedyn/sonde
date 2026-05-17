@@ -188,8 +188,9 @@
 
       <!-- Origin (browser) node — v2 alignment: same rounded-square family
            as endpoint glyphs so the whole topology reads as one visual
-           system. The label stays below the glyph since the origin is
-           always centred vertically and never collides with siblings. -->
+           system. Carries a monitor glyph inside the square so the node
+           reads as "your device" at a glance, matching v2's Lucide
+           `Monitor` icon. -->
       <g class="topology-node-group" data-role="origin">
         <rect
           class="topology-node-circle"
@@ -200,6 +201,15 @@
           rx="8"
           ry="8"
         />
+        <g
+          class="topology-glyph-icon"
+          transform="translate({ORIGIN_X - 8} {ORIGIN_Y - 8})"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" overflow="visible">
+            <rect x="1.5" y="2.5" width="13" height="8.5" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <path d="M5 13.5h6M8 11v2.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+          </svg>
+        </g>
         <text
           class="topology-label"
           x={ORIGIN_X}
@@ -237,6 +247,23 @@
             rx="8"
             ry="8"
           />
+          <!-- Generic globe glyph inside each endpoint square — same role
+               as v2's Lucide `Globe` icon. We keep one symbol for all
+               endpoints rather than inferring per-endpoint type (Server /
+               Database / API) because Chronoscope doesn't know the endpoint's
+               role; v2 hard-coded its three demo endpoints. The generic
+               globe still reads as "remote server" and the tone colour
+               carries the per-endpoint state. -->
+          <g
+            class="topology-glyph-icon"
+            transform="translate({node.x - 8} {node.y - 8})"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" overflow="visible">
+              <circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" stroke-width="1.3"/>
+              <ellipse cx="8" cy="8" rx="2.5" ry="5.5" fill="none" stroke="currentColor" stroke-width="1.1"/>
+              <path d="M2.5 8h11" stroke="currentColor" stroke-width="1.1"/>
+            </svg>
+          </g>
           <text
             class="topology-label"
             x={lp.x}
@@ -348,20 +375,20 @@
     stroke: color-mix(in srgb, var(--t1) 12%, transparent);
   }
   [data-tone='good'] .topology-node-rect {
-    fill: color-mix(in srgb, var(--accent-green) 10%, transparent);
-    stroke: color-mix(in srgb, var(--accent-green) 24%, transparent);
+    fill: color-mix(in srgb, var(--accent-green) 14%, transparent);
+    stroke: color-mix(in srgb, var(--accent-green) 32%, transparent);
   }
   [data-tone='watch'] .topology-node-rect {
-    fill: color-mix(in srgb, var(--accent-amber) 10%, transparent);
-    stroke: color-mix(in srgb, var(--accent-amber) 24%, transparent);
+    fill: color-mix(in srgb, var(--accent-amber) 14%, transparent);
+    stroke: color-mix(in srgb, var(--accent-amber) 32%, transparent);
   }
   [data-tone='bad'] .topology-node-rect {
-    fill: color-mix(in srgb, var(--accent-pink) 10%, transparent);
-    stroke: color-mix(in srgb, var(--accent-pink) 24%, transparent);
+    fill: color-mix(in srgb, var(--accent-pink) 14%, transparent);
+    stroke: color-mix(in srgb, var(--accent-pink) 32%, transparent);
   }
   [data-tone='collecting'] .topology-node-rect {
-    fill: color-mix(in srgb, var(--accent-cyan) 10%, transparent);
-    stroke: color-mix(in srgb, var(--accent-cyan) 24%, transparent);
+    fill: color-mix(in srgb, var(--accent-cyan) 14%, transparent);
+    stroke: color-mix(in srgb, var(--accent-cyan) 32%, transparent);
   }
 
   .topology-node-clickable,
@@ -419,6 +446,22 @@
   [data-tone='collecting'] .topology-label {
     fill: var(--t2);
   }
+
+  /* Inline SVG icons inside each glyph. The wrapper SVG inside each <g>
+     carries a viewBox; we set color on the group so currentColor on the
+     SVG strokes inherits the per-tone accent. Origin gets a muted t-2
+     stroke so the device glyph reads as neutral, not on-state. */
+  .topology-glyph-icon {
+    color: var(--t2);
+    pointer-events: none;
+  }
+  [data-role='origin'] .topology-glyph-icon {
+    color: var(--t2);
+  }
+  [data-tone='good'] .topology-glyph-icon       { color: var(--accent-green); }
+  [data-tone='watch'] .topology-glyph-icon      { color: var(--accent-amber); }
+  [data-tone='bad'] .topology-glyph-icon        { color: var(--accent-pink); }
+  [data-tone='collecting'] .topology-glyph-icon { color: var(--accent-cyan); }
 
   /* Pulse packets — v2 alignment: smaller circle, lower peak opacity so
      the pulses read as quiet evidence of ongoing measurement rather than
