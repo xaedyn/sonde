@@ -184,6 +184,28 @@
     })
   ));
 
+  // Per synthesis design contract Section 2 / Arc C C4: when the verdict
+  // implicates a single endpoint, render its label as a tone-coloured chip
+  // inline within the headline. Splits the headline on the label so the chip
+  // can be styled while still being readable as a sentence.
+  const highlightedEndpoint = $derived(diagnosticNarrative.highlightedEndpoint);
+  const highlightedTone = $derived.by(() => {
+    if (highlightedEndpoint === undefined) return null;
+    const row = endpointRows.find((r) => r.endpoint.id === highlightedEndpoint.id);
+    return row?.tone ?? null;
+  });
+  const headlineSegments = $derived.by(() => {
+    if (highlightedEndpoint === undefined) return null;
+    const label = highlightedEndpoint.label;
+    const index = headline.indexOf(label);
+    if (index < 0) return null;
+    return {
+      before: headline.slice(0, index),
+      chip: label,
+      after: headline.slice(index + label.length),
+    };
+  });
+
   const eventRows: readonly EventLogItem[] = $derived.by(() => {
     const beats = runStoryline.beats.slice(-5);
     if (beats.length === 0) {
@@ -380,7 +402,16 @@
             <span class="measuring-pill"><span aria-hidden="true"></span>Measuring</span>
           {/if}
         </div>
-        <h1>{headline}</h1>
+        <h1>
+          {#if headlineSegments !== null}
+            {headlineSegments.before}<span
+              class="headline-endpoint-chip"
+              data-tone={highlightedTone ?? 'collecting'}
+            >{headlineSegments.chip}</span>{headlineSegments.after}
+          {:else}
+            {headline}
+          {/if}
+        </h1>
         <p><strong>Measured Fact:</strong> {measuredFact}</p>
         <p class="interpretation"><strong>Interpretation:</strong> {interpretation}</p>
         <div class="verdict-actions">
@@ -688,6 +719,46 @@
     line-height: 1.08;
     letter-spacing: var(--tr-tight);
     color: var(--t1);
+  }
+
+  /* Inline endpoint chip embedded in the verdict headline (Arc C C4 /
+     synthesis design contract Section 2). Tone mirrors the endpoint-row tone
+     vocabulary (good / warn / bad / collecting) so the chip reads the same
+     across surfaces. Sized down relative to the h1 so it doesn't overpower
+     the surrounding sentence — still tabular-numeric-aligned to the headline
+     baseline. */
+  .headline-endpoint-chip {
+    display: inline-block;
+    padding: 0 0.4em;
+    margin: 0 0.05em;
+    border-radius: 0.32em;
+    font-weight: 800;
+    line-height: 1.15;
+    vertical-align: baseline;
+    color: var(--t1);
+    background: color-mix(in srgb, var(--accent-cyan) 14%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent-cyan) 28%, transparent);
+  }
+  .headline-endpoint-chip[data-tone='good'] {
+    color: var(--accent-green);
+    background: color-mix(in srgb, var(--accent-green) 12%, transparent);
+    border-color: color-mix(in srgb, var(--accent-green) 28%, transparent);
+  }
+  .headline-endpoint-chip[data-tone='warn'],
+  .headline-endpoint-chip[data-tone='watch'] {
+    color: var(--accent-amber);
+    background: color-mix(in srgb, var(--accent-amber) 14%, transparent);
+    border-color: color-mix(in srgb, var(--accent-amber) 32%, transparent);
+  }
+  .headline-endpoint-chip[data-tone='bad'] {
+    color: var(--accent-pink);
+    background: color-mix(in srgb, var(--accent-pink) 14%, transparent);
+    border-color: color-mix(in srgb, var(--accent-pink) 32%, transparent);
+  }
+  .headline-endpoint-chip[data-tone='collecting'] {
+    color: var(--accent-cyan);
+    background: color-mix(in srgb, var(--accent-cyan) 12%, transparent);
+    border-color: color-mix(in srgb, var(--accent-cyan) 28%, transparent);
   }
 
   p {

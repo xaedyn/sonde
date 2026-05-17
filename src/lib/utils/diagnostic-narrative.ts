@@ -126,6 +126,11 @@ export interface DiagnosticNarrative {
   readonly triageActions: readonly DiagnosticTriageAction[];
   readonly nextSteps: readonly string[];
   readonly timingVisibility: TimingVisibility;
+  // Surface-side helper: when the verdict implicates a single endpoint, this
+  // exposes its id + label so the view can render the headline with the
+  // endpoint name highlighted inline (the view derives tone from its own
+  // endpoint-tone lookup). Undefined when no single endpoint is implicated.
+  readonly highlightedEndpoint?: { readonly id: string; readonly label: string };
 }
 
 interface DiagnosticInput {
@@ -314,6 +319,39 @@ function confidenceReason(
   return `Based on ${minSamples}+ successful checks across ${rows.length} ${plural(rows.length, 'site')}.`;
 }
 
+// Returns the endpoint clearly implicated by the diagnosis when one stands
+// out — and nothing otherwise. For latency-dominated kinds the verdict
+// already exposes this via worstEpId; for loss/jitter the verdict does not,
+// so we look at per-row stats. "Clearly implicated" means the worst row's
+// signal exceeds the warn threshold and is at least 2× any other row's
+// signal — otherwise the verdict treats the problem as broad, not isolated.
+function implicatedEndpointRow(
+  kind: DiagnosticKind,
+  rows: readonly VerdictRow[],
+  verdict: Verdict,
+): VerdictRow | undefined {
+  if (verdict.worstEpId !== undefined) {
+    const row = rows.find((candidate) => candidate.ep.id === verdict.worstEpId);
+    if (row !== undefined) return row;
+  }
+  const dominant = (extract: (row: VerdictRow) => number, warnAt: number): VerdictRow | undefined => {
+    if (rows.length < 2) return rows[0];
+    const sorted = [...rows].sort((a, b) => extract(b) - extract(a));
+    const [top, runnerUp] = sorted;
+    if (extract(top) < warnAt) return undefined;
+    if (extract(runnerUp) === 0) return top;
+    return extract(top) >= extract(runnerUp) * 2 ? top : undefined;
+  };
+  switch (kind) {
+    case 'packet-loss':
+      return dominant((row) => row.stats.lossPercent, LOSS_WARN_PERCENT);
+    case 'jitter':
+      return dominant((row) => row.stats.stddev, JITTER_WARN_MS);
+    default:
+      return undefined;
+  }
+}
+
 function explanationFor(
   kind: DiagnosticKind,
   rows: readonly VerdictRow[],
@@ -337,10 +375,19 @@ function explanationFor(
     }
     case 'shared-network':
       return 'Several sites are slow in the same test window.';
-    case 'packet-loss':
-      return 'Some requests are failing.';
-    case 'jitter':
-      return 'Latency is jumping around.';
+    case 'packet-loss': {
+      // Name the failing endpoint when one clearly dominates the loss
+      // signal — keeps the headline specific per the synthesis design
+      // contract Section 2 state table ("<endpoint> failed from your
+      // browser."). Falls back to the generic phrasing when failures are
+      // spread across endpoints.
+      const worst = implicatedEndpointRow(kind, rows, verdict);
+      return worst ? `${worst.ep.label} is failing from your browser.` : 'Some requests are failing.';
+    }
+    case 'jitter': {
+      const worst = implicatedEndpointRow(kind, rows, verdict);
+      return worst ? `${worst.ep.label}'s latency is jumping around.` : 'Latency is jumping around.';
+    }
     case 'multiple-slow':
       return 'Several sites are slower than your threshold.';
   }
@@ -1155,6 +1202,11 @@ export function buildDiagnosticNarrative(input: DiagnosticInput): DiagnosticNarr
     primaryAnswer,
   });
 
+  const implicatedRow = implicatedEndpointRow(kind, input.rows, verdict);
+  const highlightedEndpoint = implicatedRow !== undefined
+    ? { id: implicatedRow.ep.id, label: implicatedRow.ep.label }
+    : undefined;
+
   return {
     verdict,
     kind,
@@ -1182,5 +1234,6 @@ export function buildDiagnosticNarrative(input: DiagnosticInput): DiagnosticNarr
     triageActions,
     nextSteps: nextStepsFor(kind, verdict, input.rows),
     timingVisibility,
+    ...(highlightedEndpoint !== undefined ? { highlightedEndpoint } : {}),
   };
 }

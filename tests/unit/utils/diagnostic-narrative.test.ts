@@ -445,6 +445,88 @@ describe('buildDiagnosticNarrative', () => {
     ).not.toMatch(/elevated|browser-visible|root-cause|likely/i);
   });
 
+  it('names the implicated endpoint in packet-loss and jitter headlines when one dominates', () => {
+    // When a single endpoint clearly dominates the failure or jitter signal,
+    // computeCausalVerdict sets worstEpId and the headline names that
+    // endpoint per the synthesis design contract Section 2 ("specific verdict
+    // headline" + inline highlighting). This is the spec-table failure copy
+    // rendered as a real measured fact.
+    const packetLoss = buildDiagnosticNarrative({
+      rows: [
+        row('api', { lossPercent: 8, sampleCount: 18 }, 'API'),
+        row('google', { lossPercent: 0, sampleCount: 18 }, 'Google'),
+        row('cloudflare', { lossPercent: 0, sampleCount: 18 }, 'Cloudflare'),
+      ],
+      threshold: 120,
+      corsMode: 'no-cors',
+      samplesByEndpoint: {
+        api: samples(18, 60),
+        google: samples(18, 45),
+        cloudflare: samples(18, 38),
+      },
+      monitoredEndpointCount: 3,
+    });
+    expect(packetLoss.kind).toBe('packet-loss');
+    expect(packetLoss.primaryAnswer.text).toBe('API is failing from your browser.');
+    expect(packetLoss.highlightedEndpoint).toEqual({ id: 'api', label: 'API' });
+
+    const jitter = buildDiagnosticNarrative({
+      rows: [
+        row('api', { stddev: 80, sampleCount: 18 }, 'API'),
+        row('google', { stddev: 6, sampleCount: 18 }, 'Google'),
+        row('cloudflare', { stddev: 5, sampleCount: 18 }, 'Cloudflare'),
+      ],
+      threshold: 120,
+      corsMode: 'no-cors',
+      samplesByEndpoint: {
+        api: samples(18, 70),
+        google: samples(18, 50),
+        cloudflare: samples(18, 45),
+      },
+      monitoredEndpointCount: 3,
+    });
+    expect(jitter.kind).toBe('jitter');
+    expect(jitter.primaryAnswer.text).toBe("API's latency is jumping around.");
+    expect(jitter.highlightedEndpoint).toEqual({ id: 'api', label: 'API' });
+  });
+
+  it('exposes highlightedEndpoint for isolated-endpoint and omits it when no single endpoint is implicated', () => {
+    const isolated = buildDiagnosticNarrative({
+      rows: [
+        row('api', { p50: 240, sampleCount: 18 }, 'API'),
+        row('google', { p50: 45, sampleCount: 18 }, 'Google'),
+        row('cloudflare', { p50: 38, sampleCount: 18 }, 'Cloudflare'),
+      ],
+      threshold: 120,
+      corsMode: 'no-cors',
+      samplesByEndpoint: {
+        api: samples(18, 240),
+        google: samples(18, 45),
+        cloudflare: samples(18, 38),
+      },
+      monitoredEndpointCount: 3,
+    });
+    expect(isolated.kind).toBe('isolated-endpoint');
+    expect(isolated.highlightedEndpoint).toEqual({ id: 'api', label: 'API' });
+    expect(isolated.primaryAnswer.text).toContain('API');
+
+    const healthy = buildDiagnosticNarrative({
+      rows: [
+        row('google', { p50: 45, sampleCount: 30 }),
+        row('cloudflare', { p50: 38, sampleCount: 30 }),
+      ],
+      threshold: 120,
+      corsMode: 'no-cors',
+      samplesByEndpoint: {
+        google: samples(30, 45),
+        cloudflare: samples(30, 38),
+      },
+      monitoredEndpointCount: 2,
+    });
+    expect(healthy.kind).toBe('healthy');
+    expect(healthy.highlightedEndpoint).toBeUndefined();
+  });
+
   it('keeps the trust matrix concise and evidence-scoped across common scenarios', () => {
     const scenarios = [
       buildDiagnosticNarrative({
