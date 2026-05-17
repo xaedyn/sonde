@@ -212,6 +212,42 @@
   });
 
   const timingVisibility = $derived(describeTimingVisibility(focusedAllSamples, settings.corsMode));
+
+  // ── Browser Visibility ghost-rows panel (PR 3 of synthesis arc) ──────────
+  // Per the synthesis design contract, the Browser Visibility panel renders
+  // DNS / TCP / TLS / TTFB as visible rows even when the browser cannot give
+  // us per-phase values. This makes the limit structural — "here are the rows
+  // we would have shown, here is why each one is empty" — rather than only a
+  // paragraph of prose.
+  //
+  // Chip-label and per-row state are driven by TimingVisibility.level:
+  //   - 'none' (no successful samples yet) → COLLECTING chip, rows show
+  //     "Collecting" at full opacity. No ghost treatment — we don't yet know
+  //     whether visibility will land at hidden, partial, or full.
+  //   - 'total-only' (samples exist, none expose phase data) → HIDDEN BY
+  //     SERVER chip, rows show "Hidden" at 40% opacity (data-hidden="true").
+  //   - 'mixed' and 'phase' do NOT reach this branch in DiagnoseView because
+  //     hasVisiblePhases gates to the waterfall path above. The per-phase
+  //     ghost-row treatment for 'mixed' lands in PR 7's dedicated
+  //     EndpointDetail Browser Visibility panel.
+  const VISIBILITY_PHASES: readonly { key: Tier2Phase; label: string }[] = [
+    { key: 'dns', label: 'DNS Lookup' },
+    { key: 'tcp', label: 'TCP Handshake' },
+    { key: 'tls', label: 'TLS Negotiation' },
+    { key: 'ttfb', label: 'Time to First Byte' },
+  ];
+  const visibilityChipLabel = $derived.by(() => {
+    switch (timingVisibility.level) {
+      case 'none': return 'COLLECTING';
+      case 'total-only': return 'HIDDEN BY SERVER';
+      case 'mixed': return 'PARTIAL VISIBILITY';
+      case 'phase': return 'FULL VISIBILITY';
+    }
+  });
+  const ghostRowsHidden = $derived(
+    timingVisibility.level === 'total-only' || timingVisibility.level === 'mixed',
+  );
+
   const diagnoseConfidence: DiagnosticConfidence = $derived.by(() => {
     if (!focusedEndpoint || !distroStats) return 'low';
     if (distroStats.n < 8) return 'low';
@@ -546,12 +582,33 @@
                 </div>
               </div>
             {:else}
-              <div class="phase-unavailable-card" role="note" aria-label="Phase timing unavailable">
-                <p class="phase-unavailable-title">Phase timing unavailable</p>
+              <!-- Browser Visibility ghost-rows panel (PR 3 of synthesis arc).
+                   Renders DNS / TCP / TLS / TTFB as visible rows even when the
+                   browser cannot give us per-phase values. This makes the
+                   limit structural — "here are the rows we would have shown,
+                   here is why each one is empty" — rather than a paragraph of
+                   prose. See synthesis design contract Section 5 and the PR 3
+                   scope for the canonical chip labels. -->
+              <div class="phase-unavailable-card" role="note" aria-label="Browser timing visibility">
+                <div class="visibility-chip" data-visibility-level={timingVisibility.level}>
+                  {visibilityChipLabel}
+                </div>
                 <p class="phase-unavailable-detail">{timingVisibility.detail}</p>
                 {#if timingVisibility.action}
                   <p class="phase-unavailable-action">{timingVisibility.action}</p>
                 {/if}
+                <ul class="visibility-rows" aria-label="Per-phase timing visibility">
+                  {#each VISIBILITY_PHASES as phase (phase.key)}
+                    <li
+                      class="timing-row"
+                      data-phase={phase.key}
+                      data-hidden={ghostRowsHidden ? 'true' : 'false'}
+                    >
+                      <span class="timing-row-label">{phase.label}</span>
+                      <span class="timing-row-value">{ghostRowsHidden ? 'Hidden' : 'Collecting'}</span>
+                    </li>
+                  {/each}
+                </ul>
               </div>
             {/if}
             {#if hypothesis && hasVisiblePhases}
@@ -1461,13 +1518,6 @@
     flex-direction: column;
     gap: 6px;
   }
-  .phase-unavailable-title {
-    margin: 0;
-    color: var(--t1);
-    font-family: var(--sans);
-    font-size: var(--ts-base);
-    font-weight: 500;
-  }
   .phase-unavailable-detail,
   .phase-unavailable-action {
     margin: 0;
@@ -1479,6 +1529,74 @@
   }
   .phase-unavailable-action {
     color: var(--accent-cyan);
+  }
+
+  /* ── Browser Visibility chip + ghost rows (PR 3 of synthesis arc) ──────── */
+  .visibility-chip {
+    display: inline-flex;
+    align-self: flex-start;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: var(--tr-label);
+    text-transform: uppercase;
+  }
+  .visibility-chip[data-visibility-level='none'] {
+    color: var(--accent-cyan);
+    background: var(--shell-bg-cyan);
+    border: 1px solid var(--shell-border-strong);
+  }
+  .visibility-chip[data-visibility-level='total-only'],
+  .visibility-chip[data-visibility-level='mixed'] {
+    color: var(--accent-amber);
+    background: var(--shell-bg-amber);
+    border: 1px solid var(--shell-stop-border);
+  }
+  .visibility-chip[data-visibility-level='phase'] {
+    color: var(--accent-green);
+    background: var(--shell-success-bg);
+    border: 1px solid var(--shell-success-border);
+  }
+  .visibility-rows {
+    margin: 8px 0 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .timing-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    background: var(--shell-bg-cyan);
+    font-family: var(--mono);
+    font-size: var(--ts-xs);
+    line-height: 1.4;
+    transition: opacity 150ms ease;
+  }
+  .timing-row[data-hidden='true'] {
+    opacity: 0.4;
+  }
+  .timing-row-label {
+    color: var(--t2);
+  }
+  .timing-row-value {
+    color: var(--t3);
+    letter-spacing: var(--tr-label);
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  .timing-row[data-hidden='false'] .timing-row-value {
+    color: var(--accent-cyan);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .timing-row { transition: none; }
   }
   .diagnose-title {
     margin: 0;

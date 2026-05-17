@@ -182,9 +182,17 @@ describe('DiagnoseView investigation focus', () => {
     });
 
     expect(queryByText('ERROR')).toBeNull();
-    expect(getByText(/phase timing unavailable/i)).toBeTruthy();
-    expect(getAllByText(/total only/i).length).toBeGreaterThan(0);
+    // PR 3 of synthesis arc: the old "Phase timing unavailable" title is
+    // replaced by the canonical HIDDEN BY SERVER visibility chip + ghost
+    // rows. The visibility-detail copy (still rendered as a paragraph below
+    // the chip) describes total-only mode in user-facing language.
+    expect(getByText(/HIDDEN BY SERVER/)).toBeTruthy();
+    expect(getAllByText(/total load time/i).length).toBeGreaterThan(0);
     expect(getAllByText('80 ms').length).toBeGreaterThan(0);
+    // The ghost-rows panel renders DNS / TCP / TLS / TTFB as visible rows
+    // even when phase data is unavailable. Each row has data-hidden="true"
+    // and value text "Hidden" (low opacity).
+    expect(getAllByText(/Hidden/).length).toBeGreaterThanOrEqual(4);
   });
 
   it('runs an outside check for the focused endpoint from Investigate', async () => {
