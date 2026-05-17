@@ -22,6 +22,7 @@
   import { describeTimingVisibility, type DiagnosticConfidence } from '$lib/utils/diagnostic-narrative';
   import { phaseHypothesis, PHASE_LABELS, type PhaseBreakdown, type Tier2Phase } from '$lib/utils/verdict';
   import { buildDistributionEmptyMessage, buildHistogram, buildCorrelation } from '$lib/utils/diagnose-stats';
+  import { interpretDistribution } from '$lib/utils/distribution-interpretation';
   import { fmt, compactUrlLabel, axisEdgeLabel, binLabel } from '$lib/utils/format';
   import { selectInvestigationEndpointId } from '$lib/utils/status-intent';
   import { tokens } from '$lib/tokens';
@@ -238,6 +239,17 @@
     return m.samples.toArray().slice(-50);
   });
   const histogram = $derived(buildHistogram(focusedAllSamples));
+  // Per Arc C C5 / synthesis design contract: the distribution panel now
+  // surfaces a five-template plain-English interpretation alongside the
+  // histogram. Helper lives in `distribution-interpretation.ts` and is
+  // fully covered by `distribution-interpretation.test.ts`.
+  const distributionInterpretation = $derived(interpretDistribution({
+    endpointLabel: focusedEndpoint?.label ?? 'This endpoint',
+    samples: focusedAllSamples,
+  }));
+  // Kept as a fallback for the rare 2-7 OK sample case where the histogram
+  // collapses to an empty bin set; the interpretation supersedes the prior
+  // empty-state copy for ≥ 8 OK samples.
   const distributionEmptyMessage = $derived(buildDistributionEmptyMessage(
     focusedAllSamples,
     settings.healthThreshold,
@@ -681,6 +693,19 @@
           {:else}
             <p class="distro-empty">{distributionEmptyMessage}</p>
           {/if}
+
+          <!-- Distribution interpretation (Arc C C5): plain-English shape
+               read-out attached to the chart so users don't need to infer
+               distribution character from histogram bars. Always renders so
+               the headline + detail are present even when the chart isn't. -->
+          <div
+            class="distro-interpretation"
+            data-kind={distributionInterpretation.kind}
+            role="note"
+          >
+            <p class="distro-interpretation-headline">{distributionInterpretation.headline}</p>
+            <p class="distro-interpretation-detail">{distributionInterpretation.detail}</p>
+          </div>
         </section>
 
         <section class="diagnose-visibility" aria-label="Browser visibility">
@@ -1140,6 +1165,34 @@
     margin: 0;
     padding: 8px 0;
   }
+
+  /* Distribution interpretation — Arc C C5. Headline + one detail line in
+     a quietly-emphasized block under the chart. data-kind hooks per-shape
+     accent colour without changing layout. */
+  .distro-interpretation {
+    margin-top: 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--shell-border);
+    border-radius: 10px;
+    background: var(--shell-panel-hover);
+  }
+  .distro-interpretation-headline {
+    margin: 0;
+    color: var(--t1);
+    font-family: var(--sans);
+    font-size: var(--ts-sm);
+    font-weight: 700;
+  }
+  .distro-interpretation-detail {
+    margin: 4px 0 0;
+    color: var(--t3);
+    font-family: var(--sans);
+    font-size: var(--ts-xs);
+    line-height: 1.45;
+  }
+  .distro-interpretation[data-kind='bimodal'] { border-color: var(--shell-stop-border); }
+  .distro-interpretation[data-kind='tail-spikes'] { border-color: var(--shell-stop-border); }
+  .distro-interpretation[data-kind='unimodal-tight'] { border-color: var(--shell-success-border); }
 
   /* ── Diagnostic answer + browser visibility ───────────────────────────── */
   .diagnose-answer,
