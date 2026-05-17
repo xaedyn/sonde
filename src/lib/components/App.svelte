@@ -16,6 +16,7 @@
   import { applyPersistedSettings } from '$lib/utils/apply-persisted-settings';
   import { loadPersistedSettings, saveSettings, CURRENT_VERSION } from '$lib/utils/persistence';
   import { initHashRouter, initHostedReportRouter } from '$lib/share/hash-router';
+  import { initRouter } from '$lib/router';
   import { initShortcuts } from '$lib/utils/shortcuts';
   import { autoStartDecision } from '$lib/utils/status-intent';
   import type { PersistedSettings } from '$lib/types';
@@ -266,19 +267,29 @@
       }
     }
 
-    // 4. Create engine
+    // 4. URL routing — the URL is authoritative for activeView from here
+    //    on. Runs AFTER persistence so it can override any persisted
+    //    activeView; runs BEFORE engine creation so views mount with the
+    //    correct route already wired. focusedEndpointId is preserved across
+    //    non-endpoint navigations (LiveView solo-mode, Report highlighting,
+    //    persisted-focus rehydration all continue to own that field for
+    //    their own in-page focus needs). See src/lib/router.ts for the
+    //    full contract.
+    initRouter();
+
+    // 5. Create engine
     engine = new MeasurementEngine();
 
-    // 5. Setup persistence sync
+    // 6. Setup persistence sync
     setupPersistenceSync();
 
-    // 6. Local-only history baselines
+    // 7. Local-only history baselines
     setupHistorySync();
 
-    // 7. Register keyboard shortcuts
+    // 8. Register keyboard shortcuts
     destroyShortcuts = initShortcuts();
 
-    // 8. Safe auto-start for ordinary public sessions only
+    // 9. Safe auto-start for ordinary public sessions only
     const ui = get(uiStore);
     const decision = autoStartDecision({
       endpoints: get(endpointStore),
