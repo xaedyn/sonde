@@ -6,6 +6,7 @@
 <!-- auto-selects an investigation target when focus is missing or stale.       -->
 <script lang="ts">
   import { monitoredEndpointsStore } from '$lib/stores/derived';
+  import { navigateTo } from '$lib/router';
   import IntelligencePanel from '$lib/components/IntelligencePanel.svelte';
   import LocalProofPanel from '$lib/components/LocalProofPanel.svelte';
   import { bufferbloatStore } from '$lib/stores/bufferbloat';
@@ -298,7 +299,16 @@
 
   function handleBack(): void {
     // Back-to-live: keep the focused endpoint but flip the view.
-    uiStore.setActiveView('live');
+    navigateTo({ name: 'live', endpointId: null });
+  }
+
+  function handleBackToInvestigate(): void {
+    // Back-to-Investigate-landing: leaves /endpoint/:id and lands on the
+    // two-column landing view. Router clearing rule: focusedEndpointId is
+    // NOT cleared by navigateTo when the new route isn't 'endpoint' — the
+    // landing view picks its display state from the URL/route, not from
+    // focusedEndpointId.
+    navigateTo({ name: 'investigate', endpointId: null });
   }
 
   function handleSelectMode(next: 'p50' | 'p95'): void {
@@ -383,6 +393,11 @@
 
     {#if focusedEndpoint}
       <div class="diagnose-actions">
+        <button
+          type="button" class="diagnose-chip diagnose-chip-action"
+          onclick={handleBackToInvestigate}
+          aria-label="Back to Investigate"
+        >← Back to Investigate</button>
         <button
           type="button" class="diagnose-chip diagnose-chip-action"
           onclick={handleBack}

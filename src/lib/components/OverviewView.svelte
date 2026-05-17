@@ -23,6 +23,7 @@
   import type { Endpoint, EndpointStatistics, MeasurementSample } from '$lib/types';
   import type { VerdictRow } from '$lib/utils/verdict';
   import NetworkTopology from './NetworkTopology.svelte';
+  import { navigateTo } from '$lib/router';
 
   const HISTORY_VIEWBOX_WIDTH = 180;
   const HISTORY_VIEWBOX_HEIGHT = 48;
@@ -320,24 +321,43 @@
       case 'open-investigate':
       case 'run-remote-check':
       case 'compare-network':
-        uiStore.setActiveView('diagnose');
+        // If the action carries an endpoint context, deep-link directly to
+        // the EndpointDetail page; otherwise go to the Investigate landing.
+        if (target) {
+          navigateTo({ name: 'endpoint', endpointId: target });
+        } else {
+          navigateTo({ name: 'investigate', endpointId: null });
+        }
         return;
     }
   }
 
   function handleEvidenceAction(): void {
-    uiStore.setActiveView('diagnose');
+    navigateTo({ name: 'investigate', endpointId: null });
   }
 
+  // PR 7 of synthesis arc: route all drill-in navigation through the router
+  // so URLs stay in sync. Per the design contract, drilling into an endpoint
+  // navigates to /endpoint/:id (the EndpointDetail surface). Drilling into
+  // Live keeps the user on /live; the focused endpoint is recorded on
+  // uiStore.focusedEndpointId for solo-mode trace highlighting on Live —
+  // the router does not own that mutation when route !== 'endpoint'.
   function handleEndpointDrill(endpointId: string, destination: 'live' | 'diagnose'): void {
-    uiStore.setFocusedEndpoint(endpointId);
-    uiStore.setActiveView(destination);
+    if (destination === 'diagnose') {
+      navigateTo({ name: 'endpoint', endpointId });
+    } else {
+      uiStore.setFocusedEndpoint(endpointId);
+      navigateTo({ name: 'live', endpointId: null });
+    }
   }
 
   function handleEventDrill(item: EventLogItem): void {
     const endpointId = item.endpointIds[0] ?? null;
-    if (endpointId) uiStore.setFocusedEndpoint(endpointId);
-    uiStore.setActiveView('diagnose');
+    if (endpointId) {
+      navigateTo({ name: 'endpoint', endpointId });
+    } else {
+      navigateTo({ name: 'investigate', endpointId: null });
+    }
   }
 </script>
 
@@ -394,7 +414,7 @@
             <h2>Measured Endpoints</h2>
             <p class="overview-time-window">{timelineWindowLabel}</p>
           </div>
-          <button type="button" onclick={() => uiStore.setActiveView('live')}>Live chart <span aria-hidden="true">›</span></button>
+          <button type="button" onclick={() => navigateTo({ name: 'live', endpointId: null })}>Live chart <span aria-hidden="true">›</span></button>
         </header>
         <div class="overview-time-axis" aria-hidden="true">
           {#each timelineTicks as tick (tick.pct)}
