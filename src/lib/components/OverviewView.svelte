@@ -22,6 +22,7 @@
   } from '$lib/utils/run-storyline';
   import type { Endpoint, EndpointStatistics, MeasurementSample } from '$lib/types';
   import type { VerdictRow } from '$lib/utils/verdict';
+  import NetworkTopology from './NetworkTopology.svelte';
 
   const HISTORY_VIEWBOX_WIDTH = 180;
   const HISTORY_VIEWBOX_HEIGHT = 48;
@@ -342,6 +343,7 @@
 
 <section class="figma-overview" aria-label="Overview">
   <div class="overview-inner">
+    <div class="hero-row">
     <section class="verdict-card" aria-label="Connection verdict">
       <div class="score-ring" style:--score-percent={`${scorePercent}%`} aria-label={`Score ${scoreDisplay} out of 10`}>
         <div class="score-ring-inner">
@@ -379,6 +381,11 @@
         </div>
       </div>
     </section>
+
+      <aside class="network-topology-wrap" aria-label="Network topology">
+        <NetworkTopology />
+      </aside>
+    </div>
 
     <div class="lower-grid">
       <section class="measured-panel" aria-label="Measured endpoints">
@@ -511,19 +518,39 @@
     gap: 32px;
   }
 
-  .verdict-card {
-    min-height: 330px;
+  .hero-row {
     display: grid;
-    grid-template-columns: 220px minmax(0, 1fr);
-    gap: clamp(28px, 4vw, 56px);
+    /* Per synthesis design contract Section 2: verdict-card 880-1040 wide
+       at 1440 viewport. Track sizing here lands the card in that envelope
+       while leaving the topology panel at ~280-360px on the right. */
+    grid-template-columns: minmax(0, 1040px) minmax(260px, 360px);
+    gap: 24px;
+    align-items: stretch;
+  }
+
+  .network-topology-wrap {
+    min-width: 0;
+    display: flex;
+    align-items: stretch;
+  }
+  .network-topology-wrap :global(.network-topology) {
+    flex: 1;
+  }
+
+  .verdict-card {
+    min-height: 360px;
+    max-height: 460px;
+    display: grid;
+    grid-template-columns: 180px minmax(0, 1fr);
+    gap: clamp(20px, 3vw, 40px);
     align-items: center;
-    padding: clamp(28px, 4vw, 56px);
+    padding: clamp(24px, 3vw, 40px);
     border: 1px solid var(--shell-border-strong);
     border-radius: 18px;
     background:
       radial-gradient(circle at 18% 45%, var(--shell-bg-cyan), transparent 34%),
-      linear-gradient(135deg, var(--shell-panel-raised), rgba(16, 23, 34, 0.72));
-    box-shadow: 0 28px 90px rgba(0, 0, 0, 0.18);
+      linear-gradient(135deg, var(--shell-panel-raised), color-mix(in srgb, var(--shell-panel-raised) 72%, transparent));
+    box-shadow: 0 28px 90px color-mix(in srgb, black 18%, transparent);
   }
 
   .score-ring {
@@ -685,7 +712,7 @@
     gap: 10px;
     padding: 0 28px;
     border: 1px solid transparent;
-    background: linear-gradient(135deg, var(--accent-cyan), #2f80ff);
+    background: linear-gradient(135deg, var(--accent-cyan), color-mix(in srgb, var(--accent-cyan), black 70%));
     color: var(--shell-bg);
     box-shadow: 0 0 28px rgba(103, 232, 249, 0.26);
   }
@@ -794,7 +821,7 @@
     margin-top: 10px;
     border: 1px solid var(--shell-border);
     border-radius: 18px;
-    background: rgba(11, 17, 27, 0.74);
+    background: color-mix(in srgb, var(--shell-panel) 74%, transparent);
     overflow: hidden;
   }
 
@@ -870,7 +897,7 @@
     min-width: 0;
     height: 54px;
     border-radius: 10px;
-    background: rgba(8, 14, 24, 0.54);
+    background: color-mix(in srgb, var(--shell-base) 54%, transparent);
     overflow: hidden;
   }
 
@@ -952,7 +979,7 @@
     padding: 12px 14px 14px;
     border: 1px solid var(--shell-border);
     border-radius: 14px;
-    background: rgba(8, 14, 24, 0.62);
+    background: color-mix(in srgb, var(--shell-base) 62%, transparent);
   }
 
   .event-timeline-window {
