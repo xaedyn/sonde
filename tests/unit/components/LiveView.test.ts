@@ -58,15 +58,17 @@ beforeEach(() => {
 });
 
 describe('LiveView', () => {
-  it('renders a calm live hierarchy with mode, window, round, and scale cues', () => {
+  it('renders a calm live hierarchy with mode, window, and scale cues', () => {
     const { getByRole, getByText } = render(LiveView);
 
-    expect(getByRole('heading', { name: 'Live latency trace' })).toBeTruthy();
+    expect(getByRole('heading', { name: /Live latency trace/i })).toBeTruthy();
     expect(getByText('Unified overlay')).toBeTruthy();
     expect(getByText('2 endpoints')).toBeTruthy();
-    expect(getByText('Round 60')).toBeTruthy();
+    // The "Round N" chip dropped in the v2 Live polish — round counter
+    // was internal noise that didn't help users glance state. The "Same
+    // scale" / "Latest on right" ScopeCanvas pills also dropped (every
+    // line chart implies them); only the scale range survives.
     expect(getByText('Last 60 rounds')).toBeTruthy();
-    expect(getByText('Same scale')).toBeTruthy();
     expect(getByRole('group', { name: /Live view controls/i })).toBeTruthy();
     expect(getByRole('group', { name: /Slow trigger, 120 milliseconds/i })).toBeTruthy();
   });

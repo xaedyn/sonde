@@ -27,6 +27,12 @@
   const threshold = $derived($settingsStore.healthThreshold);
   const liveOptions = $derived($uiStore.liveOptions);
   const focusedId = $derived($uiStore.focusedEndpointId);
+  // v2 polish: paused-state overlay needs to know whether a live test is
+  // actively producing samples. 'starting' counts as running so the
+  // overlay flickers off the moment the user clicks Start.
+  const isRunning = $derived(
+    measurements.lifecycle === 'running' || measurements.lifecycle === 'starting',
+  );
 
   // When an endpoint is focused from the rail, Live enters "solo mode" — one
   // scope showing only that endpoint. Reverts to the toggle-driven layout
@@ -62,7 +68,6 @@
   const endpointCountLabel = $derived(
     soloEndpoint ? `1 of ${monitored.length} endpoints` : `${monitored.length} endpoint${monitored.length === 1 ? '' : 's'}`,
   );
-  const roundLabel = $derived(`Round ${currentRound}`);
   const windowLabel = `Last ${tokens.lane.chartWindow} rounds`;
 
   function handleDrill(epId: string): void {
@@ -106,8 +111,16 @@
 <section class="live-wrap live-surface" aria-label="Live latency trace">
   <header class="live-header live-hero">
     <div class="live-title-block">
-      <div class="live-kicker">Live</div>
-      <h1 class="live-title">Live latency trace</h1>
+      <h1 class="live-title">
+        <span class="live-title-icon" aria-hidden="true">
+          <svg viewBox="0 0 16 16" fill="none">
+            <circle cx="8" cy="8" r="1.6" fill="currentColor"/>
+            <path d="M5.2 5.2c-1.55 1.55-1.55 4.05 0 5.6M10.8 5.2c1.55 1.55 1.55 4.05 0 5.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+            <path d="M2.8 2.8c-2.9 2.9-2.9 7.5 0 10.4M13.2 2.8c2.9 2.9 2.9 7.5 0 10.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity="0.55"/>
+          </svg>
+        </span>
+        Live latency trace
+      </h1>
       <div class="live-status-strip" aria-label="Live trace summary">
         <span>{modeLabel}</span>
         {#if soloEndpoint}
@@ -117,9 +130,25 @@
           </span>
         {/if}
         <span>{endpointCountLabel}</span>
-        <span>{roundLabel}</span>
         <span>{windowLabel}</span>
       </div>
+    </div>
+
+    <!-- v2 polish: top-right glance summary chips — one per endpoint with
+         current last-value. Same data is also in the rich footer, but
+         pulling it up here gives users the at-a-glance read v2 carries
+         via its compact metric chips next to the page title. -->
+    <div class="live-glance" aria-label="Current latency per endpoint">
+      {#each monitored as ep (ep.id)}
+        {@const m = measurements.endpoints[ep.id]}
+        {@const last = m?.lastLatency ?? null}
+        {@const color = ep.color || tokens.color.endpoint[0]}
+        <span class="live-glance-chip" data-endpoint-id={ep.id}>
+          <span class="live-glance-pip" style:background={color} aria-hidden="true"></span>
+          <span class="live-glance-name">{ep.label}</span>
+          <span class="live-glance-val">{latencyLabel(last)}</span>
+        </span>
+      {/each}
     </div>
 
     <div class="live-controls" role="group" aria-label="Live view controls">
@@ -170,6 +199,23 @@
   </header>
 
   <div class="live-scope-panel" data-mode={mode}>
+    {#if !isRunning}
+      <!-- v2 polish: paused-state overlay so a stopped chart reads as
+           "paused" rather than "broken". Centred card explaining how to
+           resume; matches v2's "Measurement Paused" pattern. -->
+      <div class="live-paused-overlay" role="status" aria-live="polite">
+        <div class="live-paused-card">
+          <span class="live-paused-icon" aria-hidden="true">
+            <svg viewBox="0 0 16 16" fill="none">
+              <rect x="4.5" y="3.5" width="2.5" height="9" rx="0.5" fill="currentColor"/>
+              <rect x="9" y="3.5" width="2.5" height="9" rx="0.5" fill="currentColor"/>
+            </svg>
+          </span>
+          <p class="live-paused-headline">Measurement paused</p>
+          <p class="live-paused-detail">Click <strong>Start</strong> in the top bar to resume live diagnostics.</p>
+        </div>
+      </div>
+    {/if}
     {#if mode === 'split'}
       <div class="scope-stack">
         {#each visibleEndpoints as ep (ep.id)}
@@ -244,36 +290,83 @@
     color: var(--t1);
   }
 
+  /* v2 polish: the header is no longer a wrapping panel. Title block +
+     glance chips + controls sit directly on the page bg (matches v2's
+     Live page composition where only the chart card carries a panel
+     surface). Drops the prior border + bg + shadow that made every
+     surface a stacked card. */
   .live-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 24px;
+    gap: 20px;
     flex-wrap: wrap;
-    padding: clamp(20px, 3vw, 30px);
-    border: 1px solid var(--shell-border);
-    /* v2 alignment: 24 px radius matches the verdict-card family; flat
-       panel surface (no radial-gradient) so the page palette carries the
-       atmosphere instead of each card layering its own. */
-    border-radius: 24px;
-    background: var(--shell-panel);
-    box-shadow: 0 25px 50px -12px color-mix(in srgb, black 35%, transparent);
+    padding: 4px 4px 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
   }
-  .live-kicker {
-    font-family: var(--mono);
-    font-size: var(--ts-xs);
-    letter-spacing: var(--tr-kicker);
-    color: var(--accent-cyan);
-    text-transform: uppercase;
-    margin-bottom: 4px;
-  }
+  /* v2 polish: smaller title (was up to 46 px), font-weight 600 to match
+     the verdict-card h1 from the v2 arc. The Radio icon sits inline. */
   .live-title {
     margin: 0;
-    font-size: clamp(30px, 3.6vw, 46px);
-    line-height: 1.06;
-    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    font-size: clamp(22px, 2.4vw, 28px);
+    line-height: 1.1;
+    font-weight: 600;
     letter-spacing: var(--tr-tight);
     color: var(--t1);
+  }
+  .live-title-icon {
+    width: 22px;
+    height: 22px;
+    color: var(--accent-cyan);
+    display: inline-grid;
+    place-items: center;
+  }
+  .live-title-icon svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* v2 polish: top-right glance summary chips — one per endpoint with
+     current latency value. Reads like the APP / API chips in v2. The
+     richer footer below still carries the p95 + click-to-focus
+     affordance, but the glance row gives the at-a-glance read. */
+  .live-glance {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-left: auto;
+  }
+  .live-glance-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border: 1px solid color-mix(in srgb, var(--t1) 6%, transparent);
+    border-radius: 10px;
+    background: color-mix(in srgb, black 30%, transparent);
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--t2);
+  }
+  .live-glance-pip {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+  }
+  .live-glance-name {
+    color: var(--t3);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: var(--tr-label);
+  }
+  .live-glance-val {
+    color: var(--t1);
+    font-weight: 500;
   }
   .live-status-strip {
     display: flex;
@@ -395,12 +488,75 @@
 
   .live-scope-panel {
     min-width: 0;
+    position: relative;
     padding: clamp(12px, 2vw, 18px);
     border: 1px solid var(--shell-border);
     border-radius: 24px;
     background: var(--shell-panel);
     box-shadow: 0 25px 50px -12px color-mix(in srgb, black 35%, transparent);
     overflow: hidden;
+  }
+
+  /* v2 polish: paused-state overlay layered over the scope panel. When
+     the test isn't running the chart by itself reads as "broken" — this
+     card tells the user it's just paused and how to resume. Backdrop
+     blur keeps the recent trace visible behind the card so the user
+     can still see what was last measured. */
+  .live-paused-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background: color-mix(in srgb, black 50%, transparent);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+  }
+  .live-paused-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 24px 32px;
+    border: 1px solid color-mix(in srgb, var(--t1) 8%, transparent);
+    border-radius: 16px;
+    background: var(--shell-panel-raised);
+    text-align: center;
+    max-width: 320px;
+  }
+  .live-paused-icon {
+    width: 28px;
+    height: 28px;
+    color: var(--t3);
+    display: inline-grid;
+    place-items: center;
+    margin-bottom: 4px;
+  }
+  .live-paused-icon svg { width: 100%; height: 100%; }
+  .live-paused-headline {
+    margin: 0;
+    color: var(--t1);
+    font-family: var(--sans);
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .live-paused-detail {
+    margin: 0;
+    color: var(--t3);
+    font-family: var(--sans);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .live-paused-detail strong {
+    color: var(--t1);
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--t1) 8%, transparent);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .live-paused-overlay { backdrop-filter: none; -webkit-backdrop-filter: none; }
   }
 
   .scope-stack {

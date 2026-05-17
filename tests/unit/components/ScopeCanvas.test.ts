@@ -50,12 +50,14 @@ describe('ScopeCanvas', () => {
       },
     });
 
-    expect(getByText('Latest on right')).toBeTruthy();
-    expect(getByText('Same scale')).toBeTruthy();
+    // v2 Live polish dropped the "Latest on right" + "Same scale" chart-
+    // metadata pills (every line chart implies these by default). The
+    // scale-range chip survives — it tells the user the actual y-axis
+    // bounds, which isn't implied by default.
     expect(getByText('0-150 ms')).toBeTruthy();
     expect(getByText('Trigger 120 ms')).toBeTruthy();
     expect(getByRole('group', {
-      name: /Live latency scope.*last 60 rounds.*latest on right.*same scale 0-150 ms.*trigger 120 ms/i,
+      name: /Live latency scope.*last 60 rounds.*0-150 ms.*trigger 120 ms/i,
     })).toBeTruthy();
   });
 });

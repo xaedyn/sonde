@@ -258,7 +258,7 @@
   });
 
   const ariaLabel = $derived(
-    `Live latency scope — ${endpoints.length} endpoint${endpoints.length === 1 ? '' : 's'}, last ${WINDOW} rounds, latest on right, same scale ${scaleRangeLabel}, trigger ${threshold} ms.`
+    `Live latency scope — ${endpoints.length} endpoint${endpoints.length === 1 ? '' : 's'}, last ${WINDOW} rounds, ${scaleRangeLabel}, trigger ${threshold} ms.`
   );
 
   function handleClickTrace(epId: string): void {
@@ -285,9 +285,10 @@
 </script>
 
 <div class="scope-wrap" style:height="{height}px">
+  <!-- Scope range chip — kept because it tells the user the actual y-axis
+       bounds. The prior "Latest on right" + "Same scale" labels were chart-
+       metadata noise that every line chart implies by default (v2 polish). -->
   <div class="scope-meta" role="list" aria-label="Scope scale">
-    <span role="listitem">Latest on right</span>
-    <span role="listitem">Same scale</span>
     <span role="listitem">{scaleRangeLabel}</span>
   </div>
 
