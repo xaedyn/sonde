@@ -1140,6 +1140,13 @@
   }
 
   @media (max-width: 1100px) {
+    .hero-row {
+      /* Collapse to single column below ~tablet width. The synthesis arc's
+         desktop 2-col verdict + topology layout squashes the verdict card
+         to almost nothing without this — verified at 600px viewport
+         post-PR 6 deploy: verdict-card was 184px wide. */
+      grid-template-columns: 1fr;
+    }
     .verdict-card {
       grid-template-columns: 170px minmax(0, 1fr);
       gap: 28px;

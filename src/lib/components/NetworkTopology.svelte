@@ -118,18 +118,23 @@
         />
       {/each}
 
-      <!-- Pulse packets — re-rendered when pulseKeys[ep.id] increments. -->
+      <!-- Pulse packets — re-rendered when pulseKeys[ep.id] increments.
+           cx/cy are set to the ORIGIN position; the animation translates the
+           element via CSS transform (which IS reliably animatable on SVG,
+           unlike CSS animation of SVG `cx`/`cy` attributes which silently
+           strands the element). The translate distance is the delta from
+           origin to endpoint, passed via --pulse-dx/--pulse-dy. -->
       {#each nodes as node (node.endpoint.id)}
         {#if pulseKeys[node.endpoint.id]}
           {#key pulseKeys[node.endpoint.id]}
             <circle
               class="topology-pulse"
               data-tone={node.tone}
-              r="3"
-              style:--pulse-x1="{ORIGIN_X}px"
-              style:--pulse-y1="{ORIGIN_Y}px"
-              style:--pulse-x2="{node.x}px"
-              style:--pulse-y2="{node.y}px"
+              cx={ORIGIN_X}
+              cy={ORIGIN_Y}
+              r="3.5"
+              style:--pulse-dx="{node.x - ORIGIN_X}px"
+              style:--pulse-dy="{node.y - ORIGIN_Y}px"
             />
           {/key}
         {/if}
@@ -208,30 +213,41 @@
     overflow: visible;
   }
 
+  /* Path lines — brighter than the prior shell-divider tone so the
+     spatial structure reads at a glance against the dark panel. */
   .topology-path {
-    stroke: var(--shell-divider);
+    stroke: var(--shell-border-strong);
     fill: none;
+    stroke-width: 1.2;
   }
 
+  /* Nodes — filled (slightly darker than the panel background so the
+     coloured stroke pops), thicker stroke, and a tone-coloured drop
+     shadow / glow halo so each endpoint has presence rather than reading
+     as a wireframe placeholder. */
   .topology-node {
-    fill: var(--shell-panel-raised);
-    stroke-width: 2;
+    fill: var(--shell-base);
+    stroke-width: 2.5;
     transition: stroke 200ms ease, fill 200ms ease;
   }
   [data-role='origin'] .topology-node {
-    stroke: var(--t3);
+    stroke: var(--t2);
   }
   [data-tone='good'] .topology-node {
     stroke: var(--accent-green);
+    filter: drop-shadow(0 0 6px var(--accent-green));
   }
   [data-tone='watch'] .topology-node {
     stroke: var(--accent-amber);
+    filter: drop-shadow(0 0 6px var(--accent-amber));
   }
   [data-tone='bad'] .topology-node {
     stroke: var(--accent-pink);
+    filter: drop-shadow(0 0 8px var(--accent-pink));
   }
   [data-tone='collecting'] .topology-node {
     stroke: var(--accent-cyan);
+    filter: drop-shadow(0 0 6px var(--accent-cyan));
   }
 
   .topology-node-clickable {
@@ -245,13 +261,16 @@
     outline: none;
   }
   .topology-node-clickable:focus-visible .topology-node {
-    stroke-width: 3;
+    stroke-width: 3.5;
   }
 
+  /* Labels — bumped contrast (was --t3 = .5 alpha, barely readable;
+     --t2 = .58 still calm but legible). */
   .topology-label {
-    fill: var(--t3);
+    fill: var(--t2);
     font-family: var(--mono);
     font-size: 10px;
+    font-weight: 600;
     letter-spacing: var(--tr-label);
     text-transform: uppercase;
     pointer-events: none;
@@ -260,16 +279,20 @@
   [data-tone='watch'] .topology-label,
   [data-tone='bad'] .topology-label,
   [data-tone='collecting'] .topology-label {
-    fill: var(--t2);
+    fill: var(--t1);
   }
 
-  /* Pulse packets — animate from origin (x1,y1) to endpoint (x2,y2)
-     using CSS custom properties bound at render time. The {#key} block
-     above re-renders these elements per pulse trigger, restarting the
-     animation. Tone-colored to match the destination endpoint. */
+  /* Pulse packets — animate via CSS transform: translate (which IS
+     reliably animatable on SVG elements). The earlier implementation used
+     CSS keyframes on the SVG `cx`/`cy` attributes, which Chrome accepts
+     syntactically but renders inconsistently and frequently strands the
+     element mid-path. The new approach: render the circle at the origin
+     coordinates (cx=ORIGIN_X, cy=ORIGIN_Y) and animate transform: translate
+     by --pulse-dx / --pulse-dy (the delta to the endpoint). */
   .topology-pulse {
     animation: pulse-travel 1.2s ease-out forwards;
     pointer-events: none;
+    transform-box: fill-box;
   }
   [data-tone='good'].topology-pulse { fill: var(--accent-green); }
   [data-tone='watch'].topology-pulse { fill: var(--accent-amber); }
@@ -277,10 +300,10 @@
   [data-tone='collecting'].topology-pulse { fill: var(--accent-cyan); }
 
   @keyframes pulse-travel {
-    0%   { cx: var(--pulse-x1); cy: var(--pulse-y1); opacity: 0; }
-    20%  { opacity: 1; }
-    80%  { opacity: 1; }
-    100% { cx: var(--pulse-x2); cy: var(--pulse-y2); opacity: 0; }
+    0%   { transform: translate(0, 0);                            opacity: 0; }
+    20%  { transform: translate(calc(var(--pulse-dx) * 0.2), calc(var(--pulse-dy) * 0.2)); opacity: 1; }
+    80%  { transform: translate(calc(var(--pulse-dx) * 0.8), calc(var(--pulse-dy) * 0.8)); opacity: 1; }
+    100% { transform: translate(var(--pulse-dx), var(--pulse-dy));  opacity: 0; }
   }
 
   .network-topology-empty {
