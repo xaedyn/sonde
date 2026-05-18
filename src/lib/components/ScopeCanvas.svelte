@@ -59,8 +59,14 @@
   const maxMs = $derived.by(() => {
     if (!detailScale) return scale.maxMs;
     const p99 = Number.isFinite(p99Across) && p99Across > 0 ? p99Across : 0;
-    const thresholdHint = Number.isFinite(threshold) && threshold > 0 ? threshold * 0.75 : 90;
-    const detailMax = Math.max(90, Math.ceil(Math.max(p99 * 1.8, thresholdHint) / 30) * 30);
+    // v2-polish-round-3: aggressive data-driven detailScale so the chart
+    // actually shows data instead of empty space above it. Was anchored at
+    // max(90, threshold*0.75, p99*1.8) — which pinned the axis high even
+    // when data was tiny, leaving the chart living in the bottom 20%.
+    // Now: tight-fit to p99 * 1.4, floored at 60 ms so brief spikes don't
+    // cause big rescales. The full-scale (non-detail) view still uses the
+    // threshold-pinned scale.maxMs for hosted reports / non-Live surfaces.
+    const detailMax = Math.max(60, Math.ceil((p99 * 1.4) / 30) * 30);
     return Math.min(scale.maxMs, detailMax);
   });
   const ticks = $derived.by(() => {
@@ -95,6 +101,11 @@
 
   const thresholdY = $derived(yOf(threshold));
   const thresholdLabelY = $derived(Math.max(plotY0 + 12, thresholdY - 4));
+  // v2-polish-round-3: only render the threshold line when it actually
+  // falls within the data-scaled chart range. Previously it was clamped
+  // to the top edge of the chart whenever the data was below threshold,
+  // looking like a stray dashed line at the chart's ceiling.
+  const thresholdOnScale = $derived(threshold > 0 && threshold <= maxMs);
   const normalBandY = $derived(yOf(Math.min(threshold, maxMs)));
   const normalBandHeight = $derived(plotY1 - normalBandY);
   const scaleRangeLabel = $derived(`0-${maxMs} ms`);
@@ -114,34 +125,71 @@
   });
 
   // ── Trace path per endpoint ─────────────────────────────────────────────
-  interface Trace { id: string; color: string; d: string; overflow: { x: number }[]; breaks: { x: number; kind: 'timeout' | 'error' }[]; dimmed: boolean; }
+  interface Trace { id: string; color: string; d: string; area: string; overflow: { x: number }[]; breaks: { x: number; kind: 'timeout' | 'error' }[]; dimmed: boolean; }
+  // v2-polish-round-3 (chart visibility): build both a line path AND an
+  // area path per trace. The line stays as before (M/L of plotted points,
+  // with gaps preserved); the area appends L commands down to the
+  // baseline at each segment's start/end so the SVG <path fill="..."/>
+  // renders a tinted region below the line. This is the v2 AreaChart
+  // pattern — without it, low-latency data (20-40 ms against a 0-150
+  // ms axis) is a near-invisible thin line at the bottom of the chart.
   const traces: readonly Trace[] = $derived.by(() => {
     const out: Trace[] = [];
     const start = Math.max(1, currentRound - WINDOW + 1);
+    const baseline = plotY1; // y of the chart's lower edge — area fills down to here
     for (const ep of endpoints) {
       const samples = samplesByEndpoint[ep.id] ?? [];
       const recent = samples.filter((s) => s.round >= start);
       let d = '';
+      let area = '';
+      let segmentStartX: number | null = null;
+      let lastX: number | null = null;
       let prevWasGap = true;
       const overflow: { x: number }[] = [];
       const breaks: { x: number; kind: 'timeout' | 'error' }[] = [];
+
+      function closeAreaSegment(): void {
+        if (segmentStartX !== null && lastX !== null) {
+          area += `L ${lastX.toFixed(1)} ${baseline.toFixed(1)} L ${segmentStartX.toFixed(1)} ${baseline.toFixed(1)} Z `;
+        }
+        segmentStartX = null;
+        lastX = null;
+      }
+
       for (const s of recent) {
         const x = xOf(s.round);
         if (s.status !== 'ok') {
           breaks.push({ x, kind: s.status === 'timeout' ? 'timeout' : 'error' });
+          closeAreaSegment();
           prevWasGap = true;
           continue;
         }
-        if (!Number.isFinite(s.latency)) { prevWasGap = true; continue; }
+        if (!Number.isFinite(s.latency)) {
+          closeAreaSegment();
+          prevWasGap = true;
+          continue;
+        }
         if (s.latency > maxMs) overflow.push({ x });
         const y = yOf(s.latency);
-        d += `${prevWasGap ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)} `;
+        if (prevWasGap) {
+          d += `M ${x.toFixed(1)} ${y.toFixed(1)} `;
+          // Area: start at baseline, lift to the data point.
+          area += `M ${x.toFixed(1)} ${baseline.toFixed(1)} L ${x.toFixed(1)} ${y.toFixed(1)} `;
+          segmentStartX = x;
+        } else {
+          d += `L ${x.toFixed(1)} ${y.toFixed(1)} `;
+          area += `L ${x.toFixed(1)} ${y.toFixed(1)} `;
+        }
+        lastX = x;
         prevWasGap = false;
       }
+      closeAreaSegment();
+
       out.push({
         id: ep.id,
         color: ep.color || tokens.color.endpoint[0],
         d: d.trim(),
+        area: area.trim(),
         overflow,
         breaks,
         dimmed: focusedEndpointId !== null && ep.id !== focusedEndpointId,
@@ -350,30 +398,50 @@
       {/each}
     </g>
 
-    <!-- Threshold line -->
-    <line
-      x1={plotX0} y1={thresholdY} x2={plotX1} y2={thresholdY}
-      stroke="var(--svg-threshold)" stroke-width="1" stroke-dasharray="4 4" opacity="0.6"
-      aria-hidden="true"
-    />
-    <text
-      x={plotX1 - 4} y={thresholdLabelY}
-      text-anchor="end" font-size="9" font-family={tokens.typography.mono.fontFamily}
-      fill="var(--svg-threshold)" letter-spacing="0.1em"
-      aria-hidden="true"
-    >{triggerLabel}</text>
+    <!-- Threshold line — only rendered when within the chart's scaled
+         range. When data is well below threshold (detailScale mode), the
+         line gets hidden so it doesn't sit as a stray dash at the top
+         edge implying the chart maxes there. Trigger context still lives
+         in the TRIGGER toolbar chip on /live. -->
+    {#if thresholdOnScale}
+      <line
+        x1={plotX0} y1={thresholdY} x2={plotX1} y2={thresholdY}
+        stroke="var(--svg-threshold)" stroke-width="1" stroke-dasharray="4 4" opacity="0.6"
+        aria-hidden="true"
+      />
+      <text
+        x={plotX1 - 4} y={thresholdLabelY}
+        text-anchor="end" font-size="9" font-family={tokens.typography.mono.fontFamily}
+        fill="var(--svg-threshold)" letter-spacing="0.1em"
+        aria-hidden="true"
+      >{triggerLabel}</text>
+    {/if}
 
-    <!-- Traces -->
+    <!-- v2-polish-round-3: render the tinted area fill BELOW the line so
+         each trace has visible presence even at low values. Area opacity
+         drops further when the trace is dimmed so the focused trace stays
+         dominant. -->
     {#each traces as trace (trace.id)}
+      {#if trace.area.length > 0}
+        <path
+          class="trace-area"
+          d={trace.area}
+          fill={trace.color}
+          stroke="none"
+          opacity={trace.dimmed ? 0.05 : 0.22}
+          aria-hidden="true"
+          pointer-events="none"
+        />
+      {/if}
       {#if trace.d.length > 0}
         <path
           d={trace.d}
           fill="none"
           stroke={trace.color}
-          stroke-width={trace.dimmed ? 1 : 1.5}
+          stroke-width={trace.dimmed ? 1.4 : 2.4}
           stroke-linecap="round"
           stroke-linejoin="round"
-          opacity={trace.dimmed ? 0.35 : 1}
+          opacity={trace.dimmed ? 0.5 : 1}
           style:cursor="pointer"
           role="button"
           tabindex="0"
