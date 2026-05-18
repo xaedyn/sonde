@@ -18,12 +18,20 @@
   const measurements = $derived($measurementStore);
   const stats = $derived($statisticsStore);
 
-  // Cross-endpoint p99 — computed across ALL monitored endpoints (not just
-  // visible or focused). Passed identically to every ScopeCanvas instance so
-  // the unified/split/solo modes all share the same y-axis ceiling.
-  // DO NOT use stats[ep.id]?.p99 per-row in split mode — that destroys the
-  // cross-endpoint comparability invariant (D7).
-  const p99Across = $derived(Math.max(0, ...monitored.map((ep) => stats[ep.id]?.p99 ?? 0)));
+  // Cross-endpoint axis-target percentile — uses p95 (not p99) on
+  // /live so a single >120 ms spike doesn't drag the y-axis ceiling up
+  // for the whole window, leaving 80 % of the chart empty above the
+  // typical data range. p99 outliers still render correctly via
+  // ScopeCanvas's overflow markers. Computed across ALL monitored
+  // endpoints (not just visible/focused) so unified/split/solo modes
+  // all share the same y-axis ceiling — required for the cross-
+  // endpoint comparability invariant (D7). The prop is named
+  // p99Across on ScopeCanvas for historical reasons; what it means in
+  // practice is "the latency target the chart should fit".
+  const p99Across = $derived(Math.max(
+    0,
+    ...monitored.map((ep) => stats[ep.id]?.p95 ?? stats[ep.id]?.p99 ?? 0),
+  ));
   const threshold = $derived($settingsStore.healthThreshold);
   const liveOptions = $derived($uiStore.liveOptions);
   const focusedId = $derived($uiStore.focusedEndpointId);
