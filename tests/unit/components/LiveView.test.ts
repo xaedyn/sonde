@@ -58,17 +58,17 @@ beforeEach(() => {
 });
 
 describe('LiveView', () => {
-  it('renders a calm live hierarchy with mode, window, and scale cues', () => {
+  it('renders a calm live hierarchy with title, subtitle, and controls', () => {
     const { getByRole, getByText } = render(LiveView);
 
     expect(getByRole('heading', { name: /Live latency trace/i })).toBeTruthy();
-    expect(getByText('Unified overlay')).toBeTruthy();
-    expect(getByText('2 endpoints')).toBeTruthy();
-    // The "Round N" chip dropped in the v2 Live polish — round counter
-    // was internal noise that didn't help users glance state. The "Same
-    // scale" / "Latest on right" ScopeCanvas pills also dropped (every
-    // line chart implies them); only the scale range survives.
-    expect(getByText('Last 60 rounds')).toBeTruthy();
+    // v2-polish-round-2 collapsed the status-strip chips (UNIFIED OVERLAY /
+    // 4 ENDPOINTS / LAST 60 ROUNDS) into a single sans-serif subtitle line
+    // under the title. The subtitle names the monitored endpoint count and
+    // the round window in one sentence — no chip stack to compete with the
+    // title for the eye.
+    expect(getByText(/Live latency across 2 monitored endpoints/i)).toBeTruthy();
+    expect(getByText(/last 60 rounds/i)).toBeTruthy();
     expect(getByRole('group', { name: /Live view controls/i })).toBeTruthy();
     expect(getByRole('group', { name: /Slow trigger, 120 milliseconds/i })).toBeTruthy();
   });

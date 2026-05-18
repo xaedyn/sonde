@@ -60,15 +60,19 @@
     soloEndpoint ? 'solo' : liveOptions.split ? 'split' : 'unified',
   );
   const scopeHeight = $derived(mode === 'split' ? 220 : 540);
-  const modeLabel = $derived.by(() => {
-    if (mode === 'solo') return 'Focused path';
-    if (mode === 'split') return 'Split lanes';
-    return 'Unified overlay';
+
+  // v2-polish-round-2: subtitle replaces the prior status-strip chips
+  // (UNIFIED OVERLAY / 4 ENDPOINTS / LAST 60 ROUNDS). The subtitle keeps
+  // the at-a-glance context (mode + endpoint count) but as a single
+  // human-readable sentence under the title, not three competing pills.
+  const liveSubtitle = $derived.by(() => {
+    if (soloEndpoint) {
+      return `Focused on ${soloEndpoint.label} — last ${tokens.lane.chartWindow} rounds, live from your browser.`;
+    }
+    const count = monitored.length;
+    const noun = count === 1 ? 'endpoint' : 'endpoints';
+    return `Live latency across ${count} monitored ${noun} — last ${tokens.lane.chartWindow} rounds.`;
   });
-  const endpointCountLabel = $derived(
-    soloEndpoint ? `1 of ${monitored.length} endpoints` : `${monitored.length} endpoint${monitored.length === 1 ? '' : 's'}`,
-  );
-  const windowLabel = `Last ${tokens.lane.chartWindow} rounds`;
 
   function handleDrill(epId: string): void {
     uiStore.setFocusedEndpoint(epId);
@@ -121,23 +125,13 @@
         </span>
         Live latency trace
       </h1>
-      <div class="live-status-strip" aria-label="Live trace summary">
-        <span>{modeLabel}</span>
-        {#if soloEndpoint}
-          <span class="live-title-solo">
-            <span class="live-title-pip" style:background={soloEndpoint.color} aria-hidden="true"></span>
-            {soloEndpoint.label}
-          </span>
-        {/if}
-        <span>{endpointCountLabel}</span>
-        <span>{windowLabel}</span>
-      </div>
+      <p class="live-subtitle">{liveSubtitle}</p>
     </div>
 
-    <!-- v2 polish: top-right glance summary chips — one per endpoint with
-         current last-value. Same data is also in the rich footer, but
-         pulling it up here gives users the at-a-glance read v2 carries
-         via its compact metric chips next to the page title. -->
+    <!-- v2 polish round 2: bigger glance chips, fewer rows of chrome.
+         Status-strip pills (UNIFIED OVERLAY / 4 ENDPOINTS / LAST 60 ROUNDS)
+         dropped — redundant with the controls and footer. View/Trigger
+         controls moved into the chart panel toolbar below. -->
     <div class="live-glance" aria-label="Current latency per endpoint">
       {#each monitored as ep (ep.id)}
         {@const m = measurements.endpoints[ep.id]}
@@ -150,8 +144,13 @@
         </span>
       {/each}
     </div>
+  </header>
 
-    <div class="live-controls" role="group" aria-label="Live view controls">
+  <div class="live-scope-panel" data-mode={mode}>
+    <!-- v2 polish round 2: chart toolbar lives inside the panel, top
+         right. View / Trigger controls (and the back-to-all-endpoints
+         button in solo mode) belong with the chart they control. -->
+    <div class="live-scope-toolbar" role="group" aria-label="Live view controls">
       {#if soloEndpoint}
         <button
           type="button" class="live-chip live-chip-back"
@@ -196,9 +195,7 @@
         </div>
       </div>
     </div>
-  </header>
 
-  <div class="live-scope-panel" data-mode={mode}>
     {#if !isRunning}
       <!-- v2 polish: paused-state overlay so a stopped chart reads as
            "paused" rather than "broken". Centred card explaining how to
@@ -335,78 +332,88 @@
      current latency value. Reads like the APP / API chips in v2. The
      richer footer below still carries the p95 + click-to-focus
      affordance, but the glance row gives the at-a-glance read. */
+  /* v2 polish round 2: subtitle replaces the chip stack. Sans 14 px /
+     500 weight / zinc-400 — matches v2's "Synchronized latency testing
+     from your browser" line under its Live title. */
+  .live-subtitle {
+    margin: 6px 0 0;
+    color: var(--t3);
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.4;
+  }
+
+  /* v2 polish round 2: glance chips upsized. Was 12 px mono with 7 px
+     pip — read as crowded chrome. Now 16 px mono value with 10 px pip
+     and a smaller stacked label, matching v2's APP / API metric chip
+     anatomy. */
   .live-glance {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 10px;
     margin-left: auto;
+    align-items: stretch;
   }
   .live-glance-chip {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 6px 12px;
+    gap: 10px;
+    padding: 10px 14px;
     border: 1px solid color-mix(in srgb, var(--t1) 6%, transparent);
-    border-radius: 10px;
-    background: color-mix(in srgb, black 30%, transparent);
-    font-family: var(--mono);
-    font-size: 12px;
-    color: var(--t2);
+    border-radius: 12px;
+    background: color-mix(in srgb, black 40%, transparent);
+    min-width: 96px;
   }
   .live-glance-pip {
-    width: 7px;
-    height: 7px;
+    width: 9px;
+    height: 9px;
     border-radius: 50%;
+    box-shadow: 0 0 6px currentColor;
+    flex-shrink: 0;
   }
   .live-glance-name {
     color: var(--t3);
-    font-size: 11px;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
     text-transform: uppercase;
     letter-spacing: var(--tr-label);
+    line-height: 1.1;
   }
   .live-glance-val {
     color: var(--t1);
-    font-weight: 500;
-  }
-  .live-status-strip {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-wrap: wrap;
-    margin-top: 8px;
-    min-width: 0;
-  }
-  .live-status-strip > span {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    min-width: 0;
-    padding: 3px 7px;
-    border: 1px solid var(--shell-border);
-    border-radius: 6px;
-    background: rgba(255,255,255,.04);
-    color: var(--t2);
     font-family: var(--mono);
-    font-size: var(--ts-xs);
-    letter-spacing: var(--tr-kicker);
-    text-transform: uppercase;
-    white-space: nowrap;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.1;
+    margin-left: 2px;
   }
-  .live-title-solo { display: inline-flex; align-items: center; gap: 10px; }
-  .live-title-pip {
-    width: 10px; height: 10px; border-radius: 50%;
-    box-shadow: 0 0 6px currentColor;
-  }
+  /* .live-title-solo / .live-title-pip selectors removed — they were
+     used by the dropped status-strip's solo indicator. Solo-mode focus
+     is now reflected in the subtitle copy ("Focused on …") instead of
+     an inline pip next to the title. */
 
-  .live-controls {
+  /* v2 polish round 2: chart toolbar lives inside the chart panel, top
+     right. Replaces the standalone live-controls block that floated above
+     the chart. Absolute positioning so it overlays the top edge of the
+     panel without consuming the chart's vertical space. */
+  .live-scope-toolbar {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 3;
     display: flex;
-    align-items: flex-end;
-    gap: 14px;
+    align-items: center;
+    gap: 10px;
     flex-wrap: wrap;
-    padding: 12px;
-    border: 1px solid var(--shell-border);
-    border-radius: 14px;
-    background: color-mix(in srgb, black 40%, transparent);
+    justify-content: flex-end;
+    padding: 6px 10px;
+    border: 1px solid color-mix(in srgb, var(--t1) 6%, transparent);
+    border-radius: 10px;
+    background: color-mix(in srgb, black 65%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
   }
   .live-control { display: flex; flex-direction: column; gap: 4px; }
   .live-control-label {
@@ -642,8 +649,19 @@
   @media (max-width: 767px) {
     .live-wrap { width: 100%; padding: 16px; gap: 14px; }
     .live-header { flex-direction: column; align-items: flex-start; gap: 14px; }
-    .live-controls { width: 100%; align-items: stretch; }
+    .live-glance { margin-left: 0; gap: 8px; }
+    .live-glance-chip { padding: 8px 12px; min-width: 88px; }
+    .live-glance-val { font-size: 15px; }
+    /* Mobile: toolbar moves below the chart so it doesn't crowd the
+       small viewport. Static position, full width, single-row scroll. */
+    .live-scope-panel { padding: 10px 10px 12px; border-radius: 14px; }
+    .live-scope-toolbar {
+      position: static;
+      margin-top: 10px;
+      width: 100%;
+      justify-content: flex-start;
+      background: color-mix(in srgb, black 40%, transparent);
+    }
     .live-control { flex: 1 1 120px; min-width: 0; }
-    .live-scope-panel { padding: 10px; border-radius: 14px; }
   }
 </style>
